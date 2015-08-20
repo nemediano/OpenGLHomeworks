@@ -1,0 +1,9 @@
+*.sdf
+*.log
+*.tlog
+CGT520Solution/ClassParticles/x64/Debug/OpenGLProgram.obj
+*.obj
+*.idb
+*.pdb
+*.ilk
+*.exe

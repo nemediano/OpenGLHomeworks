@@ -4,7 +4,7 @@
 
 //This is a bug on GLM in 32 bits I hope they solve it soon
 #define GLM_FORCE_PURE
-
+#define GLM_MESSAGES
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp> 
@@ -16,7 +16,6 @@
 
 #include "mesh.h"
 #include "texture.h"
-
 
 using namespace std;
 static int win = 0;
@@ -31,7 +30,11 @@ bool mouse_dragging;
 glm::vec2 mouse_start_drag;
 glm::vec2 base_rotation_angles;
 glm::vec2 new_rotation_angles;
-float scale;
+glm::vec2 base_pan;
+glm::vec2 new_pan;
+enum CAM_MODE { PAN, ROTATE, UNUSED };
+CAM_MODE mode;
+float fovy;
 
 float seconds;
 int window_width;
@@ -70,40 +73,60 @@ void mouse_active(int mouse_x, int mouse_y);
 void mouse(int button, int state, int mouse_x, int mouse_y);
 void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y);
 
+const float  PI = 3.141593f;
+const float TAU = 6.283185f;
+
 void mouse_active(int mouse_x, int mouse_y) {
 	glm::vec2 mouse_current;
-	
+
 	mouse_current.x = static_cast<float>(mouse_x);
 	mouse_current.y = static_cast<float>(mouse_y);
-	
+
 	glm::vec2 deltas = mouse_start_drag - mouse_current;
 
-	new_rotation_angles.x = deltas.x / glutGet(GLUT_WINDOW_WIDTH) * 25;
-	new_rotation_angles.y = deltas.y / glutGet(GLUT_WINDOW_HEIGHT) * 25;
+	if (mode == ROTATE) {
+		new_rotation_angles.x = deltas.x / glutGet(GLUT_WINDOW_WIDTH) * TAU / 2.0f;
+		new_rotation_angles.y = deltas.y / glutGet(GLUT_WINDOW_HEIGHT) * TAU / 2.0f;
+	}
+	else {
+		new_pan.x = deltas.x / glutGet(GLUT_WINDOW_WIDTH);
+		new_pan.y = -deltas.y / glutGet(GLUT_WINDOW_HEIGHT);
+	}
 
 	glutPostRedisplay();
 }
 
 void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
-	if (direction > 0 && scale < 160.0) {
-		scale += 10.0;
-	} else if (direction < 0 && scale > 10.0) {
-		scale -= 10.0;
+	const float TICKS = PI / 20;
+	if (direction > 0.0f && fovy < (PI - TICKS)) {
+		fovy += TICKS;
+	} else if (direction < 0 && fovy > TICKS) {
+		fovy -= TICKS;
 	}
+
 	glutPostRedisplay();
 }
 
 void mouse(int button, int state, int mouse_x, int mouse_y) {
-	if (state == GLUT_DOWN && button == GLUT_LEFT_BUTTON) {
+	if (state == GLUT_DOWN && (button == GLUT_LEFT_BUTTON || button == GLUT_MIDDLE_BUTTON)) {
 		mouse_dragging = true;
 		mouse_start_drag.x = static_cast<float>(mouse_x);
 		mouse_start_drag.y = static_cast<float>(mouse_y);
-	} else if (state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
+		if (button == GLUT_LEFT_BUTTON) {
+			mode = ROTATE;
+		} else {
+			mode = PAN;
+		}
+	} else if (state == GLUT_UP && (button == GLUT_LEFT_BUTTON || button == GLUT_MIDDLE_BUTTON)) {
 		mouse_dragging = false;
-		base_rotation_angles += new_rotation_angles;
-		new_rotation_angles.x = 0.0f;
-		new_rotation_angles.y = 0.0f;
-		//cout << "Rotation x = " << base_rotation_angles.x << "\nRotation y = " << base_rotation_angles.y << endl;
+		if (button == GLUT_LEFT_BUTTON) {
+			base_rotation_angles += new_rotation_angles;
+			new_rotation_angles = glm::vec2(0.0f, 0.0f);
+		} else {
+			base_pan += new_pan;
+			new_pan = glm::vec2(0.0f, 0.0f);
+		}
+		mode = UNUSED;
 	}
 	glutPostRedisplay();
 }
@@ -131,7 +154,7 @@ void display() {
    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
    glm::mat4 V = glm::lookAt(eye, at, up);
    glm::vec3 view = at - eye;
-   glm::mat4 P = glm::perspective(scale, 1.0f, 0.1f, 100.0f);
+   glm::mat4 P = glm::perspective(fovy, 1.0f, 0.1f, 100.0f);
    glm::vec3 light_direction = at - light_position;
    //reactivate modern OpenGL
    open_gl_program_ptr->use_program();
@@ -152,7 +175,6 @@ void display() {
    //Geometric variables for the shader
    if (light_position_in_vs_loc != -1) {
 	   glUniform4fv(light_position_in_vs_loc, 1, glm::value_ptr(V * glm::vec4(light_position, 1.0f)));
-	   //glUniform4fv(light_position_loc, 1, light_position);
    }
    if (light_direction_in_vs_loc != -1) {
 	   glUniform4fv(light_direction_in_vs_loc, 1, glm::value_ptr(V * glm::vec4(light_direction, 1.0f)));
@@ -317,11 +339,12 @@ void init_program() {
 	rotate_animation = false;
 	texture_animation = true;
 	seconds = 0.0;
-	scale = 50.0f;
-	base_rotation_angles.x = 0.0f;
-	base_rotation_angles.y = 35.0f;
-	new_rotation_angles.x = 0.0f;
-	new_rotation_angles.y = 0.0f;
+	fovy = TAU / 15.0f;
+	base_rotation_angles = glm::vec2(0.0f, 0.0f);
+	new_rotation_angles = glm::vec2(0.0f, 0.0f);
+	base_pan = glm::vec2(0.0f, 0.0f);
+	new_pan = glm::vec2(0.0f, 0.0f);
+	mode = UNUSED;
 	window_width = window_height = 640;
 }
 
@@ -371,11 +394,10 @@ void keyboard (unsigned char key, int mouse_x, int mouse_y) {
 
 		case 'R':
 		case 'r':
-			base_rotation_angles.x = 0.0;
-			base_rotation_angles.y = 35.0;
-			scale = 50;
+			base_rotation_angles = glm::vec2(0.0f, 0.0f);
+			base_pan = glm::vec2(0.0f, 0.0f);
+			fovy = TAU / 15.0f;
 		break;
-
 
 	    case 27:
 			exit(EXIT_SUCCESS);
