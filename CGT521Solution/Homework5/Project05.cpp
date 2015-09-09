@@ -144,12 +144,11 @@ void display() {
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
    glm::mat4 I(1.0f);
-   //glm::mat4 M = RotateX(base_rotation_angles.y + new_rotation_angles.y) * RotateY(base_rotation_angles.x + new_rotation_angles.x) * Scale(4.0f, 4.0f, 4.0f);
-   glm::mat4 M = glm::scale(I, glm::vec3(4.0f, 4.0f, 4.0f));
+   glm::mat4 M = glm::scale(I, glm::vec3(2.0f, 2.0f, 2.0f));
    M = glm::rotate(M, base_rotation_angles.x + new_rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
    M = glm::rotate(M, base_rotation_angles.y + new_rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0f));
    glm::vec3 light_position = glm::vec3(0.0f, 0.707f, 10.0f);
-   glm::vec3 eye = glm::vec3(0.0f, 0.0f, 1.0f);
+   glm::vec3 eye = glm::vec3(0.0f, 0.0f, 2.0f);
    glm::vec3 at = glm::vec3(0.0f, 0.0f, 0.0f);
    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
    glm::mat4 V = glm::lookAt(eye, at, up);
@@ -337,7 +336,7 @@ void ExitGlut() {
 void init_program() {
 	texture_map_flag = true;
 	rotate_animation = false;
-	texture_animation = true;
+	texture_animation = false;
 	seconds = 0.0;
 	fovy = TAU / 15.0f;
 	base_rotation_angles = glm::vec2(0.0f, 0.0f);
@@ -375,13 +374,11 @@ void special_keys(int key, int mouse_x, int mouse_y) {
 		break;
 
 		case GLUT_KEY_F2:
-			//rotate_animation = (!rotate_animation);
             rotate_animation = true;
 			texture_animation = false;
 		break;
 
 		case GLUT_KEY_F1:
-			//texture_animation = (!texture_animation);
 			rotate_animation = false;
 			texture_animation = true;
 		break;

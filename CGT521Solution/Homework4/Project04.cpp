@@ -128,12 +128,15 @@ void display() {
 	M = glm::rotate(M, base_rotation_angles.y + new_rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0));
 
 	glm::vec3 light_position = glm::vec3(0.0f, 0.707f, 10.0f);
-	glm::vec3 eye = glm::vec3(0.0f, 0.0f, 2.0f) + glm::vec3(base_pan, 1.0f) + glm::vec3(new_pan, 1.0f);
-	glm::vec3 at = glm::vec3(0.0f, 0.0f, 0.0f) + glm::vec3(base_pan, 1.0f) + glm::vec3(new_pan, 1.0f);
+	glm::vec3 eye = glm::vec3(0.0f, 0.0f, 1.0f) + glm::vec3(base_pan, 0.0f) + glm::vec3(new_pan, 0.0f);
+	glm::vec3 at = glm::vec3(0.0f, 0.0f, 0.0f) + glm::vec3(base_pan, 0.0f) + glm::vec3(new_pan, 0.0f);
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 	glm::mat4 V = glm::lookAt(eye, at, up);
 	glm::vec3 view = at - eye;
-	glm::mat4 P = glm::perspective(fovy, 1.0f, 0.1f, 100.0f);
+	GLfloat aspect = (float)glutGet(GLUT_WINDOW_WIDTH) / (float)glutGet(GLUT_WINDOW_HEIGHT);
+	GLfloat zNear = 0.1f;
+	GLfloat zFar = 100.0f;
+	glm::mat4 P = glm::perspective(fovy, aspect, zNear, zFar);
 	glm::vec3 light_direction = at - light_position;
 
 	open_gl_program_ptr->use_program();
@@ -314,7 +317,7 @@ void init_program() {
 	fish_animation = false;
 	texture_map_flag = false;
 	light_mode_flag = false;
-	fovy = TAU / 15.0f;
+	fovy = TAU / 8.0f;
 	base_rotation_angles = glm::vec2(0.0f, 0.0f);
 	new_rotation_angles = glm::vec2(0.0f, 0.0f);
 	base_pan = glm::vec2(0.0f, 0.0f);
@@ -357,7 +360,7 @@ void keyboard (unsigned char key, int mouse_x, int mouse_y) {
 		case 'r':
 			base_rotation_angles = glm::vec2(0.0f, 0.0f);
 			base_pan = glm::vec2(0.0f, 0.0f);
-			fovy = TAU / 15.0f;
+			fovy = TAU / 8.0f;
 		break;
 
 	    case 27:
