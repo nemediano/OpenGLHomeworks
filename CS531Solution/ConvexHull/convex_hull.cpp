@@ -16,6 +16,8 @@
 #include "opengl/OpenGLProgram.h"
 
 opengl::OpenGLProgram* program_points_ptr = nullptr;
+opengl::OpenGLProgram* program_contours_ptr = nullptr;
+opengl::OpenGLProgram* program_polygons_ptr = nullptr;
 
 using namespace std;
 //Glut window pointer
@@ -94,6 +96,8 @@ int main(int argc, char* argv[]) {
 void exit_glut() {
 
 	delete program_points_ptr;
+	delete program_contours_ptr;
+	delete program_polygons_ptr;
 
 	glutDestroyWindow(window);
 	exit(EXIT_SUCCESS);
@@ -107,6 +111,8 @@ void init_OpenGL() {
 	opengl::get_OpenGL_info();
 
 	program_points_ptr = new opengl::OpenGLProgram("shaders/vertexShaderPoints.glsl", "shaders/fragmentShaderPoints.glsl");
+	program_contours_ptr = new opengl::OpenGLProgram("shaders/vertexShaderContours.glsl", "shaders/fragmentShaderContours.glsl");
+	program_polygons_ptr = new opengl::OpenGLProgram("shaders/vertexShaderPolygons.glsl", "shaders/fragmentShaderPolygons.glsl");
 	
 	if (!program_points_ptr->is_ok()) {
 		cerr << "Error at GL program creation" << endl;
