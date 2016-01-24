@@ -24,10 +24,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\fragmentShader.glsl">
+    <None Include="shaders\fragmentShaderPoints.glsl">
       <Filter>Resource Files\shaders</Filter>
     </None>
-    <None Include="shaders\vertexShader.glsl">
+    <None Include="shaders\vertexShaderPoints.glsl">
       <Filter>Resource Files\shaders</Filter>
     </None>
   </ItemGroup>

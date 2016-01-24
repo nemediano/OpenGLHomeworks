@@ -15,7 +15,7 @@
 #include "opengl/HelperFunctions.h"
 #include "opengl/OpenGLProgram.h"
 
-opengl::OpenGLProgram* program_ptr = nullptr;
+opengl::OpenGLProgram* program_points_ptr = nullptr;
 
 using namespace std;
 //Glut window pointer
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
 
 void exit_glut() {
 
-	delete program_ptr;
+	delete program_points_ptr;
 
 	glutDestroyWindow(window);
 	exit(EXIT_SUCCESS);
@@ -106,9 +106,9 @@ void init_OpenGL() {
 	}
 	opengl::get_OpenGL_info();
 
-	program_ptr = new opengl::OpenGLProgram("shaders/vertexShader.glsl", "shaders/fragmentShader.glsl");
+	program_points_ptr = new opengl::OpenGLProgram("shaders/vertexShaderPoints.glsl", "shaders/fragmentShaderPoints.glsl");
 	
-	if (!program_ptr->is_ok()) {
+	if (!program_points_ptr->is_ok()) {
 		cerr << "Error at GL program creation" << endl;
 		opengl::gl_error();
 		exit(EXIT_FAILURE);
@@ -116,23 +116,26 @@ void init_OpenGL() {
 
 	opengl::get_error_log();
 	
-	u_PVM_location = program_ptr->get_uniform_location("PVM");
-	
-	a_position_loc = program_ptr->get_attrib_location("Position");
-	a_color_loc = program_ptr->get_attrib_location("Color");
+	u_PVM_location = program_points_ptr->get_uniform_location("PVM");
+
+	a_position_loc = program_points_ptr->get_attrib_location("Position");
+	a_color_loc = program_points_ptr->get_attrib_location("Color");
 	
 	//Activate antialliasing
 	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_POLYGON_SMOOTH);
+	glEnable(GL_POINT_SMOOTH);
 	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
 
 	//initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 
-	//Make the point a little bigger
-	glEnable(GL_PROGRAM_POINT_SIZE);//Use shader
+	//Hability to make the point a little bigger in the shader
+	glEnable(GL_PROGRAM_POINT_SIZE);
+	//The alternative is to disable the revious and use
 	//glPointSize(4.0);
 
 	opengl::gl_error("At scene creation");
@@ -181,7 +184,7 @@ void init_program() {
 void display() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	program_ptr->use_program();
+
 	glm::mat4 I(1.0f);
 	
 	//Model
@@ -202,9 +205,9 @@ void display() {
 	GLfloat zFar = 1.0f;
 	glm::mat4 P = glm::ortho(xLeft, xRight, yBottom, yTop, zNear, zFar);
 
-
+	program_points_ptr->use_program();
 	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(I));
+		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(glm::transpose(P * V * M)));
 	}
 	
 	/* Bind */
@@ -219,7 +222,6 @@ void display() {
 	}
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
-	
 	
 	/* Draw */
 	glDrawElements(GL_POINTS, 3, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
@@ -242,19 +244,8 @@ void display() {
 
 
 void create_primitives() {
-	//const unsigned int nVertex = 3;
-	//const unsigned int nIndices = 3;
 	nTriangles = 1;
-
-	//Vertex points[nVertex] = {
-	//	{ {-0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, }, //0
-	//	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, }, //1
-	//	{ { 0.0f,  0.5f }, { 0.0f, 0.0f, 1.0f }, }, //2
-	//};
-
-	//unsigned short indices[nIndices] = { 
-	//	                                 0, 1, 2,
-	//								    };
+							  
 	GLuint tmp[4] = {0};
 	//Create the buffers
 	glGenBuffers(4, tmp);
