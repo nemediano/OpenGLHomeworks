@@ -1,10 +1,9 @@
 #version 400
 
-//Inputs from vertex shader
-in vec3 fColor;
+uniform vec3 Color;
 
 out vec4 fragcolor;
 
 void main(void) {
-	fragcolor = vec4(fColor, 1.0);
+	fragcolor = vec4(Color, 1.0);
 }

@@ -30,6 +30,18 @@
     <None Include="shaders\vertexShaderPoints.glsl">
       <Filter>Resource Files\shaders</Filter>
     </None>
+    <None Include="shaders\fragmentShaderContours.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\fragmentShaderPolygons.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vertexShaderContours.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vertexShaderPolygons.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="opengl\HelperFunctions.h">

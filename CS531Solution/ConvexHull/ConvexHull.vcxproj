@@ -154,8 +154,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="shaders\fragmentShaderContours.glsl" />
     <None Include="shaders\fragmentShaderPoints.glsl" />
+    <None Include="shaders\fragmentShaderPolygons.glsl" />
+    <None Include="shaders\vertexShaderContours.glsl" />
     <None Include="shaders\vertexShaderPoints.glsl" />
+    <None Include="shaders\vertexShaderPolygons.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="opengl\HelperFunctions.h" />
