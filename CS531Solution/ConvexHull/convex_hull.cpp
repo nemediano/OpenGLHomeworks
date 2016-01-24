@@ -2,6 +2,7 @@
 #include <GL/freeglut.h>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 
 #define GLM_FORCE_PURE
 #define GLM_FORCE_RADIANS
@@ -27,9 +28,11 @@ GLint a_position_loc = -1;
 GLint a_color_loc = -1;
 
 
-//Manage the Vertex Buffer Object
+//Manage the Vertex Buffer Objects
 GLuint vbo;
 GLuint indexBufferPoints;
+GLuint indexBufferContours;
+GLuint indexBufferPolygons;
 
 //Two math constants (New glm uses radians as default)
 const float TAU = 6.28318f;
@@ -56,6 +59,12 @@ struct Vertex {
 	glm::vec2 position;
 	glm::vec3 color;
 };
+
+//Program logic
+vector<Vertex> vertices;
+vector<unsigned short> indices_points;
+vector<unsigned short> indices_contours;
+vector<unsigned short> indices_polygons;
 
 //Callback function
 void display();
@@ -209,7 +218,7 @@ void display() {
 		glVertexAttribPointer(a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, color));
 	}
 	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
 	
 	
 	/* Draw */
@@ -233,31 +242,60 @@ void display() {
 
 
 void create_primitives() {
-	const unsigned int nVertex = 3;
-	const unsigned int nIndices = 3;
+	//const unsigned int nVertex = 3;
+	//const unsigned int nIndices = 3;
 	nTriangles = 1;
 
-	Vertex points[nVertex] = {
-		{ {-0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, }, //0
-		{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, }, //1
-		{ { 0.0f,  0.5f }, { 0.0f, 0.0f, 1.0f }, }, //2
-	};
+	//Vertex points[nVertex] = {
+	//	{ {-0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, }, //0
+	//	{ { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, }, //1
+	//	{ { 0.0f,  0.5f }, { 0.0f, 0.0f, 1.0f }, }, //2
+	//};
 
-	unsigned short indices[nIndices] = { 
-		                                 0, 1, 2,
-									    };
+	//unsigned short indices[nIndices] = { 
+	//	                                 0, 1, 2,
+	//								    };
+	GLuint tmp[4] = {0};
 	//Create the buffers
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &indexBuffer);
+	glGenBuffers(4, tmp);
+	vbo = tmp[0];
+	indexBufferPoints = tmp[1];
+	indexBufferContours = tmp[2];
+	indexBufferPolygons = tmp[3];
+
+	indices_points.push_back(0);
+	indices_points.push_back(1);
+	indices_points.push_back(2);
+
+	glm::vec3 colors[] = { 
+		                   glm::vec3(1.0f, 0.0f, 0.0f),
+						   glm::vec3(0.0f, 1.0f, 0.0f),
+						   glm::vec3(0.0f, 0.0f, 1.0f), 
+	                     };
+	
+	Vertex tmpVertex;
+	float delta_angle = TAU / 3.0f;
+	float angle = TAU / 4;
+	glm::vec2 p;
+	float radius = 0.5f;
+	for (auto i = 0; i < 3; ++i) {
+		p.x = radius * cos(angle);
+		p.y = radius * sin(angle);
+		angle += delta_angle;
+		tmpVertex.position = p;
+		tmpVertex.color = colors[i % 3];
+		vertices.push_back(tmpVertex);
+	}
+
 
 	//Send data to GPU
 	//First send the vertices
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, nVertex * sizeof(Vertex), points, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//Now, the indices
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, nIndices * sizeof (unsigned short), indices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_points.size() * sizeof (unsigned short), indices_points.data(), GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
