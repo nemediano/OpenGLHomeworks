@@ -358,22 +358,20 @@ void create_primitives() {
 
 
 	//Send data to GPU
+
 	//First send the vertices
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 	//Clean
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
-	//Now, the indices for points
+
+	//Indices for points
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_points.size() * sizeof (unsigned short), indices_points.data(), GL_STATIC_DRAW);
-	//Now, the indices for contours
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//Indices for contours
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_contours.size() * sizeof(unsigned short), indices_contours.data(), GL_STATIC_DRAW);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	//Now, the indices for polygons
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//Indices for polygons
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_polygons.size() * sizeof(unsigned short), indices_polygons.data(), GL_STATIC_DRAW);
 	//Clean
