@@ -40,7 +40,7 @@ GLuint indexBufferPolygons;
 const float TAU = 6.28318f;
 const float PI = 3.14159f;
 
-int nTriangles;
+int nPoints = 3;
 
 
 //Program management
@@ -49,9 +49,13 @@ void init_OpenGL();
 void init_program();
 void create_glut_window();
 void create_glut_callbacks();
+void update_gpu_data();
 
 //Scene creation
 void create_primitives();
+void render_points(const glm::mat4& PVM);
+void render_lines(const glm::mat4& PVM);
+void render_triangles(const glm::mat4& PVM);
 
 // Define a helpful macro for handling offsets into buffer objects
 #define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
@@ -122,10 +126,6 @@ void init_OpenGL() {
 
 	opengl::get_error_log();
 	
-	/*u_PVM_location = program_points_ptr->get_uniform_location("PVM");
-	u_Color_location = -1;
-	a_position_loc = program_points_ptr->get_attrib_location("Position");
-	a_color_loc = program_points_ptr->get_attrib_location("Color");*/
 	
 	//Activate antialliasing
 	glEnable(GL_LINE_SMOOTH);
@@ -137,11 +137,11 @@ void init_OpenGL() {
 
 	//initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
 
-	//Hability to make the point a little bigger in the shader
+	//ability to make the point a little bigger in the shader
 	glEnable(GL_PROGRAM_POINT_SIZE);
-	//The alternative is to disable the revious and use
+	//The alternative is to disable the previous and use
 	//glPointSize(4.0);
 
 	opengl::gl_error("At scene creation");
@@ -213,100 +213,9 @@ void display() {
 	//There is something fishy here!!
 	glm::mat4 PVM = glm::transpose(P * V * M);
 
-
-	/* --------------------Points-------------------- */
-	program_points_ptr->use_program();
-	u_PVM_location = program_points_ptr->get_uniform_location("PVM");
-	a_position_loc = program_points_ptr->get_attrib_location("Position");
-	a_color_loc = program_points_ptr->get_attrib_location("Color");
-	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
-	}
-	/* Bind */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	if (a_position_loc != -1) {
-		glEnableVertexAttribArray(a_position_loc);
-		glVertexAttribPointer(a_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
-	}
-	if (a_color_loc != -1) {
-		glEnableVertexAttribArray(a_color_loc);
-		glVertexAttribPointer(a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, color));
-	}
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
-	/* Draw */
-	glDrawElements(GL_POINTS, 3, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));	
-	/* Unbind and clean */
-	if (a_position_loc != -1) {
-		glDisableVertexAttribArray(a_position_loc);
-	}
-	if (a_color_loc != -1) {
-		glDisableVertexAttribArray(a_color_loc);
-	}
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-	
-	/* -------------------- Contours -------------------- */
-	program_contours_ptr->use_program();
-	u_PVM_location = program_contours_ptr->get_uniform_location("PVM");
-	u_Color_location = program_contours_ptr->get_uniform_location("Color");
-	a_position_loc = program_contours_ptr->get_attrib_location("Position");
-	glm::vec3 color = glm::vec3(1.0f, 1.0f, 0.0f);
-	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
-	}
-	if (u_Color_location != -1) {
-		glUniform3fv(u_Color_location, 1, glm::value_ptr(color));
-	}
-	/* Bind */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	if (a_position_loc != -1) {
-		glEnableVertexAttribArray(a_position_loc);
-		glVertexAttribPointer(a_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
-	}
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
-	/* Draw */
-	glDrawElements(GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
-	/* Unbind and clean */
-	if (a_position_loc != -1) {
-		glDisableVertexAttribArray(a_position_loc);
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-
-	/* -------------------- Polygons -------------------- */
-	program_polygons_ptr->use_program();
-	u_PVM_location = program_polygons_ptr->get_uniform_location("PVM");
-	u_Color_location = program_polygons_ptr->get_uniform_location("Color");
-	a_position_loc = program_polygons_ptr->get_attrib_location("Position");
-	color = glm::vec3(1.0f, 1.0f, 1.0f);
-	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
-	}
-	if (u_Color_location != -1) {
-		glUniform3fv(u_Color_location, 1, glm::value_ptr(color));
-	}
-	/* Bind */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	if (a_position_loc != -1) {
-		glEnableVertexAttribArray(a_position_loc);
-		glVertexAttribPointer(a_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
-	}
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
-	/* Draw */
-	glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
-	/* Unbind and clean */
-	if (a_position_loc != -1) {
-		glDisableVertexAttribArray(a_position_loc);
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
+	//render_triangles(PVM);
+	render_lines(PVM);
+	render_points(PVM);
 
 	glutSwapBuffers();
 	opengl::gl_error("At the end of display");
@@ -314,7 +223,6 @@ void display() {
 
 
 void create_primitives() {
-	nTriangles = 1;
 							  
 	GLuint tmp[4] = {0};
 	//Create the buffers
@@ -324,17 +232,22 @@ void create_primitives() {
 	indexBufferContours = tmp[2];
 	indexBufferPolygons = tmp[3];
 
-	indices_points.push_back(0);
-	indices_points.push_back(1);
-	indices_points.push_back(2);
+	//const GLuint SIDES = 9;
+	GLuint SIDES = nPoints;
+	indices_points.clear();
+	for (auto i = 0; i < SIDES; ++i) {
+		indices_points.push_back(i);
+	}
+	indices_contours.clear();
+	for (auto i = 0; i < SIDES; ++i) {
+		indices_contours.push_back(i);
+	}
 
-	indices_contours.push_back(0);
-	indices_contours.push_back(1);
-	indices_contours.push_back(2);
-
-	indices_polygons.push_back(0);
-	indices_polygons.push_back(1);
-	indices_polygons.push_back(2);
+	//Might not work as expected!!!
+	indices_polygons.clear();
+	for (auto i = 0; i < SIDES; ++i) {
+		indices_polygons.push_back(i);
+	}
 
 	glm::vec3 colors[] = { 
 		                   glm::vec3(1.0f, 0.0f, 0.0f),
@@ -343,11 +256,11 @@ void create_primitives() {
 	                     };
 	
 	Vertex tmpVertex;
-	float delta_angle = TAU / 3.0f;
+	float delta_angle = TAU / SIDES;
 	float angle = TAU / 4;
 	glm::vec2 p;
 	float radius = 0.5f;
-	for (auto i = 0; i < 3; ++i) {
+	for (auto i = 0; i < SIDES; ++i) {
 		p.x = radius * cos(angle);
 		p.y = radius * sin(angle);
 		angle += delta_angle;
@@ -356,34 +269,22 @@ void create_primitives() {
 		vertices.push_back(tmpVertex);
 	}
 
-
-	//Send data to GPU
-
-	//First send the vertices
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
-	//Clean
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	//Indices for points
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_points.size() * sizeof (unsigned short), indices_points.data(), GL_STATIC_DRAW);
-	//Indices for contours
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_contours.size() * sizeof(unsigned short), indices_contours.data(), GL_STATIC_DRAW);
-	//Indices for polygons
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_polygons.size() * sizeof(unsigned short), indices_polygons.data(), GL_STATIC_DRAW);
-	//Clean
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	update_gpu_data();
+	
 }
 
 void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	if (key == 27) {//press ESC to exit
 		exit_glut();
 	} else if (key == 'c' || key == 'C') {
-		
+		nPoints -= 3;
+		create_primitives();
+	} else if (key == 'v' || key == 'V') {
+		nPoints += 3;
+		create_primitives();
 	}
+
+	glutPostRedisplay();
 }
 
 void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
@@ -410,4 +311,126 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 		
 	}
 	glutPostRedisplay();
+}
+
+void render_points(const glm::mat4& PVM) {
+	/* --------------------Points-------------------- */
+	program_points_ptr->use_program();
+	u_PVM_location = program_points_ptr->get_uniform_location("PVM");
+	a_position_loc = program_points_ptr->get_attrib_location("Position");
+	a_color_loc = program_points_ptr->get_attrib_location("Color");
+	if (u_PVM_location != -1) {
+		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
+	}
+	/* Bind */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	if (a_position_loc != -1) {
+		glEnableVertexAttribArray(a_position_loc);
+		glVertexAttribPointer(a_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
+	}
+	if (a_color_loc != -1) {
+		glEnableVertexAttribArray(a_color_loc);
+		glVertexAttribPointer(a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, color));
+	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
+	/* Draw */
+	glDrawElements(GL_POINTS, indices_points.size(), GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
+	/* Unbind and clean */
+	if (a_position_loc != -1) {
+		glDisableVertexAttribArray(a_position_loc);
+	}
+	if (a_color_loc != -1) {
+		glDisableVertexAttribArray(a_color_loc);
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+}
+
+void render_lines(const glm::mat4& PVM) {
+	/* -------------------- Contours -------------------- */
+	program_contours_ptr->use_program();
+	u_PVM_location = program_contours_ptr->get_uniform_location("PVM");
+	u_Color_location = program_contours_ptr->get_uniform_location("Color");
+	a_position_loc = program_contours_ptr->get_attrib_location("Position");
+	glm::vec3 color = glm::vec3(1.0f, 1.0f, 0.0f);
+	if (u_PVM_location != -1) {
+		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
+	}
+	if (u_Color_location != -1) {
+		glUniform3fv(u_Color_location, 1, glm::value_ptr(color));
+	}
+	/* Bind */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	if (a_position_loc != -1) {
+		glEnableVertexAttribArray(a_position_loc);
+		glVertexAttribPointer(a_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
+	}
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
+	/* Draw */
+	glDrawElements(GL_LINE_LOOP, indices_contours.size(), GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
+	/* Unbind and clean */
+	if (a_position_loc != -1) {
+		glDisableVertexAttribArray(a_position_loc);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+}
+
+void render_triangles(const glm::mat4& PVM) {
+	/* -------------------- Polygons -------------------- */
+	program_polygons_ptr->use_program();
+	u_PVM_location = program_polygons_ptr->get_uniform_location("PVM");
+	u_Color_location = program_polygons_ptr->get_uniform_location("Color");
+	a_position_loc = program_polygons_ptr->get_attrib_location("Position");
+	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+	if (u_PVM_location != -1) {
+		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
+	}
+	if (u_Color_location != -1) {
+		glUniform3fv(u_Color_location, 1, glm::value_ptr(color));
+	}
+	/* Bind */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	if (a_position_loc != -1) {
+		glEnableVertexAttribArray(a_position_loc);
+		glVertexAttribPointer(a_position_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
+	}
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
+	/* Draw */
+	glDrawElements(GL_TRIANGLES, indices_polygons.size(), GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
+	/* Unbind and clean */
+	if (a_position_loc != -1) {
+		glDisableVertexAttribArray(a_position_loc);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+}
+
+void update_gpu_data() {
+	//First send the vertices
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	//Clean
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	const unsigned short MAX_POINT = 20;
+
+	//Indices for points
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_POINT * sizeof(unsigned short), indices_points.data(), GL_STATIC_DRAW);
+	//Indices for contours
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_POINT * sizeof(unsigned short), indices_contours.data(), GL_STATIC_DRAW);
+	//Indices for polygons
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_POINT * sizeof(unsigned short), indices_polygons.data(), GL_STATIC_DRAW);
+	//Clean
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }

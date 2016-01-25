@@ -41,13 +41,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -162,10 +162,12 @@
     <None Include="shaders\vertexShaderPolygons.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BasicTest.h" />
     <ClInclude Include="opengl\HelperFunctions.h" />
     <ClInclude Include="opengl\OpenGLProgram.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BasicTest.cpp" />
     <ClCompile Include="convex_hull.cpp" />
     <ClCompile Include="opengl\HelperFunctions.cpp" />
     <ClCompile Include="opengl\OpenGLProgram.cpp" />

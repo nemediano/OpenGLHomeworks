@@ -50,6 +50,9 @@
     <ClInclude Include="opengl\OpenGLProgram.h">
       <Filter>Header Files\opengl</Filter>
     </ClInclude>
+    <ClInclude Include="BasicTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="opengl\HelperFunctions.cpp">
@@ -59,6 +62,9 @@
       <Filter>Source Files\opengl</Filter>
     </ClCompile>
     <ClCompile Include="convex_hull.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BasicTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
