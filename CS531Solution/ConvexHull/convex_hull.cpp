@@ -12,79 +12,20 @@
 #include <glm/gtx/norm.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
+//GLM using directives
+using glm::vec3;
+using glm::vec2;
+using glm::ivec2;
+using glm::mat4;
+
+#include "convex_hull.h"
 #include "opengl/HelperFunctions.h"
 #include "opengl/OpenGLProgram.h"
-
-opengl::OpenGLProgram* program_points_ptr = nullptr;
-opengl::OpenGLProgram* program_contours_ptr = nullptr;
-opengl::OpenGLProgram* program_polygons_ptr = nullptr;
+#include "Globals.h"
+#include "interface.h"
 
 using namespace std;
-//Glut window pointer
-int window = 0;
-glm::ivec2 window_size = glm::ivec2();
-glm::vec3 world_low = glm::vec3();
-glm::vec3 world_high = glm::vec3();
-
-//Variables for GPU side
-GLint u_PVM_location = -1;
-GLint u_Color_location = -1;
-GLint a_position_loc = -1;
-GLint a_color_loc = -1;
-
-
-//Manage the Vertex Buffer Objects
-GLuint vbo;
-GLuint indexBufferPoints;
-GLuint indexBufferContours;
-GLuint indexBufferPolygons;
-
-//Two math constants (New glm uses radians as default)
-const float TAU = 6.28318f;
-const float PI = 3.14159f;
-
-int nPoints = 3;
-
-
-//Program management
-void exit_glut();
-void init_OpenGL();
-void init_program();
-void create_glut_window();
-void create_glut_callbacks();
-void allocate_buffers();
-void update_gpu_data();
-
-//Scene creation
-void create_primitives();
-void render_points(const glm::mat4& PVM);
-void render_lines(const glm::mat4& PVM);
-void render_triangles(const glm::mat4& PVM);
-
-// Define a helpful macro for handling offsets into buffer objects
-#define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
-#define OFFSET_OF(type, member) ((GLvoid*)(offsetof(type, member)))
-
-struct Vertex {
-	glm::vec2 position;
-	glm::vec3 color;
-};
-
-//Program logic
-vector<Vertex> vertices;
-vector<unsigned short> indices_points;
-vector<unsigned short> indices_contours;
-vector<unsigned short> indices_polygons;
-
-//Callback function
-void display();
-void reshape(int new_window_width, int new_window_height);
-void keyboard(unsigned char key, int mouse_x, int mouse_y);
-//void special_keyboard(int key, int mouse_x, int mouse_y);
-//void mouse_active(int mouse_x, int mouse_y);
-void mouse(int button, int state, int mouse_x, int mouse_y);
-//void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y);
-void idle();
+using namespace options;
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
@@ -129,7 +70,6 @@ void init_OpenGL() {
 
 	opengl::get_error_log();
 	
-	
 	//Activate antialliasing
 	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_POLYGON_SMOOTH);
@@ -158,42 +98,25 @@ void create_glut_window() {
 
 void create_glut_callbacks() {
 	glutDisplayFunc(display);
-	//glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
-	//glutMouseWheelFunc(mouse_wheel);
 	/*
+	glutIdleFunc(idle);
 	glutSpecialFunc(special_keyboard);
+	glutMotionFunc(mouse_active);
+	glutMouseWheelFunc(mouse_wheel);
 	*/
 	glutMouseFunc(mouse);
-	//glutMotionFunc(mouse_active);
 	glutReshapeFunc(reshape);
 }
 
-void reshape(int new_window_width, int new_window_height) {
-	glViewport(0, 0, new_window_width, new_window_height);
-}
-
-void idle() {
-	//timers for time-based animation
-	static int last_time = 0;
-	int time = glutGet(GLUT_ELAPSED_TIME);
-	int elapsed = time - last_time;
-	float delta_seconds = 0.001f * elapsed;
-	last_time = time;
-
-	opengl::gl_error("At idle"); //check for errors and print error strings
-	glutPostRedisplay();
-}
 
 void init_program() {
 	nPoints = 0;
-	window_size = glm::ivec2(512, 512);
-	world_high = glm::vec3(1.0f, 1.0f, 1.0f);
-	world_low = glm::vec3(-1.0f, -1.0f, -1.0f);
+	
+	world_high = vec3(1.0f, 1.0f, 1.0f);
+	world_low = vec3(-1.0f, -1.0f, -1.0f);
 	
 	allocate_buffers();
-	//create_primitives();
-	//update_gpu_data();
 }
 
 
@@ -201,27 +124,27 @@ void display() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glm::mat4 I(1.0f);
+	mat4 I(1.0f);
 	
 	//Model
-	glm::mat4 M = I;
+	mat4 M = I;
 	
 	//View
-	glm::vec3 position = glm::vec3(0.0, 0.0, 1.0f);
-	glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::mat4 V = glm::lookAt(position, center, camera_up);
+	vec3 position = vec3(0.0, 0.0, 1.0f);
+	vec3 center = vec3(0.0f, 0.0f, 0.0f);
+	vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
+	mat4 V = glm::lookAt(position, center, camera_up);
 
 	//Projection
-	GLfloat xLeft = -1.0f;
-	GLfloat xRight = 1.0f;
-	GLfloat yBottom = -1.0f;
-	GLfloat yTop = 1.0f;
-	GLfloat zNear = -1.0f;
-	GLfloat zFar = 1.0f;
-	glm::mat4 P = glm::ortho(xLeft, xRight, yBottom, yTop, zNear, zFar);
+	GLfloat xLeft = world_low.x;
+	GLfloat xRight = world_high.x;
+	GLfloat yBottom = world_low.y;
+	GLfloat yTop = world_high.y;
+	GLfloat zNear = world_low.z;
+	GLfloat zFar = world_high.z;
+	mat4 P = glm::ortho(xLeft, xRight, yBottom, yTop, zNear, zFar);
 	//There is something fishy here!!
-	glm::mat4 PVM = glm::transpose(P * V * M);
+	mat4 PVM = glm::transpose(P * V * M);
 
 	if (!indices_polygons.empty()) {
 		render_triangles(PVM);
@@ -258,16 +181,16 @@ void create_primitives() {
 		indices_polygons.push_back(i);
 	}
 
-	glm::vec3 colors[] = { 
-		                   glm::vec3(1.0f, 0.0f, 0.0f),
-						   glm::vec3(0.0f, 1.0f, 0.0f),
-						   glm::vec3(0.0f, 0.0f, 1.0f), 
+	vec3 colors[] = { 
+		                   vec3(1.0f, 0.0f, 0.0f),
+						   vec3(0.0f, 1.0f, 0.0f),
+						   vec3(0.0f, 0.0f, 1.0f), 
 	                     };
 	
 	Vertex tmpVertex;
 	float delta_angle = TAU / SIDES;
 	float angle = TAU / 4;
-	glm::vec2 p;
+	vec2 p;
 	float radius = 0.5f;
 	for (auto i = 0; i < SIDES; ++i) {
 		p.x = radius * cos(angle);
@@ -279,41 +202,10 @@ void create_primitives() {
 	}
 }
 
-void keyboard(unsigned char key, int mouse_x, int mouse_y) {
-	if (key == 27) {//press ESC to exit
-		exit_glut();
-	} else if (key == 'c' || key == 'C') {
-		nPoints -= 3;
-		create_primitives();
-	} else if (key == 'v' || key == 'V') {
-		nPoints += 3;
-		create_primitives();
-	}
 
-	glutPostRedisplay();
-}
-
-void mouse(int button, int state, int mouse_x, int mouse_y) {
-	glm::vec2 mouse_in_world;
-	glm::vec2 mouse_in_window = glm::vec2(mouse_x, window_size.y - mouse_y);
-	glm::vec3 world_size = world_high - world_low;
-	mouse_in_world = glm::vec2(world_size.x / window_size.x, world_size.y / window_size.y) * mouse_in_window - 0.5f * glm::vec2(world_size.x, world_size.y);
-	
-	glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
-	if (button == GLUT_LEFT && state == GLUT_DOWN) {
-		Vertex tmp;
-		tmp.position = mouse_in_world;
-		tmp.color = red;
-		vertices.push_back(tmp);
-		indices_points.push_back(vertices.size() - 1);
-		update_gpu_data();
-	}
-	//cout << "(" << mouse_in_world.x << ", " << mouse_in_world.y << ")" << endl;
-	glutPostRedisplay();
-}
 
 void render_points(const glm::mat4& PVM) {
-	/* --------------------Points-------------------- */
+	
 	program_points_ptr->use_program();
 	u_PVM_location = program_points_ptr->get_uniform_location("PVM");
 	a_position_loc = program_points_ptr->get_attrib_location("Position");
@@ -346,13 +238,13 @@ void render_points(const glm::mat4& PVM) {
 	glUseProgram(0);
 }
 
-void render_lines(const glm::mat4& PVM) {
-	/* -------------------- Contours -------------------- */
+void render_lines(const mat4& PVM) {
+	
 	program_contours_ptr->use_program();
 	u_PVM_location = program_contours_ptr->get_uniform_location("PVM");
 	u_Color_location = program_contours_ptr->get_uniform_location("Color");
 	a_position_loc = program_contours_ptr->get_attrib_location("Position");
-	glm::vec3 color = glm::vec3(1.0f, 1.0f, 0.0f);
+	vec3 color = vec3(1.0f, 1.0f, 0.0f);
 	if (u_PVM_location != -1) {
 		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
 	}
@@ -379,13 +271,13 @@ void render_lines(const glm::mat4& PVM) {
 	glUseProgram(0);
 }
 
-void render_triangles(const glm::mat4& PVM) {
-	/* -------------------- Polygons -------------------- */
+void render_triangles(const mat4& PVM) {
+	
 	program_polygons_ptr->use_program();
 	u_PVM_location = program_polygons_ptr->get_uniform_location("PVM");
 	u_Color_location = program_polygons_ptr->get_uniform_location("Color");
 	a_position_loc = program_polygons_ptr->get_attrib_location("Position");
-	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+	vec3 color = vec3(1.0f, 1.0f, 1.0f);
 	if (u_PVM_location != -1) {
 		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(PVM));
 	}

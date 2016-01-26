@@ -11,6 +11,10 @@
 
 using namespace std;
 
+// Define a helpful macro for handling offsets into buffer objects
+#define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
+#define OFFSET_OF(type, member) ((GLvoid*)(offsetof(type, member)))
+
 namespace opengl {
 	void printShaderInfoLog(GLuint object);
 	void printProgramInfoLog(GLuint object);

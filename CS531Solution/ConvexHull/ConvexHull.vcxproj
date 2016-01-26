@@ -162,13 +162,18 @@
     <None Include="shaders\vertexShaderPolygons.glsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BasicTest.h" />
+    <ClInclude Include="convex_hull.h" />
+    <ClInclude Include="geometry\BasicTest.h" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="interface.h" />
     <ClInclude Include="opengl\HelperFunctions.h" />
     <ClInclude Include="opengl\OpenGLProgram.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BasicTest.cpp" />
     <ClCompile Include="convex_hull.cpp" />
+    <ClCompile Include="geometry\BasicTest.cpp" />
+    <ClCompile Include="Globals.cpp" />
+    <ClCompile Include="interface.cpp" />
     <ClCompile Include="opengl\HelperFunctions.cpp" />
     <ClCompile Include="opengl\OpenGLProgram.cpp" />
   </ItemGroup>

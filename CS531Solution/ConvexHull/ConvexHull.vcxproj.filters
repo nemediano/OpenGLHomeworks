@@ -22,6 +22,18 @@
     <Filter Include="Source Files\opengl">
       <UniqueIdentifier>{b425459e-b793-4502-afe8-f4fe4386283e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\glut">
+      <UniqueIdentifier>{06a224b4-ff91-4115-9326-5e042d43510f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\glut">
+      <UniqueIdentifier>{3d83865d-8db0-420e-b47d-64889c2e814d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\geometry">
+      <UniqueIdentifier>{31810f95-b820-469f-9870-ec4fac2c655a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\geometry">
+      <UniqueIdentifier>{dcbe334a-95b6-40c2-93f2-9cdc1eb0fcd0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\fragmentShaderPoints.glsl">
@@ -50,8 +62,17 @@
     <ClInclude Include="opengl\OpenGLProgram.h">
       <Filter>Header Files\opengl</Filter>
     </ClInclude>
-    <ClInclude Include="BasicTest.h">
+    <ClInclude Include="Globals.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="interface.h">
+      <Filter>Header Files\glut</Filter>
+    </ClInclude>
+    <ClInclude Include="convex_hull.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="geometry\BasicTest.h">
+      <Filter>Header Files\geometry</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -64,8 +85,14 @@
     <ClCompile Include="convex_hull.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BasicTest.cpp">
-      <Filter>Source Files\opengl</Filter>
+    <ClCompile Include="Globals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="interface.cpp">
+      <Filter>Source Files\glut</Filter>
+    </ClCompile>
+    <ClCompile Include="geometry\BasicTest.cpp">
+      <Filter>Source Files\geometry</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
