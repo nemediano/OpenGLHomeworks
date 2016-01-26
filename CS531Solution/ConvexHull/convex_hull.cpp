@@ -22,6 +22,9 @@ opengl::OpenGLProgram* program_polygons_ptr = nullptr;
 using namespace std;
 //Glut window pointer
 int window = 0;
+glm::ivec2 window_size = glm::ivec2();
+glm::vec3 world_low = glm::vec3();
+glm::vec3 world_high = glm::vec3();
 
 //Variables for GPU side
 GLint u_PVM_location = -1;
@@ -49,6 +52,7 @@ void init_OpenGL();
 void init_program();
 void create_glut_window();
 void create_glut_callbacks();
+void allocate_buffers();
 void update_gpu_data();
 
 //Scene creation
@@ -77,19 +81,18 @@ void display();
 void reshape(int new_window_width, int new_window_height);
 void keyboard(unsigned char key, int mouse_x, int mouse_y);
 //void special_keyboard(int key, int mouse_x, int mouse_y);
-void mouse_active(int mouse_x, int mouse_y);
+//void mouse_active(int mouse_x, int mouse_y);
 void mouse(int button, int state, int mouse_x, int mouse_y);
-void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y);
+//void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y);
 void idle();
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
 	create_glut_window();
-	init_program();
 	init_OpenGL();
-	//Create scene
-	create_primitives();
+	init_program();
+	
 
 	create_glut_callbacks();	
 	glutMainLoop();
@@ -157,12 +160,12 @@ void create_glut_callbacks() {
 	glutDisplayFunc(display);
 	//glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
-	glutMouseWheelFunc(mouse_wheel);
+	//glutMouseWheelFunc(mouse_wheel);
 	/*
 	glutSpecialFunc(special_keyboard);
 	*/
 	glutMouseFunc(mouse);
-	glutMotionFunc(mouse_active);
+	//glutMotionFunc(mouse_active);
 	glutReshapeFunc(reshape);
 }
 
@@ -183,7 +186,14 @@ void idle() {
 }
 
 void init_program() {
-
+	nPoints = 0;
+	window_size = glm::ivec2(512, 512);
+	world_high = glm::vec3(1.0f, 1.0f, 1.0f);
+	world_low = glm::vec3(-1.0f, -1.0f, -1.0f);
+	
+	allocate_buffers();
+	//create_primitives();
+	//update_gpu_data();
 }
 
 
@@ -213,9 +223,16 @@ void display() {
 	//There is something fishy here!!
 	glm::mat4 PVM = glm::transpose(P * V * M);
 
-	//render_triangles(PVM);
-	render_lines(PVM);
-	render_points(PVM);
+	if (!indices_polygons.empty()) {
+		render_triangles(PVM);
+	}
+	if (!indices_contours.empty()) {
+		render_lines(PVM);
+	}
+	if (!indices_points.empty()) {
+		render_points(PVM);
+	}
+	
 
 	glutSwapBuffers();
 	opengl::gl_error("At the end of display");
@@ -223,17 +240,9 @@ void display() {
 
 
 void create_primitives() {
-							  
-	GLuint tmp[4] = {0};
-	//Create the buffers
-	glGenBuffers(4, tmp);
-	vbo = tmp[0];
-	indexBufferPoints = tmp[1];
-	indexBufferContours = tmp[2];
-	indexBufferPolygons = tmp[3];
 
-	//const GLuint SIDES = 9;
-	GLuint SIDES = nPoints;
+	const GLuint SIDES = 9;
+	//GLuint SIDES = nPoints;
 	indices_points.clear();
 	for (auto i = 0; i < SIDES; ++i) {
 		indices_points.push_back(i);
@@ -268,9 +277,6 @@ void create_primitives() {
 		tmpVertex.color = colors[i % 3];
 		vertices.push_back(tmpVertex);
 	}
-
-	update_gpu_data();
-	
 }
 
 void keyboard(unsigned char key, int mouse_x, int mouse_y) {
@@ -287,29 +293,22 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	glutPostRedisplay();
 }
 
-void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
-	
-	if (wheel == 0) {
-		if (direction > 0) {
-			
-		} else {
-			
-		}
-	}
-}
-
-void mouse_active(int mouse_x, int mouse_y) {
-	
-	glutPostRedisplay();
-}
-
 void mouse(int button, int state, int mouse_x, int mouse_y) {
-
-	if (state == GLUT_DOWN) {
-		
-	} else {
-		
+	glm::vec2 mouse_in_world;
+	glm::vec2 mouse_in_window = glm::vec2(mouse_x, window_size.y - mouse_y);
+	glm::vec3 world_size = world_high - world_low;
+	mouse_in_world = glm::vec2(world_size.x / window_size.x, world_size.y / window_size.y) * mouse_in_window - 0.5f * glm::vec2(world_size.x, world_size.y);
+	
+	glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
+	if (button == GLUT_LEFT && state == GLUT_DOWN) {
+		Vertex tmp;
+		tmp.position = mouse_in_world;
+		tmp.color = red;
+		vertices.push_back(tmp);
+		indices_points.push_back(vertices.size() - 1);
+		update_gpu_data();
 	}
+	//cout << "(" << mouse_in_world.x << ", " << mouse_in_world.y << ")" << endl;
 	glutPostRedisplay();
 }
 
@@ -413,24 +412,57 @@ void render_triangles(const glm::mat4& PVM) {
 	glUseProgram(0);
 }
 
-void update_gpu_data() {
-	//First send the vertices
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
-	//Clean
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+void allocate_buffers() {
+	GLuint tmp[4] = { 0 };
+	//Create the buffers
+	glCreateBuffers(4, tmp);
+	vbo = tmp[0];
+	indexBufferPoints = tmp[1];
+	indexBufferContours = tmp[2];
+	indexBufferPolygons = tmp[3];
 
 	const unsigned short MAX_POINT = 20;
 
+	//First create the vertices
+	glNamedBufferStorage(vbo, MAX_POINT * sizeof(Vertex), nullptr, GL_DYNAMIC_STORAGE_BIT);
+	
 	//Indices for points
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_POINT * sizeof(unsigned short), indices_points.data(), GL_STATIC_DRAW);
+	glNamedBufferStorage(indexBufferPoints, MAX_POINT * sizeof(unsigned short), nullptr, GL_DYNAMIC_STORAGE_BIT);
 	//Indices for contours
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_POINT * sizeof(unsigned short), indices_contours.data(), GL_STATIC_DRAW);
+	glNamedBufferStorage(indexBufferContours, MAX_POINT * sizeof(unsigned short), nullptr, GL_DYNAMIC_STORAGE_BIT);
 	//Indices for polygons
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_POINT * sizeof(unsigned short), indices_polygons.data(), GL_STATIC_DRAW);
+	glNamedBufferStorage(indexBufferPolygons, MAX_POINT * sizeof(unsigned short), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+	
 	//Clean
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	opengl::gl_error("At the end of allocate buffers");
+}
+
+void update_gpu_data() {
+		
+	//First send the vertices
+	//glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	//glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	glNamedBufferSubData(vbo, 0, vertices.size() * sizeof(Vertex), vertices.data());
+	//Indices for points
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPoints);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_points.size() * sizeof(unsigned short), indices_points.data(), GL_STATIC_DRAW);
+	glNamedBufferSubData(indexBufferPoints, 0, indices_points.size() * sizeof(unsigned short), indices_points.data());
+	//Indices for contours
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferContours);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_contours.size() * sizeof(unsigned short), indices_contours.data(), GL_STATIC_DRAW);
+	glNamedBufferSubData(indexBufferContours, 0, indices_contours.size() * sizeof(unsigned short), indices_contours.data());
+	//Indices for polygons
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferPolygons);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_polygons.size() * sizeof(unsigned short), indices_polygons.data(), GL_STATIC_DRAW);
+	glNamedBufferSubData(indexBufferPolygons, 0, indices_polygons.size() * sizeof(unsigned short), indices_polygons.data());
+	
+	//Clean
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	opengl::gl_error("At the end of update gpu data");
 }

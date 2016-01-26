@@ -65,7 +65,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BasicTest.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\opengl</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
