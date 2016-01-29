@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\opengl">
+      <UniqueIdentifier>{9a049281-61e4-418c-8c96-dfc2e9832eb9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\opengl">
+      <UniqueIdentifier>{48f2bbca-7aa6-4cc2-971d-a1ed739c6e6b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\glut">
+      <UniqueIdentifier>{afe55cfb-88b5-41a5-988b-e93c8d8241a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\glut">
+      <UniqueIdentifier>{0c0d8d9e-1915-4f19-92ed-505b8ee458cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\scene">
+      <UniqueIdentifier>{06196160-be5f-4fa6-b41d-04746c56ddbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\scene">
+      <UniqueIdentifier>{1e8b8c04-e1f5-4460-ab5e-422cd115631f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\assets">
+      <UniqueIdentifier>{b08ce4e0-0b47-4941-8b87-d0ebc055885a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\assets">
+      <UniqueIdentifier>{395ebc86-c99c-4490-8a44-1251392d4bdf}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="opengl\HelperFunctions.h">
+      <Filter>Header Files\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\OpenGLProgram.h">
+      <Filter>Header Files\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="Globals.h">
+      <Filter>Header Files\glut</Filter>
+    </ClInclude>
+    <ClInclude Include="Callbacks.h">
+      <Filter>Header Files\glut</Filter>
+    </ClInclude>
+    <ClInclude Include="InstanceLab.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Light.h">
+      <Filter>Header Files\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadMesh.h">
+      <Filter>Header Files\assets</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="opengl\HelperFunctions.cpp">
+      <Filter>Source Files\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="opengl\OpenGLProgram.cpp">
+      <Filter>Source Files\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="InstanceLab.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Globals.cpp">
+      <Filter>Source Files\glut</Filter>
+    </ClCompile>
+    <ClCompile Include="Callbacks.cpp">
+      <Filter>Source Files\glut</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Light.cpp">
+      <Filter>Source Files\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="LoadMesh.cpp">
+      <Filter>Source Files\assets</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\fragmentShader.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\vertexShader.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

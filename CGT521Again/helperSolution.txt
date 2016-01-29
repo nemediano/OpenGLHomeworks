@@ -1,0 +1,17 @@
+$(SolutionDir)include
+
+PATH=$(PATH);$(SolutionDir)bin\x64
+PATH=$(PATH);$(SolutionDir)bin\win32
+
+
+$(SolutionDir)lib\win32
+$(SolutionDir)lib\x64
+
+freeglut.lib
+DevIL.lib
+ILU.lib
+ILUT.lib
+assimp-vc120-mt.lib
+FreeImage.lib
+glew32.lib
+glew32s.lib

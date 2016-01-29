@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\opengl">
+      <UniqueIdentifier>{c2508f7e-5fcb-46cc-96f2-cc95bed16d38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\texture">
+      <UniqueIdentifier>{1c58b4f7-3573-4740-b833-7cb732c9185c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\opengl">
+      <UniqueIdentifier>{0445f425-f8cd-46f1-9a5a-1e972d34bc9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\texture">
+      <UniqueIdentifier>{62877231-aa05-476a-8eb0-4c69ef83070d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{adaa1611-a8c5-48b8-8bb8-0eea00092b30}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneCreation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opengl\HelperFunctions.cpp">
+      <Filter>Source Files\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="opengl\OpenGLProgram.cpp">
+      <Filter>Source Files\opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="textures\TextureHandler.cpp">
+      <Filter>Source Files\texture</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SceneCreation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\HelperFunctions.h">
+      <Filter>Header Files\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\OpenGLProgram.h">
+      <Filter>Header Files\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="textures\TextureHandler.h">
+      <Filter>Header Files\texture</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\fragmentShader.glsl">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\vertexShader.glsl">
+      <Filter>shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>
