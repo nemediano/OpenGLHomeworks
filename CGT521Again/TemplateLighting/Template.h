@@ -11,6 +11,9 @@ void create_glut_callbacks();
 
 //Scene creation
 void create_primitives();
+void create_sphere();
+void subdivide_face(glm::vec3& p_0, glm::vec3& p_1, glm::vec3& p_2, const size_t& level);
+void create_indexed_mesh();
 void pass_light_and_material();
 
 //Only callback function outside interface

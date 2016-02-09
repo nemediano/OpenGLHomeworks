@@ -2,6 +2,8 @@
 #include <GL/freeglut.h>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
+#include <set>
 
 #define GLM_FORCE_PURE
 #define GLM_FORCE_RADIANS
@@ -20,17 +22,28 @@
 
 using namespace std;
 
+std::vector<Vertex> vertices;
+std::vector<unsigned short> indices;
+
+struct Triangle {
+	glm::vec3 p_0;
+	glm::vec3 p_1;
+	glm::vec3 p_2;
+};
+
+std::vector<Triangle> triangles;
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
 	create_glut_window();
-	
+
 	init_OpenGL();
 	init_program();
 
 	//Create scene
-	create_primitives();
+	//create_primitives();
+	create_sphere();
 
 	create_glut_callbacks();
 	glutMainLoop();
@@ -42,7 +55,7 @@ int main(int argc, char* argv[]) {
 void exit_glut() {
 	delete options::program_ptr;
 
-	
+
 	glutDestroyWindow(options::window);
 	exit(EXIT_SUCCESS);
 }
@@ -64,7 +77,7 @@ void init_OpenGL() {
 
 	opengl::get_error_log();
 
-	
+
 	options::u_PVM_location = options::program_ptr->get_uniform_location("PVM");
 	options::u_NormalMatrix_location = options::program_ptr->get_uniform_location("NormalMatrix");
 	options::u_VM_location = options::program_ptr->get_uniform_location("VM");
@@ -90,6 +103,7 @@ void init_OpenGL() {
 	glEnable(GL_POLYGON_SMOOTH);
 	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	//initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
@@ -133,7 +147,7 @@ void init_program() {
 
 	//Create material
 	options::material = scene::Material(glm::vec3(1.0f, 1.0f, 0.0f), 32.0f);
-	
+
 }
 
 
@@ -148,7 +162,7 @@ void display() {
 	mat4 I(1.0f);
 
 	//Model
-	mat4 M = I;
+	mat4 M = glm::scale(I, glm::vec3(1.5f, 1.5f, 0.5f));
 
 	//View
 	/* Camera rotation must be accumulated: base rotation then new rotation */
@@ -188,11 +202,11 @@ void display() {
 	if (options::a_normal_loc != -1) {
 		glEnableVertexAttribArray(options::a_normal_loc);
 		glVertexAttribPointer(options::a_normal_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, normal));
-	}	
- 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, options::indexBuffer);
+	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, options::indexBuffer);
 
 	/* Draw */
-	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
+	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
 
 	/* Unbind and clean */
 	if (options::a_position_loc != -1) {
@@ -201,11 +215,11 @@ void display() {
 	if (options::a_normal_loc != -1) {
 		glDisableVertexAttribArray(options::a_normal_loc);
 	}
-	
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glUseProgram(0);
-	
+
 
 	glutSwapBuffers();
 	opengl::gl_error("At the end of display");
@@ -227,7 +241,7 @@ void create_primitives() {
 		{ { -1.0f, 1.0f, -1.0f }, { 0.0f, 1.0f, 0.0f }, }, //4
 		{ { 1.0f, 1.0f, -1.0f }, { 0.0f, 1.0f, 0.0f }, },//5
 		{ { -1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, },//6
-		{ { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f },  }, //7
+		{ { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, }, //7
 		//Down face of cube
 		{ { -1.0f, -1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, }, //8
 		{ { 1.0f, -1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, },//9
@@ -300,5 +314,113 @@ void pass_light_and_material() {
 	}
 	if (options::u_shininess_location != -1) {
 		glUniform1f(options::u_shininess_location, options::material.getShininnes());
+	}
+}
+
+void create_sphere() {
+	triangles.clear();
+	// Create first four vertex of a tetrahedron
+	glm::vec3 p_0 = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::vec3 p_1 = glm::vec3(0.0, (2.0 / 3.0) * glm::sqrt(2.0), -1.0 / 3.0);
+	glm::vec3 p_2 = glm::vec3(-glm::sqrt(2.0 / 3.0), -glm::sqrt(2.0) / 3.0, -1.0 / 3.0);
+	glm::vec3 p_3 = glm::vec3(glm::sqrt(2.0 / 3.0), -glm::sqrt(2.0) / 3.0, -1.0 / 3.0);
+
+	//Iterate doing the decomposition
+	const int level = 4;
+	subdivide_face(p_0, p_2, p_3, level);
+	subdivide_face(p_0, p_3, p_1, level);
+	subdivide_face(p_0, p_1, p_2, level);
+	subdivide_face(p_1, p_2, p_3, level);
+
+	vertices.clear();
+	indices.clear();
+	create_indexed_mesh();
+
+	//Create the buffers
+	glGenBuffers(1, &options::vbo);
+	glGenBuffers(1, &options::indexBuffer);
+
+	//Send data to GPU
+	//First send the vertices
+	glBindBuffer(GL_ARRAY_BUFFER, options::vbo);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//Now, the indices
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, options::indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), indices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void subdivide_face(glm::vec3& p_0, glm::vec3& p_1, glm::vec3& p_2, const size_t& level) {
+
+	if (level > 0) {
+		//Calculate midpoints and project them to sphere
+		glm::vec3 new_01 = glm::normalize(0.5f * (p_0 + p_1));
+		glm::vec3 new_12 = glm::normalize(0.5f * (p_1 + p_2));
+		glm::vec3 new_20 = glm::normalize(0.5f * (p_2 + p_0));
+		//Subdivide again recursively using the new vertex
+		subdivide_face(p_0, new_01, new_20, level - 1);
+		subdivide_face(new_01, new_12, new_20, level - 1);
+		subdivide_face(new_01, p_1, new_12, level - 1);
+		subdivide_face(new_20, new_12, p_2, level - 1);
+	}
+	else {
+		//We reach the bottom of the recursion, we need to generate a triangle
+		Triangle triangle;
+		triangle.p_0 = p_0;
+		triangle.p_1 = p_1;
+		triangle.p_2 = p_2;
+		triangles.push_back(triangle);
+	}
+}
+
+bool VertexLeesThan(const glm::vec3& lhs, const glm::vec3& rhs) {
+	const float EPSILON = 1e-5f;
+	if (fabs(lhs.x - rhs.x) > EPSILON) {
+		return lhs.x < rhs.x;
+	}
+	else if (fabs(lhs.y - rhs.y) > EPSILON) {
+		return lhs.y < rhs.y;
+	}
+	else if (fabs(lhs.z - rhs.z) > EPSILON){
+		return lhs.z < rhs.z;
+	}
+	else {
+		return false;
+	}
+}
+
+void create_indexed_mesh() {
+	std::set<glm::vec3, bool(*)(const glm::vec3&, const glm::vec3&)> tmp_storage(VertexLeesThan);
+
+	//Insert all the vertex in the tmp_storage
+	for (auto triangle : triangles) {
+		tmp_storage.insert(triangle.p_0);
+		tmp_storage.insert(triangle.p_1);
+		tmp_storage.insert(triangle.p_2);
+	}
+
+	//Insert index for the vertices
+	for (auto triangle : triangles) {
+		// P_0
+		auto it = tmp_storage.find(triangle.p_0);
+		auto index = std::distance(tmp_storage.begin(), it);
+		indices.push_back(static_cast<unsigned short>(index));
+		// P_1
+		it = tmp_storage.find(triangle.p_1);
+		index = std::distance(tmp_storage.begin(), it);
+		indices.push_back(static_cast<unsigned short>(index));
+		// P_2
+		it = tmp_storage.find(triangle.p_2);
+		index = std::distance(tmp_storage.begin(), it);
+		indices.push_back(static_cast<unsigned short>(index));
+	}
+
+	//Create the Vertex storage
+	Vertex tmp_vertex;
+	for (auto position : tmp_storage) {
+		tmp_vertex.position = position;
+		tmp_vertex.normal = glm::normalize(position);
+		vertices.push_back(tmp_vertex);
 	}
 }
