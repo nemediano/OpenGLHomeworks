@@ -58,7 +58,7 @@ void draw_pass_1()
    if(PVM_loc != -1)
    {
       glm::mat4 PVM = P*V*M;
-      glUniformMatrix4fv(PVM_loc, 1, false, glm::value_ptr(PVM));
+      glUniformMatrix4fv(PVM_loc, 1, GL_FALSE, glm::value_ptr(PVM));
    }
 
    int tex_loc = glGetUniformLocation(shader_program, "texture");
