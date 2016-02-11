@@ -56,7 +56,7 @@ namespace options {
 	GLint u_shininess_location = -1;
 
 	//Mesh loading
-	std::string mesh_name = "meshes/cow.ply";
+	std::string mesh_name = "meshes/cow.obj";
 	assets::MeshData mesh_data;
 
 }

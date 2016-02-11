@@ -13,8 +13,8 @@ out vec3 fPosition;
 flat out int instance_id;
 
 //Move according the instance
-const vec2 deltas = 15.0 * vec2(1.0, 1.0);
-const vec4 translation = -15.0 * vec4(1.0, 1.0, 0.0, 0.0);
+const vec2 deltas = 150.0 * vec2(1.0, 1.0);
+const vec4 translation = -170.0 * vec4(1.0, 1.0, 0.0, 0.0);
 
 void main(void) { 
 	int row = gl_InstanceID % 3;

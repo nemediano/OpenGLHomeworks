@@ -16,7 +16,8 @@ void main(void)
 	else if(pass == 2)
 	{
       //Lab assignment: Use texelFetch function and gl_FragCoord instead of using texture coordinates when reading from texture.
-		fragcolor = texture2D(texture, tex_coord);
+		//fragcolor = texture2D(texture, tex_coord);
+		fragcolor = texelFetch(texture, ivec2(gl_FragCoord.xy), 0);
 	}
 	else
 	{

@@ -42,7 +42,7 @@ void draw_pass_1()
 {
    const int pass = 1;
 
-   glm::mat4 M = glm::rotate(10.0f*time_sec, glm::vec3(0.0f, 1.0f, 0.0f))*glm::scale(glm::vec3(mesh_data.mScaleFactor));
+   glm::mat4 M = glm::rotate(TAU / 18.0f * time_sec, glm::vec3(0.0f, 1.0f, 0.0f))*glm::scale(glm::vec3(mesh_data.mScaleFactor));
    glm::mat4 V = glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
    glm::mat4 P = glm::perspective(TAU / 9.0f, 1.0f, 0.1f, 100.0f);
 
@@ -113,7 +113,7 @@ void display()
    glViewport(0, 0, tex_w, tex_h);
 
    //Clear the FBO.
-   glClear(GL_DEPTH_BUFFER_BIT); //Lab assignment: don't forget to also clear depth
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Lab assignment: don't forget to also clear depth
    draw_pass_1();
          
    glBindFramebuffer(GL_FRAMEBUFFER, 0); // Do not render the next pass to FBO.
@@ -216,8 +216,8 @@ void initOpenGl()
    }
 
   
-   const int w = 64;
-   const int h = 64;
+   int w = glutGet(GLUT_WINDOW_WIDTH);
+   int h = glutGet(GLUT_WINDOW_HEIGHT);
    //Create texture to render pass 1 into.
    //Lab assignment: make the texture width and height be the window width and height.
    glGenTextures(1, &fbo_texture);
@@ -225,17 +225,23 @@ void initOpenGl()
    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP );
    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP );
-   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
    glBindTexture(GL_TEXTURE_2D, 0);   
 
    //Lab assignment: Create renderbuffer for depth.
+   GLuint depth_buffer_id;
+   glGenRenderbuffers(1, &depth_buffer_id);
+   glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer_id);
+   glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
 
    //Create the framebuffer object
    glGenFramebuffers(1, &fbo_id);
    glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
    //Lab assignment: attach depth renderbuffer to FBO
+   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer_id);
+
 
    check_framebuffer_status();
 

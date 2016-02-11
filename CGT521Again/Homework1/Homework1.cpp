@@ -117,7 +117,7 @@ void init_program() {
 	//Remember shader calculations are in view space, this light is always a little above the
 	//camera. (These coordinates are relative to the camera center).
 	//Angle that makes the camera with the center
-	const float light_angle = TAU / 16.0f;
+	const float light_angle = 0.0f;//TAU / 16.0f;
 	options::light.setPosition(options::world_radious * glm::vec3(0.0f, glm::sin(light_angle), 1.0f - cos(light_angle)));
 	options::light.setDirection(glm::vec3(0.0f));
 	options::light.setAperture(TAU / 8.0f);
