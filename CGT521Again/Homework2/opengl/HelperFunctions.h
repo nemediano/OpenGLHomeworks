@@ -18,6 +18,8 @@ namespace opengl {
 	void gl_error(string text);
 	void gl_error();
 	string get_OpenGL_info();
+	bool check_framebuffer_status();
+
 	//Debug functions
 	void print_matrix_debug(glm::mat4 A);
 	void print_matrix_debug(glm::mat3 A);

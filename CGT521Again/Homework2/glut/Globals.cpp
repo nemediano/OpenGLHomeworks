@@ -39,7 +39,8 @@ namespace options {
 	GLuint indexBuffer = 0;
 
 	//OpenGL main program
-	opengl::OpenGLProgram* program_ptr = nullptr;
+	opengl::OpenGLProgram* program_pass1_ptr = nullptr;
+	opengl::OpenGLProgram* program_pass2_ptr = nullptr;
 
 	//Light source
 	scene::Light light;

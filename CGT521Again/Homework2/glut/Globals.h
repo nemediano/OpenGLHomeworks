@@ -48,7 +48,8 @@ namespace options {
 	extern GLuint indexBuffer;
 
 	//OpenGL main program
-	extern opengl::OpenGLProgram* program_ptr;
+	extern opengl::OpenGLProgram* program_pass1_ptr;
+	extern opengl::OpenGLProgram* program_pass2_ptr;
 
 	//Light source
 	extern scene::Light light;

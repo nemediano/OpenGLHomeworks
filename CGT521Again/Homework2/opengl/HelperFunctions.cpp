@@ -87,6 +87,32 @@ namespace opengl {
 		cout << "(" << u.x << ", " << u.y << ", " << u.z << ", " << u.w << ")" << endl;
 	}
 
+	bool check_framebuffer_status()	{
+		GLenum status;
+		status = (GLenum)glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		switch (status) {
+		case GL_FRAMEBUFFER_COMPLETE:
+			return true;
+		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+			cerr << "Framebuffer incomplete, incomplete attachment" << endl;
+			return false;
+		case GL_FRAMEBUFFER_UNSUPPORTED:
+			cerr << "Unsupported framebuffer format" << endl;
+			return false;
+		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+			cerr << "Framebuffer incomplete, missing attachment" << endl;
+			return false;
+		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+			cerr << "Framebuffer incomplete, missing draw buffer" << endl;
+			return false;
+		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+			cerr << "Framebuffer incomplete, missing read buffer" << endl;
+			return false;
+		}
+		return false;
+	}
+
+
 	void APIENTRY openglCallbackFunction(GLenum source,
 		GLenum type,
 		GLuint id,

@@ -25,6 +25,7 @@
 using namespace std;
 
 scene::Mesh* mesh_ptr = nullptr;
+scene::Mesh* quad_ptr = nullptr;
 image::Texture* texture_map_ptr = nullptr;
 
 int main(int argc, char* argv[]) {
@@ -43,8 +44,10 @@ int main(int argc, char* argv[]) {
 
 
 void exit_glut() {
-	delete options::program_ptr;
+	delete options::program_pass1_ptr;
+	delete options::program_pass2_ptr;
 	delete mesh_ptr;
+	delete quad_ptr;
 	delete texture_map_ptr;
 
 	glutDestroyWindow(options::window);
@@ -58,35 +61,48 @@ void init_OpenGL() {
 	}
 	opengl::get_OpenGL_info();
 
-	options::program_ptr = new opengl::OpenGLProgram("shaders/vertexShader.glsl", "shaders/fragmentShader.glsl");
+	options::program_pass1_ptr = new opengl::OpenGLProgram("shaders/vertexShader.glsl", "shaders/fragmentShader.glsl");
+	options::program_pass2_ptr = new opengl::OpenGLProgram("shaders/simpleVertexShader.glsl", "shaders/simpleFragmentShader.glsl");
 
-	if (!options::program_ptr->is_ok()) {
-		cerr << "Error at GL program creation" << endl;
+	if (!options::program_pass1_ptr->is_ok()) {
+		cerr << "Error at first GL program creation" << endl;
 		opengl::gl_error();
-		exit(EXIT_FAILURE);
+		//exit(EXIT_FAILURE);
+	}
+
+	if (!options::program_pass2_ptr->is_ok()) {
+		cerr << "Error at second GL program creation" << endl;
+		opengl::gl_error();
+		//exit(EXIT_FAILURE);
 	}
 
 	opengl::get_error_log();
 
+	/************************************************************************/
+	/* Uniforms and attributes for first OpenGL program                     */
+	/************************************************************************/
 
-	options::u_PVM_location = options::program_ptr->get_uniform_location("PVM");
-	options::u_NormalMatrix_location = options::program_ptr->get_uniform_location("NormalMatrix");
-	options::u_VM_location = options::program_ptr->get_uniform_location("VM");
+	options::u_PVM_location = options::program_pass1_ptr->get_uniform_location("PVM");
+	options::u_NormalMatrix_location = options::program_pass1_ptr->get_uniform_location("NormalMatrix");
+	options::u_VM_location = options::program_pass1_ptr->get_uniform_location("VM");
 
-	options::a_position_loc = options::program_ptr->get_attrib_location("Position");
-	options::a_normal_loc = options::program_ptr->get_attrib_location("Normal");
-	options::a_texture_coordinate_loc = options::program_ptr->get_attrib_location("TextureCoordinate");
+	options::a_position_loc = options::program_pass1_ptr->get_attrib_location("Position");
+	options::a_normal_loc = options::program_pass1_ptr->get_attrib_location("Normal");
+	options::a_texture_coordinate_loc = options::program_pass1_ptr->get_attrib_location("TextureCoordinate");
 
 	//Light options for the fragment shader
-	options::u_LightPosition_location = options::program_ptr->get_uniform_location("lightPosition");
-	options::u_La_location = options::program_ptr->get_uniform_location("La");
-	options::u_Ld_location = options::program_ptr->get_uniform_location("Ld");
-	options::u_Ls_location = options::program_ptr->get_uniform_location("Ls");
-	options::u_view = options::program_ptr->get_uniform_location("view");
+	options::u_LightPosition_location = options::program_pass1_ptr->get_uniform_location("lightPosition");
+	options::u_La_location = options::program_pass1_ptr->get_uniform_location("La");
+	options::u_Ld_location = options::program_pass1_ptr->get_uniform_location("Ld");
+	options::u_Ls_location = options::program_pass1_ptr->get_uniform_location("Ls");
+	options::u_view = options::program_pass1_ptr->get_uniform_location("view");
 
 	//Texture map 
-	options::u_texture_map_location = options::program_ptr->get_uniform_location("texture_map");
+	options::u_texture_map_location = options::program_pass1_ptr->get_uniform_location("texture_map");
 	
+	/************************************************************************/
+	/* Uniforms and attributes for second OpenGL program                    */
+	/************************************************************************/
 
 	//Activate antialliasing
 	glEnable(GL_LINE_SMOOTH);
@@ -134,13 +150,39 @@ void init_program() {
 	options::light.setDirection(glm::vec3(0.0f));
 	options::light.setAperture(TAU / 8.0f);
 
+	/************************************************************************/
+	/* For ddraw pass 1                                                     */
+	/************************************************************************/
 	//Load mesh from file
 	mesh_ptr = new scene::Mesh("Amago0.obj");
 	mesh_ptr->send_data_to_gpu();
-
 	//Load texture map from file
 	texture_map_ptr = new image::Texture("AmagoT.bmp");
 	
+	/************************************************************************/
+	/* For draw pass 2                                                      */
+	/************************************************************************/
+	quad_ptr = new scene::Mesh();
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
+	Vertex v0, v1, v2, v3;
+	v0.position = glm::vec3(-1.0, -1.0, 0.0f);
+	v1.position = glm::vec3( 1.0, -1.0, 0.0f);
+	v2.position = glm::vec3( 1.0,  1.0, 0.0f);
+	v3.position = glm::vec3(-1.0,  1.0, 0.0f);
+	vertices.push_back(v0);
+	vertices.push_back(v1);
+	vertices.push_back(v2);
+	vertices.push_back(v3);
+	indices.push_back(0);
+	indices.push_back(1);
+	indices.push_back(2);
+	indices.push_back(0);
+	indices.push_back(2);
+	indices.push_back(3);
+	quad_ptr->set_vertices(vertices);
+	quad_ptr->set_index(indices);
+	quad_ptr->send_data_to_gpu();
 }
 
 
@@ -151,7 +193,19 @@ void display() {
 	using glm::mat4;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	options::program_ptr->use_program();
+	options::program_pass1_ptr->use_program();
+	draw_pass_1();
+	glUseProgram(0);
+
+	glutSwapBuffers();
+	opengl::gl_error("At the end of display");
+}
+
+void draw_pass_1() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
 	mat4 I(1.0f);
 
 	//Model
@@ -199,12 +253,11 @@ void display() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-
-	glutSwapBuffers();
-	opengl::gl_error("At the end of display");
 }
 
+void draw_pass_2() {
+
+}
 
 void pass_light() {
 	//Light properties
