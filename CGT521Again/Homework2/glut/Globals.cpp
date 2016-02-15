@@ -24,7 +24,7 @@ namespace options {
 	//Glut window pointer
 	int window = 0;
 
-	//Variables for GPU side
+	//Variables for GPU side program 1
 	GLint u_PVM_location = -1;
 	GLint u_NormalMatrix_location = -1;
 	GLint u_VM_location = -1;
@@ -33,6 +33,15 @@ namespace options {
 	GLint a_position_loc = -1;
 	GLint a_normal_loc = -1;
 	GLint a_texture_coordinate_loc = -1;
+
+	//Variables for GPU side program 2
+	GLint u_texture_map_location_2 = -1;
+	GLint a_position_location_2 = -1;
+
+	//Manage the Frame buffer object for render pass 1
+	GLuint fbo_id = -1;
+	GLuint depth_buffer_id = -1;
+	GLuint fbo_render_texture = -1;
 
 	//Manage the Vertex Buffer Object
 	GLuint vbo = 0;

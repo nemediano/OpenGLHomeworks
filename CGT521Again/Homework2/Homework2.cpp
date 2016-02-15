@@ -103,7 +103,10 @@ void init_OpenGL() {
 	/************************************************************************/
 	/* Uniforms and attributes for second OpenGL program                    */
 	/************************************************************************/
-
+	options::u_texture_map_location_2 = options::program_pass2_ptr->get_uniform_location("texture_map");
+	options::a_position_location_2 = options::program_pass2_ptr->get_attrib_location("pos_attrib");
+	
+	
 	//Activate antialliasing
 	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_POLYGON_SMOOTH);
@@ -151,7 +154,7 @@ void init_program() {
 	options::light.setAperture(TAU / 8.0f);
 
 	/************************************************************************/
-	/* For ddraw pass 1                                                     */
+	/* For draw pass 1                                                     */
 	/************************************************************************/
 	//Load mesh from file
 	mesh_ptr = new scene::Mesh("Amago0.obj");
@@ -183,20 +186,74 @@ void init_program() {
 	quad_ptr->set_vertices(vertices);
 	quad_ptr->set_index(indices);
 	quad_ptr->send_data_to_gpu();
+
+	/************************************************************************/
+	/* Crete and setup Frame buffer object  to store render pass 1          */
+	/************************************************************************/
+	int width = glutGet(GLUT_WINDOW_WIDTH);
+	int height = glutGet(GLUT_WINDOW_HEIGHT);
+	//Create a texture to render pass 1 into
+	glGenTextures(1, &options::fbo_render_texture);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	//Create render buffer for depth.
+	glGenRenderbuffers(1, &options::depth_buffer_id);
+	glBindRenderbuffer(GL_RENDERBUFFER, options::depth_buffer_id);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	//Create the Frame Buffer object
+	glGenFramebuffers(1, &options::fbo_id);
+	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id);
+	//Attach texture to render into it
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, options::fbo_render_texture, 0);
+	//Attach depth buffer to FBO
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, options::depth_buffer_id);
+	opengl::check_framebuffer_status();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 
 void display() {
 
-	using glm::vec3;
-	using glm::vec4;
-	using glm::mat4;
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	options::program_pass1_ptr->use_program();
+	//We are gonna render to this FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id); 
+	//Out variable in fragment shader will be written to the texture
+	//Attached to GL_COLOR ATTACHMENT0
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	//Make the viewport match the texture in the FBO
+	int texture_width;
+	int texture_height;
+	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texture_width);
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texture_height);
+	glViewport(0, 0, texture_width, texture_height);
+	//Clear the FBO
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	draw_pass_1();
-	glUseProgram(0);
+	opengl::gl_error("After first pass");
+	//Do not render the next pass to FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//Render to back buffer
+	glDrawBuffer(GL_BACK);
+	
+	options::program_pass2_ptr->use_program();
+	//Make the viewport match the whole window
+	int window_width = glutGet(GLUT_WINDOW_WIDTH);
+	int window_height = glutGet(GLUT_WINDOW_HEIGHT);
+	glViewport(0, 0, window_width, window_height);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	opengl::gl_error("Before second pass");
+	draw_pass_2();
+	opengl::gl_error("After second pass");
 
+	//Cleaning
+	glUseProgram(0);
 	glutSwapBuffers();
 	opengl::gl_error("At the end of display");
 }
@@ -256,7 +313,15 @@ void draw_pass_1() {
 }
 
 void draw_pass_2() {
-
+	//Pass updated texture to fragment shader
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
+	if (options::u_texture_map_location_2 != -1) {
+		// we bound our texture to texture unit 0
+		glUniform1i(options::u_texture_map_location_2, 0); 
+	}
+	//Draw using this texture
+	quad_ptr->draw_triangles(options::a_position_location_2, -1, -1);
 }
 
 void pass_light() {
