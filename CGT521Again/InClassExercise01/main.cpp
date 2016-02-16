@@ -2,9 +2,7 @@
 #include <GL/freeglut.h>
 #include <cstdlib>
 #include <iostream>
-
-#include <IL/il.h>
-#include <IL/ilu.h>
+#include <vector>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -59,7 +57,15 @@ struct Vertex {
 void display();
 void reshape(int new_window_width, int new_window_height);
 void keyboard(unsigned char key, int mouse_x, int mouse_y);
+void special_keyboard(int key, int mouse_x, int mouse_y);
 void idle();
+
+GLuint option_loc;
+int option;
+std::vector<GLuint> patterns;
+const int OPTIONS_SIZE = 8;
+GLuint *fragment_options_array = nullptr;
+GLsizei fragment_subroutines_counter = 0;
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
@@ -114,6 +120,7 @@ void create_glut_callbacks() {
 	glutDisplayFunc(display);
 	//glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
+	glutSpecialFunc(special_keyboard);
 	glutReshapeFunc(reshape);
 }
 
@@ -137,6 +144,26 @@ void idle() {
 
 void init_program() {
 	create_primitives();
+	program_ptr->use_program();
+	//Query for the uniform variable to select subroutine
+	option_loc = glGetSubroutineUniformLocation(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "patternOption");
+	//Query for the subroutine values
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_1"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_2"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_3"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_4"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_5"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_5_5"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_6"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_7"));
+	//Allocate the options placeholder
+	fragment_subroutines_counter = 0; //How to determine the number of active subroutines
+	glGetProgramStageiv(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_subroutines_counter);
+	fragment_options_array = new GLuint[fragment_subroutines_counter];
+	//By default use part_1
+	option = 0;
+
+	glUseProgram(0);
 }
 
 
@@ -144,6 +171,14 @@ void display() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	program_ptr->use_program();
+	opengl::gl_error("Before passing the option variable");
+	
+	//Pass the corresponding subroutine uniform
+	fragment_options_array[option_loc] = patterns[option];
+	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, fragment_subroutines_counter, fragment_options_array);
+	
+	opengl::gl_error("After passing the option variable");
+
 	glm::mat4 I(1.0f);
 
 	//Model
@@ -183,7 +218,7 @@ void display() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 	
 	/* Draw */
-	glDrawElements(GL_TRIANGLES, 3 * nTriangles, GL_UNSIGNED_SHORT, BUFFER_OFFSET(3 * 0 * sizeof(unsigned short)));
+	glDrawElements(GL_TRIANGLE_STRIP, nTriangles + 2, GL_UNSIGNED_SHORT, BUFFER_OFFSET(3 * 0 * sizeof(unsigned short)));
 	
 
 	/* Unbind and clean */
@@ -197,7 +232,7 @@ void display() {
 	glUseProgram(0);
 
 	glutSwapBuffers();
-	//opengl::gl_error("At the end of display");
+	opengl::gl_error("At the end of display");
 }
 
 
@@ -207,11 +242,11 @@ void create_primitives() {
 	nTriangles = 2;
 
 	Vertex points[nVertex] = {
-		{ { -1.0f, -1.0f } }, { { 1.0f, -1.0f } }, { { 1.0f, 1.0f } }, { { -1.0f, 1.0f } },
+		{ { -1.0f, -1.0f } }, { { 1.0f, -1.0f } }, { { -1.0f, 1.0f } }, { { 1.0f, 1.0f } },
 	};
 
 	unsigned short indices[nIndices] = { 
-		0, 1, 2, 0, 2, 3,
+		0, 1, 2, 3,
 	};
 
 	//Create the buffers
@@ -235,6 +270,60 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	}
 	else if (key == 'r' || key == 'R') {
 		reload_shaders();
+	}
+	else {
+		switch (key) {
+			case '1':
+				option = 0;
+			break;
+			
+			case '2':
+				option = 1;
+			break;
+
+			case '3':
+				option = 2;
+			break;
+
+			case '4':
+				option = 3;
+			break;
+
+			case '5':
+				option = 4;
+			break;
+
+			case '6':
+				option = 5;
+			break;
+
+			case '7':
+				option = 6;
+			break;
+
+			case '8':
+				option = 7;
+			break;
+
+			default:
+				
+			break;
+		}
+		option %= OPTIONS_SIZE;
+	}
+	glutPostRedisplay();
+}
+
+void special_keyboard(int key, int mouse_x, int mouse_y) {
+	switch (key) {
+		case GLUT_KEY_PAGE_UP:
+			++option %= OPTIONS_SIZE;	
+		break;
+		case GLUT_KEY_PAGE_DOWN: {
+			option += OPTIONS_SIZE;
+			--option %= OPTIONS_SIZE;
+		}
+		break;
 	}
 	glutPostRedisplay();
 }

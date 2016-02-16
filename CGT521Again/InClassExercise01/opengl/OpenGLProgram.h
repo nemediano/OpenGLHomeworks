@@ -16,6 +16,7 @@ class OpenGLProgram {
 
 		GLint get_uniform_location(string variable);
 		GLint get_attrib_location(string variable);
+		GLuint get_program_id();
 
 		bool is_ok();
 

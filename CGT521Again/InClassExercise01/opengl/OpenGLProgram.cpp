@@ -108,5 +108,9 @@ namespace opengl {
 	bool OpenGLProgram::is_ok() {
 		return m_program_ok;
 	}
+
+	GLuint OpenGLProgram::get_program_id() {
+		return m_program;
+	}
     	
 };

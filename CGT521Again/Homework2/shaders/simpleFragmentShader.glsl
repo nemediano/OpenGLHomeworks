@@ -11,10 +11,10 @@ vec4 edge_detection();
 ivec2 safe_position(ivec2 position);
       
 void main(void) {
-	fragcolor = edge_detection();
+	//fragcolor = edge_detection();
 	//fragcolor = average_9x9();
 	//fragcolor = average_3x3();
-	//fragcolor = no_filter();
+	fragcolor = no_filter();
 }
 
 //Calculate safe coordinates to evaluate texture 

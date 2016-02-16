@@ -122,7 +122,7 @@ void init_OpenGL() {
 
 void create_glut_window() {
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-	glutInitWindowSize(512, 512);
+	glutInitWindowSize(800, 800);
 	options::window = glutCreateWindow("Jorge Garcia Homework 2");
 }
 
