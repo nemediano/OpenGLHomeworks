@@ -108,5 +108,27 @@ namespace opengl {
 	bool OpenGLProgram::is_ok() {
 		return m_program_ok;
 	}
-    	
+
+	bool OpenGLProgram::validate_shader_type(const GLenum& shadertype) {
+		if (shadertype == GL_VERTEX_SHADER ||
+			shadertype == GL_FRAGMENT_SHADER ||
+			shadertype == GL_GEOMETRY_SHADER ||
+			shadertype == GL_TESS_CONTROL_SHADER ||
+			shadertype == GL_TESS_EVALUATION_SHADER) {
+			return true;
+		}
+		return false;
+	}
+
+	GLint OpenGLProgram::get_subroutine_uniform_location(GLenum shadertype, string variable) {
+		return glGetSubroutineUniformLocation(m_program, shadertype, variable.c_str());
+	}
+
+	GLuint OpenGLProgram::get_subroutine_index_location(GLenum shadertype, string variable) {
+		return glGetSubroutineIndex(m_program, shadertype, variable.c_str());
+	}
+    
+	GLuint OpenGLProgram::get_program_id() {
+		return m_program;
+	}
 };

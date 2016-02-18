@@ -14,7 +14,13 @@ namespace options {
 	//Scene
 	extern GLfloat world_radious;
 	extern float delta_seconds;
+	extern float elapsed_time;
 	extern float angle;
+	extern bool rotate_fish;
+	extern int filter_option;
+	extern int selected_id;
+	extern const int FILTERS_NUMBER;
+	extern const int INSTANCE_NUMBER;
 
 	//Camera handling
 	extern GLfloat field_of_view_y;
@@ -38,6 +44,8 @@ namespace options {
 	extern GLint u_NormalMatrix_location;
 	extern GLint u_VM_location;
 	extern GLint u_texture_map_location;
+	extern GLint u_selected_location;
+	extern GLint u_time_location;
 
 	extern GLint a_position_loc;
 	extern GLint a_normal_loc;
@@ -45,12 +53,14 @@ namespace options {
 
 	//Variables for GPU side program 2
 	extern GLint u_texture_map_location_2;
+	extern GLint u_filter_option_location;
 	extern GLint a_position_location_2;
 
 	//Manage the Frame buffer object for render pass 1
 	extern GLuint fbo_id;
 	extern GLuint depth_buffer_id;
 	extern GLuint fbo_render_texture;
+	extern GLuint fbo_pick_texture;
 
 	//Manage the Vertex Buffer Object
 	extern GLuint vbo;

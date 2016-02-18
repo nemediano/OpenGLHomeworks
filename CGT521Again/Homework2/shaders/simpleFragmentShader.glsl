@@ -1,35 +1,38 @@
-#version 330
+#version 430
 
 uniform sampler2D texture_map;
 
 out vec4 fragcolor;
+
+subroutine vec4 filterType();
 
 vec4 no_filter();
 vec4 average_3x3();
 vec4 average_9x9();
 vec4 edge_detection();          
 ivec2 safe_position(ivec2 position);
+
+subroutine uniform filterType selectedFilter;
       
 void main(void) {
-	//fragcolor = edge_detection();
-	//fragcolor = average_9x9();
-	//fragcolor = average_3x3();
-	fragcolor = no_filter();
+	
+	fragcolor = selectedFilter();
+	
 }
 
 //Calculate safe coordinates to evaluate texture 
 //and avoid branching
 ivec2 safe_position(ivec2 position) {
 	ivec2 size	= textureSize(texture_map, 0);
-	return ivec2(mod(position, size));
+	return ivec2(mod(position + size, size));
 }
 
-vec4 no_filter() {
+subroutine (filterType) vec4 no_filter() {
 	ivec2 fPosition = ivec2(gl_FragCoord.xy);
 	return texelFetch(texture_map, fPosition, 0);
 }
 
-vec4 average_3x3() {
+subroutine (filterType) vec4 average_3x3() {
 	ivec2 fPosition = ivec2(gl_FragCoord.xy);
 	//Some helpers for doing the average filtering
 	ivec2 i = ivec2(1, 0);
@@ -49,7 +52,7 @@ vec4 average_3x3() {
 	return (1.0f / 9.0f) * color;
 }
 
-vec4 average_9x9() {
+subroutine (filterType) vec4 average_9x9() {
 	ivec2 fPosition = ivec2(gl_FragCoord.xy);
 	//Some helpers for doing the average filtering
 	ivec2 i = ivec2(1, 0);
@@ -87,7 +90,7 @@ vec4 average_9x9() {
 	return (1.0f / 25.0f) * color;
 }
 
-vec4 edge_detection() {
+subroutine (filterType) vec4 edge_detection() {
 	ivec2 fPosition = ivec2(gl_FragCoord.xy);
 	//Some helpers for doing the average filtering
 	ivec2 i = ivec2(1, 0);

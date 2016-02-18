@@ -16,6 +16,9 @@ class OpenGLProgram {
 
 		GLint get_uniform_location(string variable);
 		GLint get_attrib_location(string variable);
+		GLint get_subroutine_uniform_location(GLenum shadertype, string variable);
+		GLuint get_subroutine_index_location(GLenum shadertype, string variable);
+		GLuint get_program_id();
 
 		bool is_ok();
 
@@ -30,6 +33,8 @@ class OpenGLProgram {
 		GLuint m_vertex_shader;
 		GLuint m_fragment_shader;
 		GLuint m_program;
+
+		bool validate_shader_type(const GLenum& shadertype);
 };
 
 }

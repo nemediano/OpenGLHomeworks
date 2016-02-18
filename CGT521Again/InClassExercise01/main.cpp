@@ -144,26 +144,8 @@ void idle() {
 
 void init_program() {
 	create_primitives();
-	program_ptr->use_program();
-	//Query for the uniform variable to select subroutine
-	option_loc = glGetSubroutineUniformLocation(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "patternOption");
-	//Query for the subroutine values
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_1"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_2"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_3"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_4"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_5"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_5_5"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_6"));
-	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_7"));
-	//Allocate the options placeholder
-	fragment_subroutines_counter = 0; //How to determine the number of active subroutines
-	glGetProgramStageiv(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_subroutines_counter);
-	fragment_options_array = new GLuint[fragment_subroutines_counter];
 	//By default use part_1
 	option = 0;
-
-	glUseProgram(0);
 }
 
 
@@ -344,6 +326,22 @@ void reload_shaders() {
 
 	//Ask for the uniform location
 	u_PVM_loc = program_ptr->get_uniform_location("PVM");
+
+	//Query for the uniform variable to select subroutine
+	option_loc = glGetSubroutineUniformLocation(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "patternOption");
+	//Query for the subroutine values
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_1"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_2"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_3"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_4"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_5"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_5_5"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_6"));
+	patterns.push_back(glGetSubroutineIndex(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, "part_7"));
+	//Allocate the options placeholder
+	fragment_subroutines_counter = 0; //How to determine the number of active subroutines
+	glGetProgramStageiv(program_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_subroutines_counter);
+	fragment_options_array = new GLuint[fragment_subroutines_counter];
 
 	return;
 }

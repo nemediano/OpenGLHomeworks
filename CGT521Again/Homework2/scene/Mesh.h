@@ -40,11 +40,14 @@ namespace scene {
 		void send_data_to_gpu();
 		GLuint get_vertex_location() const;
 		GLuint get_index_location() const;
-		void draw_triangles(const GLint& position_location, const GLint& normal_location, const GLint& texture_coordinates_location) const;
+		void draw_triangles(const GLint& position_location, const GLint& normal_location, const GLint& texture_coordinates_location, const GLsizei& instances = 1) const;
 		void set_vertices(const std::vector<Vertex>& vertices);
 		void set_index(const std::vector<unsigned int>& indices);
 		void index_from_triangles(const std::vector<Triangle>& triangles);
 		float get_scale_factor() const;
+		GLsizei get_triangles_count() const;
+		GLsizei get_indices_count() const;
+		GLsizei get_vertex_count() const;
 	};
 };
 #endif

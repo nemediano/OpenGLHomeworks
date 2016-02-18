@@ -27,6 +27,10 @@ using namespace std;
 scene::Mesh* mesh_ptr = nullptr;
 scene::Mesh* quad_ptr = nullptr;
 image::Texture* texture_map_ptr = nullptr;
+//Select filter using shader subroutine
+std::vector<GLuint> filters;
+GLuint *fragment_options_array = nullptr;
+GLsizei fragment_filters_counter = 0;
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
@@ -49,6 +53,7 @@ void exit_glut() {
 	delete mesh_ptr;
 	delete quad_ptr;
 	delete texture_map_ptr;
+	delete fragment_options_array;
 
 	glutDestroyWindow(options::window);
 	exit(EXIT_SUCCESS);
@@ -85,6 +90,8 @@ void init_OpenGL() {
 	options::u_PVM_location = options::program_pass1_ptr->get_uniform_location("PVM");
 	options::u_NormalMatrix_location = options::program_pass1_ptr->get_uniform_location("NormalMatrix");
 	options::u_VM_location = options::program_pass1_ptr->get_uniform_location("VM");
+	options::u_selected_location = options::program_pass1_ptr->get_uniform_location("selected_id");
+	options::u_time_location = options::program_pass1_ptr->get_uniform_location("time");
 
 	options::a_position_loc = options::program_pass1_ptr->get_attrib_location("Position");
 	options::a_normal_loc = options::program_pass1_ptr->get_attrib_location("Normal");
@@ -106,11 +113,18 @@ void init_OpenGL() {
 	options::u_texture_map_location_2 = options::program_pass2_ptr->get_uniform_location("texture_map");
 	options::a_position_location_2 = options::program_pass2_ptr->get_attrib_location("pos_attrib");
 	
+	options::u_filter_option_location = options::program_pass2_ptr->get_subroutine_uniform_location(GL_FRAGMENT_SHADER, "selectedFilter");
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "no_filter"));
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "average_3x3"));
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "average_9x9"));
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "edge_detection"));
+
 	
+	glGetProgramStageiv(options::program_pass2_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_filters_counter);
+	fragment_options_array = new GLuint[fragment_filters_counter];
+
 	//Activate antialliasing
-	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_POLYGON_SMOOTH);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 
 	//initialize some basic rendering state
@@ -131,9 +145,7 @@ void create_glut_callbacks() {
 	glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
 	glutMouseWheelFunc(mouse_wheel);
-	/*
 	glutSpecialFunc(special_keyboard);
-	*/
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouse_active);
 	glutReshapeFunc(reshape);
@@ -148,7 +160,7 @@ void init_program() {
 	//Remember shader calculations are in view space, this light is always a little above the
 	//camera. (These coordinates are relative to the camera center).
 	//Angle that makes the camera with the center
-	const float light_angle = TAU / 16.0f;
+	const float light_angle = TAU / 8.0f;
 	options::light.setPosition(options::world_radious * glm::vec3(0.0f, glm::sin(light_angle), 1.0f - cos(light_angle)));
 	options::light.setDirection(glm::vec3(0.0f));
 	options::light.setAperture(TAU / 8.0f);
@@ -200,6 +212,14 @@ void init_program() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//Create a texture to store the picking
+	glGenTextures(1, &options::fbo_pick_texture);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_pick_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	//Create render buffer for depth.
 	glGenRenderbuffers(1, &options::depth_buffer_id);
@@ -210,6 +230,8 @@ void init_program() {
 	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id);
 	//Attach texture to render into it
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, options::fbo_render_texture, 0);
+	//Attach texture to store the picking ids
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, options::fbo_pick_texture, 0);
 	//Attach depth buffer to FBO
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, options::depth_buffer_id);
 	opengl::check_framebuffer_status();
@@ -266,10 +288,11 @@ void draw_pass_1() {
 	mat4 I(1.0f);
 
 	//Model
-	mat4 M = glm::scale(I, mesh_ptr->get_scale_factor() * glm::vec3(1.0f, 1.0f, 1.0f));
-	options::angle += TAU * options::delta_seconds / 4.0f;
+	mat4 M = glm::scale(I, 0.5f * mesh_ptr->get_scale_factor() * glm::vec3(1.0f, 1.0f, 1.0f));
+	if (options::rotate_fish) {
+		options::angle += TAU * options::delta_seconds / 4.0f;
+	}
 	M = glm::rotate(M, options::angle, glm::vec3(0.0f, 1.0f, 0.0f));
-
 	//View
 	/* Camera rotation must be accumulated: base rotation then new rotation */
 	mat4 camRot = glm::mat4_cast(options::camera_new_rotation * options::camera_base_rotation);
@@ -284,8 +307,6 @@ void draw_pass_1() {
 	GLfloat zFar = 100.0f;
 	mat4 P = glm::perspective(fovy, aspect, zNear, zFar);
 
-	vec4 color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
-
 	if (options::u_PVM_location != -1) {
 		glUniformMatrix4fv(options::u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
 	}
@@ -295,17 +316,23 @@ void draw_pass_1() {
 	if (options::u_NormalMatrix_location != -1) {
 		glUniformMatrix4fv(options::u_NormalMatrix_location, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(V * M))));
 	}
+	if (options::u_selected_location != -1) {
+		glUniform1i(options::u_selected_location, options::selected_id % options::INSTANCE_NUMBER);
+	}
+	if (options::u_time_location != -1) {
+		glUniform1f(options::u_time_location, options::elapsed_time);
+	}
 
 	glActiveTexture(GL_TEXTURE0);
 	texture_map_ptr->bind();
 	if (options::u_texture_map_location != -1) {
-		glUniform1i(options::u_texture_map_location, 0); // we bound our texture to texture unit 0
+		glUniform1i(options::u_texture_map_location, options::selected_id); // we bound our texture to texture unit 0
 	}
 
 	//Pass light source to shader
 	pass_light();
 
-	mesh_ptr->draw_triangles(options::a_position_loc, options::a_normal_loc, options::a_texture_coordinate_loc);
+	mesh_ptr->draw_triangles(options::a_position_loc, options::a_normal_loc, options::a_texture_coordinate_loc, 6);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -320,6 +347,9 @@ void draw_pass_2() {
 		// we bound our texture to texture unit 0
 		glUniform1i(options::u_texture_map_location_2, 0); 
 	}
+	//pass the option of the filter we want to use
+	fragment_options_array[options::u_filter_option_location] = filters[options::filter_option];
+	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, fragment_filters_counter, fragment_options_array);
 	//Draw using this texture
 	quad_ptr->draw_triangles(options::a_position_location_2, -1, -1);
 }

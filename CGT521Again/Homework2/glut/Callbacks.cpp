@@ -20,6 +20,7 @@ void idle() {
 	int time = glutGet(GLUT_ELAPSED_TIME);
 	int elapsed = time - last_time;
 	options::delta_seconds = 0.001f * elapsed;
+	options::elapsed_time += options::delta_seconds;
 	last_time = time;
 
 	opengl::gl_error("At idle"); //check for errors and print error strings
@@ -31,7 +32,18 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		exit_glut();
 	} else if (key == 'c' || key == 'C') {
 		reset_camera();
+	} else if (key == 'r' || key == 'R') {
+		options::rotate_fish = (!options::rotate_fish);
+	} else if (key == '1') {
+		options::filter_option = 1;
+	} else if (key == '2') {
+		options::filter_option = 2;
+	} else if (key == '3') {
+		options::filter_option = 3;
+	} else if (key == '4') {
+		options::filter_option = 0;
 	}
+
 }
 
 void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
@@ -107,4 +119,22 @@ void reset_camera() {
 	options::camera_base_rotation = glm::quat(1.0f, glm::vec3(0.0f, 0.0f, 0.0f));
 	options::camera_new_rotation = glm::quat(1.0f, glm::vec3(0.0f, 0.0f, 0.0f));
 	options::camera_pan = glm::vec2(0.0, 0.0);
+}
+
+void special_keyboard(int key, int mouse_x, int mouse_y) {
+	switch (key) {
+		case GLUT_KEY_PAGE_UP:
+			++options::filter_option %= options::FILTERS_NUMBER;
+		break;
+
+		case GLUT_KEY_PAGE_DOWN: 
+		{
+			options::filter_option += options::FILTERS_NUMBER;
+			--options::filter_option %= options::FILTERS_NUMBER;
+		}	
+		break;
+
+		default:
+		break;
+	}
 }

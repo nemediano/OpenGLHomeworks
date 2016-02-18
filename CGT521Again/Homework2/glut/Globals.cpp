@@ -6,7 +6,13 @@ namespace options {
 	//Scene
 	GLfloat world_radious = 2.0f;
 	float delta_seconds = 0.0f;
+	float elapsed_time = 0.0f;
 	float angle = 0.0f;
+	bool rotate_fish = false;
+	int filter_option = 0;
+	int selected_id = 0;
+	const int FILTERS_NUMBER = 4;
+	const int INSTANCE_NUMBER = 6;
 
 	//Camera handling
 	GLfloat field_of_view_y = PI / 3.0f;
@@ -29,6 +35,8 @@ namespace options {
 	GLint u_NormalMatrix_location = -1;
 	GLint u_VM_location = -1;
 	GLint u_texture_map_location = -1;
+	GLint u_selected_location = -1;
+	GLint u_time_location = -1;
 
 	GLint a_position_loc = -1;
 	GLint a_normal_loc = -1;
@@ -36,12 +44,14 @@ namespace options {
 
 	//Variables for GPU side program 2
 	GLint u_texture_map_location_2 = -1;
+	GLint u_filter_option_location = -1;
 	GLint a_position_location_2 = -1;
 
 	//Manage the Frame buffer object for render pass 1
 	GLuint fbo_id = -1;
 	GLuint depth_buffer_id = -1;
 	GLuint fbo_render_texture = -1;
+	GLuint fbo_pick_texture = -1;
 
 	//Manage the Vertex Buffer Object
 	GLuint vbo = 0;

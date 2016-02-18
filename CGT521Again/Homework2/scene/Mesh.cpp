@@ -110,7 +110,7 @@ namespace scene {
 		return m_index_location;
 	}
 
-	void Mesh::draw_triangles(const GLint& position_location, const GLint& normal_location, const GLint& texture_coordinates_location) const {
+	void Mesh::draw_triangles(const GLint& position_location, const GLint& normal_location, const GLint& texture_coordinates_location, const GLsizei& instances) const {
 		if (!m_in_gpu) {
 			cout << "Data is not in GPU memory!" << endl;
 			return;
@@ -132,8 +132,18 @@ namespace scene {
 		}
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_location);
 
+		if (instances != 1) {
+			//glVertexAttribDivisor(m_index_location, 1);
+			//glVertexAttribDivisor(m_vbo_location, 1);
+		}
+
 		/* Draw */
-		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indices.size()), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+		if (instances == 1) {
+			glDrawElements(GL_TRIANGLES, get_indices_count(), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+		} else {
+			glDrawElementsInstanced(GL_TRIANGLES, get_indices_count(), GL_UNSIGNED_INT, 0, instances);
+		}
+		
 
 		/* Unbind and clean */
 		if (position_location != -1) {
@@ -222,5 +232,17 @@ namespace scene {
 
 	float Mesh::get_scale_factor() const {
 		return m_scale_factor;
+	}
+
+	GLsizei Mesh::get_triangles_count() const {
+		return get_indices_count() / 3;
+	}
+
+	GLsizei Mesh::get_indices_count() const {
+		return static_cast<GLsizei>(m_indices.size());
+	}
+
+	GLsizei Mesh::get_vertex_count() const {
+		return static_cast<GLsizei>(m_vertices.size());
 	}
 }
