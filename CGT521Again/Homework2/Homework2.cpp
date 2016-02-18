@@ -247,7 +247,8 @@ void display() {
 	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id); 
 	//Out variable in fragment shader will be written to the texture
 	//Attached to GL_COLOR ATTACHMENT0
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	GLenum buffers[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(2, buffers);
 	//Make the viewport match the texture in the FBO
 	int texture_width;
 	int texture_height;
@@ -317,7 +318,7 @@ void draw_pass_1() {
 		glUniformMatrix4fv(options::u_NormalMatrix_location, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(V * M))));
 	}
 	if (options::u_selected_location != -1) {
-		glUniform1i(options::u_selected_location, options::selected_id % options::INSTANCE_NUMBER);
+		glUniform1i(options::u_selected_location, options::selected_id);
 	}
 	if (options::u_time_location != -1) {
 		glUniform1f(options::u_time_location, options::elapsed_time);
@@ -326,7 +327,7 @@ void draw_pass_1() {
 	glActiveTexture(GL_TEXTURE0);
 	texture_map_ptr->bind();
 	if (options::u_texture_map_location != -1) {
-		glUniform1i(options::u_texture_map_location, options::selected_id); // we bound our texture to texture unit 0
+		glUniform1i(options::u_texture_map_location, 0); // we bound our texture to texture unit 0
 	}
 
 	//Pass light source to shader

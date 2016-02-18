@@ -10,7 +10,7 @@ namespace options {
 	float angle = 0.0f;
 	bool rotate_fish = false;
 	int filter_option = 0;
-	int selected_id = 0;
+	int selected_id = options::INSTANCE_NUMBER;
 	const int FILTERS_NUMBER = 4;
 	const int INSTANCE_NUMBER = 6;
 

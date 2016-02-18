@@ -9,7 +9,8 @@ in vec2 fTextCoord;
 //Instance id of this mesh
 in flat int fInstanceId;
 
-out vec4 fragcolor;
+layout (location = 0) out vec4 fragcolor;
+layout (location = 1) out vec4 instanceId;
 
 //Light source properties
 uniform vec3 La;
@@ -33,6 +34,7 @@ void main(void) {
 	} else {
 		fragcolor = vec4(phong_shading(), 1.0);
 	}
+	instanceId = float(fInstanceId + 1) / 255.0f * vec4(1.0f, 0.0f, 0.0f, 1.0f);
 }
 
 vec3 phong_shading() {

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
@@ -106,6 +107,32 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 		/* Reset new rotation to identity */
 		options::camera_new_rotation = glm::normalize(glm::quat(1.0f, glm::vec3(0.0f, 0.0f, 0.0f)));
 	}
+	else if (state == GLUT_DOWN && button == GLUT_RIGHT_BUTTON) {
+		//Read the pixel value form the FBO used to render the first pass attachment 2
+		//Which is the one that contains the instances ID
+		GLubyte pixel[4];
+		glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id);
+		glReadBuffer(GL_COLOR_ATTACHMENT1);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		int height = glutGet(GLUT_WINDOW_HEIGHT);
+		glReadPixels(mouse_x, height - mouse_y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//To check against background 
+		//Query the blue channel (in instances is zero)
+		int blue = static_cast<int>(pixel[1]);
+		if (blue != 0) {
+			options::selected_id = options::INSTANCE_NUMBER;
+			std::cout << "You clicked the background!" << std::endl;
+		}
+		else {
+			//To query the instance number use red channel
+			int red = static_cast<int>(pixel[0]);
+			options::selected_id = red - 1;
+			std::cout << "You clicked on instance: " << options::selected_id << std::endl;
+			
+		}
+		
+	 }
 	
 	glutPostRedisplay();
 }
