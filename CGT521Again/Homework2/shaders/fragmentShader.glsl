@@ -60,5 +60,6 @@ vec3 phong_shading() {
 }
 
 vec3 highlight(vec3 color_1, vec3 color_2) {
-	return mix(color_1, color_2, 0.5 * sin(time) + 0.5);
+	const float frequency = 3.0f;
+	return mix(color_1, color_2, 0.5 * sin(frequency * (time + fPosition.x)) + 0.5);
 }
