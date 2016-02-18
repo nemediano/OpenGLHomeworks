@@ -58,7 +58,6 @@ namespace options {
 	extern GLuint fbo_id;
 	extern GLuint depth_buffer_id;
 	extern GLuint fbo_render_texture;
-	extern GLuint fbo_pick_texture;
 
 	//Manage the Vertex Buffer Object
 	extern GLuint vbo;

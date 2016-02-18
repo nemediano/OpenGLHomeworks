@@ -9,7 +9,10 @@ subroutine vec4 filterType();
 vec4 no_filter();
 vec4 average_3x3();
 vec4 average_9x9();
-vec4 edge_detection();          
+vec4 edge_detection();
+vec4 sobel_filter();
+vec4 edges_sobel();
+      
 ivec2 safe_position(ivec2 position);
 
 subroutine uniform filterType selectedFilter;
@@ -103,4 +106,40 @@ subroutine (filterType) vec4 edge_detection() {
 	
 	return (left - right) * (left - right) + (above - below) * (above - below);
 }
+
+subroutine (filterType) vec4 sobel_filter() {
+	ivec2 fPosition = ivec2(gl_FragCoord.xy);
+	//Some helpers for doing the average filtering
+	ivec2 i = ivec2(1, 0);
+	ivec2 j = ivec2(0, 1);
+	
+	vec4 dx = vec4(0.0f);
+	//Sobel filtering in dx
+	dx += texelFetch(texture_map, safe_position(fPosition - i - j), 0);
+	dx -= texelFetch(texture_map, safe_position(fPosition + i - j), 0);
+	dx += 2.0f * texelFetch(texture_map, safe_position(fPosition - i    ), 0);
+	dx -= 2.0f * texelFetch(texture_map, safe_position(fPosition + i    ), 0);
+	dx += texelFetch(texture_map, safe_position(fPosition - i + j), 0);
+	dx -= texelFetch(texture_map, safe_position(fPosition + i + j), 0);
+	
+	vec4 dy = vec4(0.0f);
+	dy += texelFetch(texture_map, safe_position(fPosition - i - j), 0);
+	dy += 2.0f * texelFetch(texture_map, safe_position(fPosition     - j), 0);
+	dy += texelFetch(texture_map, safe_position(fPosition + i - j), 0);
+	dy -= texelFetch(texture_map, safe_position(fPosition - i + j), 0);
+	dy -= 2.0f * texelFetch(texture_map, safe_position(fPosition     + j), 0);
+	dy -= texelFetch(texture_map, safe_position(fPosition + i + j), 0);
+	
+	return dx * dx + dy * dy;
+}
+
+subroutine (filterType) vec4 edges_sobel() {
+	ivec2 fPosition = ivec2(gl_FragCoord.xy);
+	float edge = length(sobel_filter());
+	
+	return mix(vec4(1.0f), vec4(0.0f), edge);
+}
+
+
+
 

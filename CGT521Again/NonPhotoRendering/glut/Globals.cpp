@@ -10,7 +10,7 @@ namespace options {
 	float angle = 0.0f;
 	bool rotate_fish = false;
 	int filter_option = 0;
-	const int FILTERS_NUMBER = 4;
+	const int FILTERS_NUMBER = 6;
 
 	//Camera handling
 	GLfloat field_of_view_y = PI / 3.0f;
@@ -48,7 +48,6 @@ namespace options {
 	GLuint fbo_id = -1;
 	GLuint depth_buffer_id = -1;
 	GLuint fbo_render_texture = -1;
-	GLuint fbo_pick_texture = -1;
 
 	//Manage the Vertex Buffer Object
 	GLuint vbo = 0;

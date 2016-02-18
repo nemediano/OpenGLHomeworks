@@ -28,8 +28,8 @@ void main(void) {
 	const vec3 yellow  = vec3(1.0, 0.75, 0.0);
 	const vec3 orange = vec3(0.9, 0.17, 0.31);
 	
-	fragcolor = vec4(phong_shading(), 1.0);
-	
+	//fragcolor = vec4(phong_shading(), 1.0);
+	fragcolor = vec4(fNormal, 1.0);
 }
 
 vec3 phong_shading() {

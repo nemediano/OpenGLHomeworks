@@ -117,6 +117,8 @@ void init_OpenGL() {
 	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "average_3x3"));
 	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "average_9x9"));
 	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "edge_detection"));
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "sobel_filter"));
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "edges_sobel"));
 
 	
 	glGetProgramStageiv(options::program_pass2_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_filters_counter);
@@ -136,7 +138,7 @@ void init_OpenGL() {
 void create_glut_window() {
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(800, 800);
-	options::window = glutCreateWindow("Jorge Garcia Homework 2");
+	options::window = glutCreateWindow("Non Photorealistic rendering");
 }
 
 void create_glut_callbacks() {
@@ -206,15 +208,7 @@ void init_program() {
 	//Create a texture to render pass 1 into
 	glGenTextures(1, &options::fbo_render_texture);
 	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//Create a texture to store the picking
-	glGenTextures(1, &options::fbo_pick_texture);
-	glBindTexture(GL_TEXTURE_2D, options::fbo_pick_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -229,8 +223,6 @@ void init_program() {
 	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id);
 	//Attach texture to render into it
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, options::fbo_render_texture, 0);
-	//Attach texture to store the picking ids
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, options::fbo_pick_texture, 0);
 	//Attach depth buffer to FBO
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, options::depth_buffer_id);
 	opengl::check_framebuffer_status();

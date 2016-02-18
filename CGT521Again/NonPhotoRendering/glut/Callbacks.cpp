@@ -36,15 +36,20 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	} else if (key == 'r' || key == 'R') {
 		options::rotate_fish = (!options::rotate_fish);
 	} else if (key == '1') {
-		options::filter_option = 1;
-	} else if (key == '2') {
-		options::filter_option = 2;
-	} else if (key == '3') {
-		options::filter_option = 3;
-	} else if (key == '4') {
 		options::filter_option = 0;
+	} else if (key == '2') {
+		options::filter_option = 1;
+	} else if (key == '3') {
+		options::filter_option = 2;
+	} else if (key == '4') {
+		options::filter_option = 3;
+	} else if (key == '5') {
+		options::filter_option = 4;
+	} else if (key == '6') {
+		options::filter_option = 5;
 	}
 
+	glutPostRedisplay();
 }
 
 void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
@@ -56,6 +61,7 @@ void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
 			options::field_of_view_y -= DELTA_ANGLE;
 		}
 	}
+	glutPostRedisplay();
 }
 
 void mouse_active(int mouse_x, int mouse_y) {
@@ -138,4 +144,6 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 		default:
 		break;
 	}
+
+	glutPostRedisplay();
 }
