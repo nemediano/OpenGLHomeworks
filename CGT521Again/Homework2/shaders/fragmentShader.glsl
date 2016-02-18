@@ -26,10 +26,10 @@ vec3 phong_shading();
 vec3 highlight(vec3 color_1, vec3 color_2);
 
 void main(void) {
-	const vec3 red  = vec3(1.0f, 0.0f, 0.0f);
-	const vec3 blue = vec3(0.0f, 0.0f, 1.0f);
+	const vec3 yellow  = vec3(1.0, 0.75, 0.0);
+	const vec3 orange = vec3(0.9, 0.17, 0.31);
 	if (fInstanceId == selected_id) {
-		fragcolor = vec4(mix(highlight(red, blue), phong_shading(), 0.75f), 1.0f);
+		fragcolor = vec4(mix(highlight(yellow, orange), phong_shading(), 0.75f), 1.0f);
 	} else {
 		fragcolor = vec4(phong_shading(), 1.0);
 	}
