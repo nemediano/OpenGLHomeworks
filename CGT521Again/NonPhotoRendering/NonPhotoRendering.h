@@ -17,5 +17,6 @@ void draw_pass_2();
 
 //Only callback function outside interface
 void display();
+void reload_shaders();
 
 #endif

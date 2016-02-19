@@ -50,14 +50,18 @@ namespace options {
 	extern GLint a_texture_coordinate_loc;
 
 	//Variables for GPU side program 2
-	extern GLint u_texture_map_location_2;
+	extern GLint u_color_map_location_2;
+	extern GLint u_color_shading_map_location_2;
+	extern GLint u_normal_map_location_2;
 	extern GLint u_filter_option_location;
 	extern GLint a_position_location_2;
 
 	//Manage the Frame buffer object for render pass 1
 	extern GLuint fbo_id;
 	extern GLuint depth_buffer_id;
-	extern GLuint fbo_render_texture;
+	extern GLuint fbo_color_texture;
+	extern GLuint fbo_shading_texture;
+	extern GLuint fbo_normals_texture;
 
 	//Manage the Vertex Buffer Object
 	extern GLuint vbo;

@@ -10,7 +10,7 @@ namespace options {
 	float angle = 0.0f;
 	bool rotate_fish = false;
 	int filter_option = 0;
-	const int FILTERS_NUMBER = 6;
+	const int FILTERS_NUMBER = 7;
 
 	//Camera handling
 	GLfloat field_of_view_y = PI / 3.0f;
@@ -40,14 +40,18 @@ namespace options {
 	GLint a_texture_coordinate_loc = -1;
 
 	//Variables for GPU side program 2
-	GLint u_texture_map_location_2 = -1;
+	GLint u_color_map_location_2 = -1;
+	GLint u_color_shading_map_location_2 = -1;
+	GLint u_normal_map_location_2 = -1;
 	GLint u_filter_option_location = -1;
 	GLint a_position_location_2 = -1;
 
 	//Manage the Frame buffer object for render pass 1
 	GLuint fbo_id = -1;
 	GLuint depth_buffer_id = -1;
-	GLuint fbo_render_texture = -1;
+	GLuint fbo_color_texture = -1;
+	GLuint fbo_shading_texture = -1;
+	GLuint fbo_normals_texture = -1;
 
 	//Manage the Vertex Buffer Object
 	GLuint vbo = 0;

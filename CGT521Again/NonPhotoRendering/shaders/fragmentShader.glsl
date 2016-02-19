@@ -9,6 +9,8 @@ in vec2 fTextCoord;
 
 
 layout (location = 0) out vec4 fragcolor;
+layout (location = 1) out vec4 fragshading;
+layout (location = 2) out vec4 fragnormal;
 
 //Light source properties
 uniform vec3 La;
@@ -22,14 +24,11 @@ uniform float time;
 uniform sampler2D texture_map;
 
 vec3 phong_shading();
-vec3 highlight(vec3 color_1, vec3 color_2);
 
 void main(void) {
-	const vec3 yellow  = vec3(1.0, 0.75, 0.0);
-	const vec3 orange = vec3(0.9, 0.17, 0.31);
-	
-	//fragcolor = vec4(phong_shading(), 1.0);
-	fragcolor = vec4(fNormal, 1.0);
+	fragcolor = texture2D(texture_map, fTextCoord);
+	fragshading = vec4(phong_shading(), 1.0);
+	fragnormal = vec4(fNormal, 1.0);
 }
 
 vec3 phong_shading() {
@@ -54,9 +53,4 @@ vec3 phong_shading() {
 	vec3 specular_term = Ks * Ls * pow(max(0.0, dot(r, v)), shininess);
 	
 	return ambient_term + diffuse_term + specular_term;
-}
-
-vec3 highlight(vec3 color_1, vec3 color_2) {
-	const float frequency = 3.0f;
-	return mix(color_1, color_2, 0.5 * sin(frequency * (time + fPosition.x)) + 0.5);
 }

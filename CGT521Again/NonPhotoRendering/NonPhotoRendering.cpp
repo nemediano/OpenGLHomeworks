@@ -31,6 +31,8 @@ image::Texture* texture_map_ptr = nullptr;
 std::vector<GLuint> filters;
 GLuint *fragment_options_array = nullptr;
 GLsizei fragment_filters_counter = 0;
+//Array to hold the two enums for render into FBO
+GLenum fbo_buffers[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
@@ -65,21 +67,8 @@ void init_OpenGL() {
 		std::cerr << "Error: " << glewGetErrorString(err) << std::endl;
 	}
 	opengl::get_OpenGL_info();
-
-	options::program_pass1_ptr = new opengl::OpenGLProgram("shaders/vertexShader.glsl", "shaders/fragmentShader.glsl");
-	options::program_pass2_ptr = new opengl::OpenGLProgram("shaders/simpleVertexShader.glsl", "shaders/simpleFragmentShader.glsl");
-
-	if (!options::program_pass1_ptr->is_ok()) {
-		cerr << "Error at first GL program creation" << endl;
-		opengl::gl_error();
-		//exit(EXIT_FAILURE);
-	}
-
-	if (!options::program_pass2_ptr->is_ok()) {
-		cerr << "Error at second GL program creation" << endl;
-		opengl::gl_error();
-		//exit(EXIT_FAILURE);
-	}
+	reload_shaders();
+	
 
 	opengl::get_error_log();
 
@@ -109,7 +98,9 @@ void init_OpenGL() {
 	/************************************************************************/
 	/* Uniforms and attributes for second OpenGL program                    */
 	/************************************************************************/
-	options::u_texture_map_location_2 = options::program_pass2_ptr->get_uniform_location("texture_map");
+	options::u_color_map_location_2 = options::program_pass2_ptr->get_uniform_location("color_map");
+	options::u_color_shading_map_location_2 = options::program_pass2_ptr->get_uniform_location("color_shade_map");
+	options::u_normal_map_location_2 = options::program_pass2_ptr->get_uniform_location("normal_map");
 	options::a_position_location_2 = options::program_pass2_ptr->get_attrib_location("pos_attrib");
 	
 	options::u_filter_option_location = options::program_pass2_ptr->get_subroutine_uniform_location(GL_FRAGMENT_SHADER, "selectedFilter");
@@ -118,8 +109,8 @@ void init_OpenGL() {
 	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "average_9x9"));
 	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "edge_detection"));
 	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "sobel_filter"));
-	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "edges_sobel"));
-
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "sobel_threshold"));
+	filters.push_back(options::program_pass2_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "sobel_threshold_normals"));
 	
 	glGetProgramStageiv(options::program_pass2_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_filters_counter);
 	fragment_options_array = new GLuint[fragment_filters_counter];
@@ -138,7 +129,7 @@ void init_OpenGL() {
 void create_glut_window() {
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(800, 800);
-	options::window = glutCreateWindow("Non Photorealistic rendering");
+	options::window = glutCreateWindow("Non-Photorealistic rendering");
 }
 
 void create_glut_callbacks() {
@@ -205,9 +196,25 @@ void init_program() {
 	/************************************************************************/
 	int width = glutGet(GLUT_WINDOW_WIDTH);
 	int height = glutGet(GLUT_WINDOW_HEIGHT);
-	//Create a texture to render pass 1 into
-	glGenTextures(1, &options::fbo_render_texture);
-	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
+	//Create a texture to render the mesh with texture during pass 1
+	glGenTextures(1, &options::fbo_color_texture);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_color_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//Create a texture to render the mesh with texture and Phong shading during pass 1
+	glGenTextures(1, &options::fbo_shading_texture);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_shading_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//Create a texture to store the normals during pass 1
+	glGenTextures(1, &options::fbo_normals_texture);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_normals_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -221,8 +228,12 @@ void init_program() {
 	//Create the Frame Buffer object
 	glGenFramebuffers(1, &options::fbo_id);
 	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id);
-	//Attach texture to render into it
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, options::fbo_render_texture, 0);
+	//Attach texture to render mesh with texture into it
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, options::fbo_color_texture, 0);
+	//Attach texture to render mesh with texture and Phong shading into it
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, options::fbo_shading_texture, 0);
+	//Attach texture to write the normals into it
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, options::fbo_normals_texture, 0);
 	//Attach depth buffer to FBO
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, options::depth_buffer_id);
 	opengl::check_framebuffer_status();
@@ -236,18 +247,20 @@ void display() {
 	options::program_pass1_ptr->use_program();
 	//We are gonna render to this FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, options::fbo_id); 
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	//We need to say that this pass will render two buffers, one with the Phong shading
+	//and one with the normals
+	glDrawBuffers(3, fbo_buffers);
 	//Make the viewport match the texture in the FBO
 	int texture_width;
 	int texture_height;
-	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_color_texture);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texture_width);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texture_height);
 	glViewport(0, 0, texture_width, texture_height);
 	//Clear the FBO
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	draw_pass_1();
-	opengl::gl_error("After first pass");
+	//opengl::gl_error("After first pass");
 	//Do not render the next pass to FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	//Render to back buffer
@@ -259,14 +272,14 @@ void display() {
 	int window_height = glutGet(GLUT_WINDOW_HEIGHT);
 	glViewport(0, 0, window_width, window_height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	opengl::gl_error("Before second pass");
+	//opengl::gl_error("Before second pass");
 	draw_pass_2();
-	opengl::gl_error("After second pass");
+	//opengl::gl_error("After second pass");
 
 	//Cleaning
 	glUseProgram(0);
 	glutSwapBuffers();
-	opengl::gl_error("At the end of display");
+	//opengl::gl_error("At the end of display");
 }
 
 void draw_pass_1() {
@@ -326,12 +339,27 @@ void draw_pass_1() {
 }
 
 void draw_pass_2() {
-	//Pass updated texture to fragment shader
+	//Pass updated textures to fragment shader
+	//The one with just mesh and texture
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, options::fbo_render_texture);
-	if (options::u_texture_map_location_2 != -1) {
-		// we bound our texture to texture unit 0
-		glUniform1i(options::u_texture_map_location_2, 0); 
+	glBindTexture(GL_TEXTURE_2D, options::fbo_color_texture);
+	if (options::u_color_map_location_2 != -1) {
+		// we bound texture with color to texture unit 0
+		glUniform1i(options::u_color_map_location_2, 0);
+	}
+	//The one with mesh and texture using Phong shading
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_shading_texture);
+	if (options::u_color_shading_map_location_2 != -1) {
+		// we bound texture with Phong shading to texture unit 1
+		glUniform1i(options::u_color_shading_map_location_2, 1);
+	}
+	//The one with the normals
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, options::fbo_normals_texture);
+	if (options::u_normal_map_location_2 != -1) {
+		// we bound texture with Phong shading to texture unit 2
+		glUniform1i(options::u_normal_map_location_2, 2);
 	}
 	//pass the option of the filter we want to use
 	fragment_options_array[options::u_filter_option_location] = filters[options::filter_option];
@@ -353,5 +381,34 @@ void pass_light() {
 	}
 	if (options::u_Ls_location != -1) {
 		glUniform3fv(options::u_Ls_location, 1, glm::value_ptr(options::light.getLs()));
+	}
+}
+
+void reload_shaders() {
+	if (options::program_pass1_ptr) {
+		delete options::program_pass1_ptr;
+	}
+	options::program_pass1_ptr = new opengl::OpenGLProgram("shaders/vertexShader.glsl", "shaders/fragmentShader.glsl");
+	
+	if (options::program_pass2_ptr) {
+		delete options::program_pass2_ptr;
+	}
+	options::program_pass2_ptr = new opengl::OpenGLProgram("shaders/simpleVertexShader.glsl", "shaders/simpleFragmentShader.glsl");
+	
+	
+	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+
+	if (!options::program_pass1_ptr->is_ok()) {
+		cerr << "Error at first GL program creation" << endl;
+		opengl::gl_error();
+		//exit(EXIT_FAILURE);
+		glClearColor(1.0f, 0.0f, 1.0, 1.0f);
+	}
+
+	if (!options::program_pass2_ptr->is_ok()) {
+		cerr << "Error at second GL program creation" << endl;
+		opengl::gl_error();
+		//exit(EXIT_FAILURE);
+		glClearColor(1.0f, 0.0f, 1.0, 1.0f);
 	}
 }

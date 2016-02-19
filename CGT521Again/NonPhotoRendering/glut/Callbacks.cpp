@@ -24,7 +24,7 @@ void idle() {
 	options::elapsed_time += options::delta_seconds;
 	last_time = time;
 
-	opengl::gl_error("At idle"); //check for errors and print error strings
+	//opengl::gl_error("At idle"); //check for errors and print error strings
 	glutPostRedisplay();
 }
 
@@ -33,8 +33,10 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		exit_glut();
 	} else if (key == 'c' || key == 'C') {
 		reset_camera();
-	} else if (key == 'r' || key == 'R') {
+	} else if (key == 'm' || key == 'M') {
 		options::rotate_fish = (!options::rotate_fish);
+	} else if (key == 'r' || key == 'R') {
+		reload_shaders();
 	} else if (key == '1') {
 		options::filter_option = 0;
 	} else if (key == '2') {
@@ -47,6 +49,8 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		options::filter_option = 4;
 	} else if (key == '6') {
 		options::filter_option = 5;
+	} else if (key == '7') {
+		options::filter_option = 6;
 	}
 
 	glutPostRedisplay();
