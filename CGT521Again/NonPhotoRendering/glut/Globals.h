@@ -17,6 +17,7 @@ namespace options {
 	extern float elapsed_time;
 	extern float angle;
 	extern bool rotate_fish;
+	extern bool has_texture;
 	extern int filter_option;
 	extern const int FILTERS_NUMBER;
 
@@ -44,6 +45,7 @@ namespace options {
 	extern GLint u_M_location;
 	extern GLint u_texture_map_location;
 	extern GLint u_time_location;
+	extern GLint u_texture_option_location;
 
 	extern GLint a_position_loc;
 	extern GLint a_normal_loc;
@@ -78,8 +80,12 @@ namespace options {
 	extern GLint u_La_location;
 	extern GLint u_Ld_location;
 	extern GLint u_Ls_location;
-	//Shader location for the camera
-	extern GLint u_view;
+	//Material
+	extern scene::Material default_material;
+	extern GLint u_Ka_location;
+	extern GLint u_Kd_location;
+	extern GLint u_Ks_location;
+	extern GLint u_shininess_location;
 }
 
 struct Vertex {

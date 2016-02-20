@@ -9,6 +9,7 @@ namespace options {
 	float elapsed_time = 0.0f;
 	float angle = 0.0f;
 	bool rotate_fish = false;
+	bool has_texture = false;
 	int filter_option = 0;
 	const int FILTERS_NUMBER = 7;
 
@@ -34,6 +35,7 @@ namespace options {
 	GLint u_M_location = -1;
 	GLint u_texture_map_location = -1;
 	GLint u_time_location = -1;
+	GLint u_texture_option_location = -1;
 
 	GLint a_position_loc = -1;
 	GLint a_normal_loc = -1;
@@ -68,7 +70,11 @@ namespace options {
 	GLint u_La_location = -1;
 	GLint u_Ld_location = -1;
 	GLint u_Ls_location = -1;
-	//Shader location for the camera
-	GLint u_view = -1;
+	//Material
+	scene::Material default_material;
+	GLint u_Ka_location;
+	GLint u_Kd_location;
+	GLint u_Ks_location;
+	GLint u_shininess_location;
 
 }

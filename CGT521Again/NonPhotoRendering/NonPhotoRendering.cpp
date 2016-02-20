@@ -80,6 +80,7 @@ void init_OpenGL() {
 	options::u_V_location = options::program_pass1_ptr->get_uniform_location("V");
 	options::u_M_location = options::program_pass1_ptr->get_uniform_location("M");
 	options::u_time_location = options::program_pass1_ptr->get_uniform_location("time");
+	options::u_texture_option_location = options::program_pass1_ptr->get_uniform_location("texture_option");
 
 	options::a_position_loc = options::program_pass1_ptr->get_attrib_location("Position");
 	options::a_normal_loc = options::program_pass1_ptr->get_attrib_location("Normal");
@@ -90,7 +91,12 @@ void init_OpenGL() {
 	options::u_La_location = options::program_pass1_ptr->get_uniform_location("La");
 	options::u_Ld_location = options::program_pass1_ptr->get_uniform_location("Ld");
 	options::u_Ls_location = options::program_pass1_ptr->get_uniform_location("Ls");
-	options::u_view = options::program_pass1_ptr->get_uniform_location("view");
+
+	//Material properties for the fragment shader
+	options::u_Ka_location = options::program_pass1_ptr->get_uniform_location("Ka");
+	options::u_Kd_location = options::program_pass1_ptr->get_uniform_location("Kd");
+	options::u_Ks_location = options::program_pass1_ptr->get_uniform_location("Ks");
+	options::u_shininess_location = options::program_pass1_ptr->get_uniform_location("shininess");
 
 	//Texture map 
 	options::u_texture_map_location = options::program_pass1_ptr->get_uniform_location("texture_map");
@@ -156,12 +162,17 @@ void init_program() {
 	options::light.setPosition(options::world_radious * glm::vec3(0.0f, glm::sin(light_angle), 1.0f - cos(light_angle)));
 	options::light.setDirection(glm::vec3(0.0f));
 	options::light.setAperture(TAU / 8.0f);
+	//Setup default material
+	//Material
+	options::default_material = scene::Material(glm::vec3(1.0f, 0.0f, 1.0f), 32.0f);
 
+	
 	/************************************************************************/
 	/* For draw pass 1                                                     */
 	/************************************************************************/
 	//Load mesh from file
 	mesh_ptr = new scene::Mesh("Amago0.obj");
+	//mesh_ptr = new scene::Mesh("../models/dragon.obj");
 	mesh_ptr->send_data_to_gpu();
 	//Load texture map from file
 	texture_map_ptr = new image::Texture("AmagoT.bmp");
@@ -321,6 +332,9 @@ void draw_pass_1() {
 	if (options::u_time_location != -1) {
 		glUniform1f(options::u_time_location, options::elapsed_time);
 	}
+	if (options::u_texture_option_location != -1) {
+		glUniform1i(options::u_texture_option_location, options::has_texture ? 1 : 0);
+	}
 
 	glActiveTexture(GL_TEXTURE0);
 	texture_map_ptr->bind();
@@ -382,6 +396,20 @@ void pass_light() {
 	if (options::u_Ls_location != -1) {
 		glUniform3fv(options::u_Ls_location, 1, glm::value_ptr(options::light.getLs()));
 	}
+
+	//Material properties
+	/*if (options::u_Ka_location != -1) {
+		glUniform3fv(options::u_Ka_location, 1, glm::value_ptr(options::material.getKa()));
+	}
+	if (options::u_Kd_location != -1) {
+		glUniform3fv(options::u_Kd_location, 1, glm::value_ptr(options::material.getKd()));
+	}
+	if (options::u_Ks_location != -1) {
+		glUniform3fv(options::u_Ks_location, 1, glm::value_ptr(options::material.getKs()));
+	}
+	if (options::u_shininess_location != -1) {
+		glUniform1f(options::u_shininess_location, options::material.getShininnes());
+	}*/
 }
 
 void reload_shaders() {

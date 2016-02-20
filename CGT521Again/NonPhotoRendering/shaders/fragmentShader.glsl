@@ -17,7 +17,13 @@ uniform vec3 La;
 uniform vec3 Ld;
 uniform vec3 Ls;
 uniform vec3 lightPosition;
-uniform int selected_id;
+//Material properties
+uniform vec3 Ka;
+uniform vec3 Kd;
+uniform vec3 Ks;
+uniform vec3 shininess;
+
+uniform int texture_option;
 uniform float time;
 
 //Texture map
