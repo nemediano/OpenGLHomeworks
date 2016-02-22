@@ -145,6 +145,46 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 		}	
 		break;
 
+		case GLUT_KEY_F1:
+		{
+			options::mesh_file = "Amago0.obj";
+			options::texture_file = "AmagoT.bmp";
+			reload_mesh_and_texture();
+		}
+		break;
+
+		case GLUT_KEY_F2:
+		{
+			options::mesh_file = "../models/teapot.obj";
+			options::texture_file = "";
+			reload_mesh_and_texture();
+		}
+		break;
+
+		case GLUT_KEY_F3:
+		{
+			options::mesh_file = "../models/bunny.obj";
+			options::texture_file = "";
+			reload_mesh_and_texture();
+		}
+		break;
+
+		case GLUT_KEY_F4:
+		{
+			options::mesh_file = "../models/armadillo.obj";
+			options::texture_file = "";
+			reload_mesh_and_texture();
+		}
+		break;
+
+		case GLUT_KEY_F5:
+		{
+			options::mesh_file = "../models/dragon.obj";
+			options::texture_file = "";
+			reload_mesh_and_texture();
+		}
+		break;
+
 		default:
 		break;
 	}

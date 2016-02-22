@@ -20,7 +20,10 @@ namespace options {
 	extern bool has_texture;
 	extern int filter_option;
 	extern const int FILTERS_NUMBER;
-
+	extern string texture_file;
+	extern string mesh_file;
+	extern glm::vec4 background_color;
+	extern glm::vec4 background_shader_error_color;
 
 	//Camera handling
 	extern GLfloat field_of_view_y;

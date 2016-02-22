@@ -4,6 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <string>
+
+using namespace std;
 
 #define GLM_FORCE_PURE
 #define GLM_FORCE_RADIANS
@@ -22,7 +25,7 @@
 
 #include "NonPhotoRendering.h"
 
-using namespace std;
+
 
 scene::Mesh* mesh_ptr = nullptr;
 scene::Mesh* quad_ptr = nullptr;
@@ -31,7 +34,7 @@ image::Texture* texture_map_ptr = nullptr;
 std::vector<GLuint> filters;
 GLuint *fragment_options_array = nullptr;
 GLsizei fragment_filters_counter = 0;
-//Array to hold the two enums for render into FBO
+//Array to hold the three enums for render into FBO
 GLenum fbo_buffers[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
 
 int main(int argc, char* argv[]) {
@@ -127,7 +130,6 @@ void init_OpenGL() {
 
 	//initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 
 	opengl::gl_error("At scene creation");
 }
@@ -164,18 +166,15 @@ void init_program() {
 	options::light.setAperture(TAU / 8.0f);
 	//Setup default material
 	//Material
-	options::default_material = scene::Material(glm::vec3(1.0f, 0.0f, 1.0f), 32.0f);
+	options::default_material = scene::Material(glm::vec3(1.0f, 1.0f, 0.0f), 32.0f);
 
 	
 	/************************************************************************/
 	/* For draw pass 1                                                     */
 	/************************************************************************/
-	//Load mesh from file
-	mesh_ptr = new scene::Mesh("Amago0.obj");
-	//mesh_ptr = new scene::Mesh("../models/dragon.obj");
-	mesh_ptr->send_data_to_gpu();
-	//Load texture map from file
-	texture_map_ptr = new image::Texture("AmagoT.bmp");
+	options::mesh_file = "Amago0.obj";
+	options::texture_file = "AmagoT.bmp";
+	reload_mesh_and_texture();
 	
 	/************************************************************************/
 	/* For draw pass 2                                                      */
@@ -336,12 +335,14 @@ void draw_pass_1() {
 		glUniform1i(options::u_texture_option_location, options::has_texture ? 1 : 0);
 	}
 
-	glActiveTexture(GL_TEXTURE0);
-	texture_map_ptr->bind();
-	if (options::u_texture_map_location != -1) {
-		glUniform1i(options::u_texture_map_location, 0); // we bound our texture to texture unit 0
+	if (texture_map_ptr) {
+		glActiveTexture(GL_TEXTURE0);
+		texture_map_ptr->bind();
+		if (options::u_texture_map_location != -1) {
+			glUniform1i(options::u_texture_map_location, 0); // we bound our texture to texture unit 0
+		}
 	}
-
+	
 	//Pass light source to shader
 	pass_light();
 
@@ -398,18 +399,18 @@ void pass_light() {
 	}
 
 	//Material properties
-	/*if (options::u_Ka_location != -1) {
-		glUniform3fv(options::u_Ka_location, 1, glm::value_ptr(options::material.getKa()));
+	if (options::u_Ka_location != -1) {
+		glUniform3fv(options::u_Ka_location, 1, glm::value_ptr(options::default_material.getKa()));
 	}
 	if (options::u_Kd_location != -1) {
-		glUniform3fv(options::u_Kd_location, 1, glm::value_ptr(options::material.getKd()));
+		glUniform3fv(options::u_Kd_location, 1, glm::value_ptr(options::default_material.getKd()));
 	}
 	if (options::u_Ks_location != -1) {
-		glUniform3fv(options::u_Ks_location, 1, glm::value_ptr(options::material.getKs()));
+		glUniform3fv(options::u_Ks_location, 1, glm::value_ptr(options::default_material.getKs()));
 	}
 	if (options::u_shininess_location != -1) {
-		glUniform1f(options::u_shininess_location, options::material.getShininnes());
-	}*/
+		glUniform1f(options::u_shininess_location, options::default_material.getShininnes());
+	}
 }
 
 void reload_shaders() {
@@ -424,19 +425,37 @@ void reload_shaders() {
 	options::program_pass2_ptr = new opengl::OpenGLProgram("shaders/simpleVertexShader.glsl", "shaders/simpleFragmentShader.glsl");
 	
 	
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	glClearColor(options::background_color.r, options::background_color.g, options::background_color.b, options::background_color.a);
 
 	if (!options::program_pass1_ptr->is_ok()) {
 		cerr << "Error at first GL program creation" << endl;
 		opengl::gl_error();
 		//exit(EXIT_FAILURE);
-		glClearColor(1.0f, 0.0f, 1.0, 1.0f);
+		glClearColor(options::background_shader_error_color.r, options::background_shader_error_color.g,
+				     options::background_shader_error_color.b, options::background_shader_error_color.a);
 	}
 
 	if (!options::program_pass2_ptr->is_ok()) {
 		cerr << "Error at second GL program creation" << endl;
 		opengl::gl_error();
 		//exit(EXIT_FAILURE);
-		glClearColor(1.0f, 0.0f, 1.0, 1.0f);
+		glClearColor(options::background_shader_error_color.r, options::background_shader_error_color.g,
+			options::background_shader_error_color.b, options::background_shader_error_color.a);
 	}
+}
+
+void reload_mesh_and_texture() {
+	//Load mesh from file
+	if (mesh_ptr) {
+		delete mesh_ptr;
+	}
+	mesh_ptr = new scene::Mesh(options::mesh_file);
+	mesh_ptr->send_data_to_gpu();
+	options::has_texture = mesh_ptr->has_texture();
+
+	//Load texture map from file
+	if (texture_map_ptr) {
+		delete texture_map_ptr;
+	}
+	texture_map_ptr = options::texture_file.empty() ? nullptr : new image::Texture(options::texture_file);
 }

@@ -17,6 +17,9 @@ void draw_pass_2();
 
 //Only callback function outside interface
 void display();
+
+//For reloading thing after state change
 void reload_shaders();
+void reload_mesh_and_texture();
 
 #endif

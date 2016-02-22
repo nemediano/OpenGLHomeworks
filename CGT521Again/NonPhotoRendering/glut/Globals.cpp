@@ -12,6 +12,10 @@ namespace options {
 	bool has_texture = false;
 	int filter_option = 0;
 	const int FILTERS_NUMBER = 7;
+	string texture_file = "";
+	string mesh_file = "";
+	glm::vec4 background_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	glm::vec4 background_shader_error_color = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
 
 	//Camera handling
 	GLfloat field_of_view_y = PI / 3.0f;
