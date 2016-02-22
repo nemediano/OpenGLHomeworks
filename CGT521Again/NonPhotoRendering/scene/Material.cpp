@@ -98,4 +98,6 @@ namespace scene {
 			m_shininess = 1.0f;
 		}
 	}
+
+	
 }

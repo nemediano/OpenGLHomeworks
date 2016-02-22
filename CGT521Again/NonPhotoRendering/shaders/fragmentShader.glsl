@@ -56,7 +56,7 @@ vec3 phong_shading() {
 
 	vec3 ambient_term = fKa * La;
 	vec3 diffuse_term = fKd * Ld * max(0.0, dot(n, l));
-	vec3 specular_term = fKs * Ls * pow(max(0.0, dot(r, v)), shininess);
+	vec3 specular_term = fKs * Ls * pow(max(0.0, dot(r, v)), fshininess);
 	
 	return ambient_term + diffuse_term + specular_term;
 }

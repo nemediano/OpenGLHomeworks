@@ -166,7 +166,13 @@ void init_program() {
 	options::light.setAperture(TAU / 8.0f);
 	//Setup default material
 	//Material
-	options::default_material = scene::Material(glm::vec3(1.0f, 1.0f, 0.0f), 32.0f);
+	glm::vec3 Ka = glm::vec3(0.2125f, 0.1275f, 0.054f);
+	glm::vec3 Kd = glm::vec3(0.714f, 0.4284f, 0.18144);
+	glm::vec3 Ks = glm::vec3(0.393548f, 0.271906f, 0.166721f);
+	float shine = 10.0f;
+
+	options::default_material = scene::Material(Ka, Kd, Ks, shine);
+	//options::default_material = scene::BRONZE;
 
 	
 	/************************************************************************/
