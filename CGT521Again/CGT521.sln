@@ -43,6 +43,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImguiDemo", "ImguiDemo\Imgu
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NonPhotoRendering", "NonPhotoRendering\NonPhotoRendering.vcxproj", "{DA006AC7-9BEB-4180-A16E-2B37840BC0D5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TemplateLighting2", "TemplateLighting2\TemplateLighting2.vcxproj", "{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -185,6 +187,14 @@ Global
 		{DA006AC7-9BEB-4180-A16E-2B37840BC0D5}.Release|Win32.Build.0 = Release|Win32
 		{DA006AC7-9BEB-4180-A16E-2B37840BC0D5}.Release|x64.ActiveCfg = Release|x64
 		{DA006AC7-9BEB-4180-A16E-2B37840BC0D5}.Release|x64.Build.0 = Release|x64
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Debug|Win32.Build.0 = Debug|Win32
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Debug|x64.ActiveCfg = Debug|x64
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Debug|x64.Build.0 = Debug|x64
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Release|Win32.ActiveCfg = Release|Win32
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Release|Win32.Build.0 = Release|Win32
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Release|x64.ActiveCfg = Release|x64
+		{C6F8E503-FF24-4CF3-A41E-329EA7DE16B3}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

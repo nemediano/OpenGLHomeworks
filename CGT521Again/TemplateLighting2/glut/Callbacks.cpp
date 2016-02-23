@@ -8,7 +8,7 @@
 
 #include "Globals.h"
 #include "../opengl/HelperFunctions.h"
-#include "../NonPhotoRendering.h"
+#include "../LightingDemo.h"
 #include "Callbacks.h"
 
 void reshape(int new_window_width, int new_window_height) {
@@ -38,19 +38,19 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	} else if (key == 'r' || key == 'R') {
 		reload_shaders();
 	} else if (key == '1') {
-		options::filter_option = 0;
+		
 	} else if (key == '2') {
-		options::filter_option = 1;
+		
 	} else if (key == '3') {
-		options::filter_option = 2;
+		
 	} else if (key == '4') {
-		options::filter_option = 3;
+		
 	} else if (key == '5') {
-		options::filter_option = 4;
+		
 	} else if (key == '6') {
-		options::filter_option = 5;
+		
 	} else if (key == '7') {
-		options::filter_option = 6;
+		
 	}
 
 	glutPostRedisplay();
@@ -135,14 +135,11 @@ void reset_camera() {
 void special_keyboard(int key, int mouse_x, int mouse_y) {
 	switch (key) {
 		case GLUT_KEY_PAGE_UP:
-			++options::filter_option %= options::FILTERS_NUMBER;
+			++options::current_material_index %= options::materials.size();
 		break;
 
 		case GLUT_KEY_PAGE_DOWN: 
-		{
-			options::filter_option += options::FILTERS_NUMBER;
-			--options::filter_option %= options::FILTERS_NUMBER;
-		}	
+			options::current_material_index =  (options::current_material_index - 1 + options::materials.size()) % options::materials.size();
 		break;
 
 		case GLUT_KEY_F1:
