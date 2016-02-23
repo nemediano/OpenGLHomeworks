@@ -34,8 +34,7 @@ GLsizei fragment_options_counter = 0;
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
-	//Set number of samples per pixel
-	glutSetOption(GLUT_MULTISAMPLE, 8); 
+	
 	create_glut_window();
 
 	init_OpenGL();
@@ -82,16 +81,16 @@ void init_OpenGL() {
 	options::a_texture_coordinate_loc = options::program_ptr->get_attrib_location("TextureCoordinate");
 
 	//Light options for the fragment shader
-	options::u_LightPosition_location = options::program_ptr->get_uniform_location("lightPosition");
-	options::u_La_location = options::program_ptr->get_uniform_location("La");
-	options::u_Ld_location = options::program_ptr->get_uniform_location("Ld");
-	options::u_Ls_location = options::program_ptr->get_uniform_location("Ls");
+	options::u_LightPosition_location = options::program_ptr->get_uniform_location("light.position");
+	options::u_La_location = options::program_ptr->get_uniform_location("light.La");
+	options::u_Ld_location = options::program_ptr->get_uniform_location("light.Ld");
+	options::u_Ls_location = options::program_ptr->get_uniform_location("light.Ls");
 
 	//Material properties for the fragment shader
-	options::u_Ka_location = options::program_ptr->get_uniform_location("Ka");
-	options::u_Kd_location = options::program_ptr->get_uniform_location("Kd");
-	options::u_Ks_location = options::program_ptr->get_uniform_location("Ks");
-	options::u_shininess_location = options::program_ptr->get_uniform_location("shininess");
+	options::u_Ka_location = options::program_ptr->get_uniform_location("current_material.Ka");
+	options::u_Kd_location = options::program_ptr->get_uniform_location("current_material.Kd");
+	options::u_Ks_location = options::program_ptr->get_uniform_location("current_material.Ks");
+	options::u_shininess_location = options::program_ptr->get_uniform_location("current_material.shine");
 
 	//Location for the different lighting models
 	options::u_lighting_model_option_location = options::program_ptr->get_subroutine_uniform_location(GL_FRAGMENT_SHADER, "selectedModel");
@@ -114,6 +113,8 @@ void init_OpenGL() {
 }
 
 void create_glut_window() {
+	//Set number of samples per pixel
+	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 800);
 	options::window = glutCreateWindow("Lighting demo");

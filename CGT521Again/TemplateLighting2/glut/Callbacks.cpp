@@ -142,6 +142,14 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::current_material_index =  (options::current_material_index - 1 + options::materials.size()) % options::materials.size();
 		break;
 
+		case GLUT_KEY_UP:
+			++options::lighting_model_option %= options::MODELS_NUMBER;
+		break;
+
+		case GLUT_KEY_DOWN:
+			options::lighting_model_option = (options::lighting_model_option - 1 + options::MODELS_NUMBER) % options::MODELS_NUMBER;
+		break;
+
 		case GLUT_KEY_F1:
 		{
 			options::mesh_file = "Amago0.obj";

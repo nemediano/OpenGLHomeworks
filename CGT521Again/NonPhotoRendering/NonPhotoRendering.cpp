@@ -125,8 +125,7 @@ void init_OpenGL() {
 	fragment_options_array = new GLuint[fragment_filters_counter];
 
 	//Activate antialliasing
-	glEnable(GL_POLYGON_SMOOTH);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_MULTISAMPLE);
 
 	//initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
@@ -135,7 +134,9 @@ void init_OpenGL() {
 }
 
 void create_glut_window() {
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	//Set number of samples per pixel
+	glutSetOption(GLUT_MULTISAMPLE, 8);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 800);
 	options::window = glutCreateWindow("Non-Photorealistic rendering");
 }
