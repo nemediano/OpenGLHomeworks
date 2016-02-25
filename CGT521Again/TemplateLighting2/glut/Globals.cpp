@@ -64,5 +64,5 @@ namespace options {
 	std::vector<scene::Material> materials;
 	//Lighting model
 	int lighting_model_option = 0;
-	const int MODELS_NUMBER = 1;
+	const int MODELS_NUMBER = 2;
 }

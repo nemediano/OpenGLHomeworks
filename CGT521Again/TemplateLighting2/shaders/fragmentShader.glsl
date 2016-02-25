@@ -35,6 +35,7 @@ uniform sampler2D texture_map;
 subroutine vec3 shadingModel(Material m);
 
 vec3 phong_shading(Material m);
+vec3 cook_torrance(Material m);
 
 subroutine uniform shadingModel selectedModel;
 
@@ -64,6 +65,42 @@ subroutine (shadingModel) vec3 phong_shading(Material mat) {
 	vec3 ambient_term = mat.Ka * light.La;
 	vec3 diffuse_term = mat.Kd * light.Ld * max(0.0, dot(n, l));
 	vec3 specular_term = mat.Ks * light.Ls * pow(max(0.0, dot(r, v)), mat.shine);
+	
+	return ambient_term + diffuse_term + specular_term;
+}
+
+subroutine (shadingModel) vec3 cook_torrance(Material mat) {
+	vec3 n = fNormal;
+	//Light position must be in Viewspace (Same as fPosition)
+	vec3 l = normalize(light.position - fPosition);
+	//Since we are in view space the eye is at the origin so v = eye - p = -p
+	vec3 v = normalize(-fPosition);
+	//Since in GLSL the first argument of the reflect function 
+	//is "incident" vector. I'm going to use the negative of the
+	//vector that usually use on the books
+	vec3 r = normalize(reflect(-l, fNormal));
+	//Half vector used in this model
+	vec3 h = normalize(l + v);
+
+	vec3 ambient_term = mat.Ka * light.La;
+	vec3 diffuse_term = mat.Kd * light.Ld * max(0.0, dot(n, l));
+	
+	//Create the specular term using Cook-Torrance
+	//Parameters
+	float m = 0.03f;
+	float eta = 6.16f;
+	
+	float n_dot_h = dot(n, h);
+	float n_dot_v = dot(n, v);
+	
+	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
+	float F = f_lambda + (1.0f - f_lambda) * (1.0f - n_dot_v) * (1.0f - n_dot_v) * (1.0f - n_dot_v) * (1.0f - n_dot_v) * (1.0f - n_dot_v);
+	
+	float D = exp(-(1.0f - n_dot_h * n_dot_h) / (n_dot_h * n_dot_h)) / (4.0f * m * m * n_dot_h * n_dot_h * n_dot_h * n_dot_h);
+	
+	float G = min(1.0f, min((2.0f * n_dot_h * n_dot_v)/dot(v, h), (2.0f * n_dot_h * dot(n, l)) / dot(v, h)));
+	
+	vec3 specular_term = mat.Ks * light.Ls * ((F * D * G)/(3.1416f * dot(n, l) * n_dot_v));
 	
 	return ambient_term + diffuse_term + specular_term;
 }

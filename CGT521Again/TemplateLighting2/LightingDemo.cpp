@@ -95,6 +95,7 @@ void init_OpenGL() {
 	//Location for the different lighting models
 	options::u_lighting_model_option_location = options::program_ptr->get_subroutine_uniform_location(GL_FRAGMENT_SHADER, "selectedModel");
 	available_models.push_back(options::program_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "phong_shading"));
+	available_models.push_back(options::program_ptr->get_subroutine_index_location(GL_FRAGMENT_SHADER, "cook_torrance"));
 	
 
 	glGetProgramStageiv(options::program_ptr->get_program_id(), GL_FRAGMENT_SHADER, GL_ACTIVE_SUBROUTINE_UNIFORMS, &fragment_options_counter);
