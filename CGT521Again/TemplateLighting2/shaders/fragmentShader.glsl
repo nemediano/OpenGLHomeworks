@@ -36,6 +36,12 @@ subroutine vec3 shadingModel(Material m);
 
 vec3 phong_shading(Material m);
 vec3 cook_torrance(Material m);
+//Helpers for Cook Torrance
+float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l);
+float roughness_term(vec3 n, vec3 h, float m);
+float fresnel_term(vec3 h, vec3 v, float eta);
+float fresnel_term_fast(vec3 n, vec3 v, float eta);
+float fresnel_term_2(vec3 n, vec3 v, float eta);
 
 subroutine uniform shadingModel selectedModel;
 
@@ -83,24 +89,67 @@ subroutine (shadingModel) vec3 cook_torrance(Material mat) {
 	vec3 h = normalize(l + v);
 
 	vec3 ambient_term = mat.Ka * light.La;
-	vec3 diffuse_term = mat.Kd * light.Ld * max(0.0, dot(n, l));
+	vec3 diffuse_term = mat.Kd * light.Ld * max(0.0f, dot(n, l));
 	
 	//Create the specular term using Cook-Torrance
 	//Parameters
-	float m = 0.03f;
-	float eta = 6.16f;
+	float m = 0.9f;
+	float eta = 0.7f;
+	//float F = fresnel_term(h, v, eta);
+	//float F = fresnel_term_fast(n, v, eta);
+	float F = fresnel_term_2(n, v, eta);
+	//float F = 1.0f;
+	float D = roughness_term(n, h, m);
+	//float D = 1.0f;
+	float G = geometric_attenuation(n, h, v, l);
+	//float G = 1.0f;
 	
-	float n_dot_h = dot(n, h);
-	float n_dot_v = dot(n, v);
-	
-	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
-	float F = f_lambda + (1.0f - f_lambda) * (1.0f - n_dot_v) * (1.0f - n_dot_v) * (1.0f - n_dot_v) * (1.0f - n_dot_v) * (1.0f - n_dot_v);
-	
-	float D = exp(-(1.0f - n_dot_h * n_dot_h) / (n_dot_h * n_dot_h)) / (4.0f * m * m * n_dot_h * n_dot_h * n_dot_h * n_dot_h);
-	
-	float G = min(1.0f, min((2.0f * n_dot_h * n_dot_v)/dot(v, h), (2.0f * n_dot_h * dot(n, l)) / dot(v, h)));
-	
-	vec3 specular_term = mat.Ks * light.Ls * ((F * D * G)/(3.1416f * dot(n, l) * n_dot_v));
+	vec3 specular_term = mat.Ks * light.Ls * max(0.0f,(F * D * G)/(4.0f * dot(n, l) * dot(n, v)));
+	//vec3 specular_term = mat.Ks * light.Ls * max(0.0f, F);
 	
 	return ambient_term + diffuse_term + specular_term;
+	//return specular_term;
+}
+
+float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
+	
+	float n_dot_h = dot(n, h);
+	float v_dot_h = dot(v, h);
+	
+	float masking = 2.0f * n_dot_h * dot(n, v) / v_dot_h;
+	float shadowing = 2.0f * n_dot_h * dot(n, l) / v_dot_h;
+	
+	return min(1.0f, min(masking, shadowing));
+}
+
+float roughness_term(vec3 n, vec3 h, float m) {
+	float n_dot_h_sq = dot(n, h) * dot(n, h);
+	float tan_sq = (1.0f - n_dot_h_sq) / (n_dot_h_sq);
+	float m_sq = m * m;
+	
+	return exp(-1.0f * tan_sq / (m_sq))/(3.1416f * m_sq * n_dot_h_sq * n_dot_h_sq);
+}
+
+float fresnel_term_fast(vec3 n, vec3 v, float eta) {
+	float one_minus_n_dot_v_5th = pow(1.0f - dot(n, v), 5.0);
+	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
+	
+	return f_lambda + (1.0f - f_lambda) * one_minus_n_dot_v_5th;
+}
+
+float fresnel_term(vec3 h, vec3 v, float eta) {
+	float c = dot(v, h);
+	float g = sqrt(eta * eta + c * c - 1.0);
+	
+	float g_plus_c = g + c;
+	float g_minus_c = g - c;
+	
+	float left_factor  =  (g_minus_c * g_minus_c) / (2.0 * g_plus_c * g_plus_c);
+	float right_factor = (1.0 + pow(c * g_plus_c - 1.0, 2.0) / pow(c * g_minus_c - 1.0, 2.0));
+	
+	return left_factor * right_factor;
+}
+
+float fresnel_term_2(vec3 n, vec3 v, float eta) {
+	return pow(1.0 + dot(n, v), eta);
 }
