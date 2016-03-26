@@ -4,28 +4,10 @@ uniform sampler2D texture_map;
 
 out vec4 fragcolor;
 
-subroutine vec4 filterType();
-
-vec4 no_filter();
-vec4 average_3x3();
-vec4 average_9x9();
-vec4 edge_detection();          
 ivec2 safe_position(ivec2 position);
 
+subroutine vec4 filterType();
 subroutine uniform filterType selectedFilter;
-      
-void main(void) {
-	
-	fragcolor = selectedFilter();
-	
-}
-
-//Calculate safe coordinates to evaluate texture 
-//and avoid branching
-ivec2 safe_position(ivec2 position) {
-	ivec2 size	= textureSize(texture_map, 0);
-	return ivec2(mod(position + size, size));
-}
 
 subroutine (filterType) vec4 no_filter() {
 	ivec2 fPosition = ivec2(gl_FragCoord.xy);
@@ -102,5 +84,18 @@ subroutine (filterType) vec4 edge_detection() {
 	vec4 below = texelFetch(texture_map, safe_position(fPosition - j), 0);
 	
 	return (left - right) * (left - right) + (above - below) * (above - below);
+}
+   
+void main(void) {
+	
+	fragcolor = selectedFilter();
+	
+}
+
+//Calculate safe coordinates to evaluate texture 
+//and avoid branching
+ivec2 safe_position(ivec2 position) {
+	ivec2 size	= textureSize(texture_map, 0);
+	return ivec2(mod(position + size, size));
 }
 

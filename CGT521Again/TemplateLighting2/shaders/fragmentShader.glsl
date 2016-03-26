@@ -34,8 +34,8 @@ uniform sampler2D texture_map;
 
 subroutine vec3 shadingModel(Material m);
 
-vec3 phong_shading(Material m);
-vec3 cook_torrance(Material m);
+//vec3 phong_shading(Material m);
+//vec3 cook_torrance(Material m);
 //Helpers for Cook Torrance
 float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l);
 float roughness_term(vec3 n, vec3 h, float m);
@@ -44,17 +44,6 @@ float fresnel_term_fast(vec3 n, vec3 v, float eta);
 float fresnel_term_2(vec3 n, vec3 v, float eta);
 
 subroutine uniform shadingModel selectedModel;
-
-void main(void) {
-	Material m;
-	//Fill the material either with the texture or from the current material
-	m.Ka = mix(current_material.Ka, vec3(texture2D(texture_map, fTextCoord)), texture_option);
-	m.Kd = mix(current_material.Kd, m.Ka, texture_option);
-	m.Ks = mix(current_material.Ks, vec3(1.0f), texture_option);
-	m.shine = mix(current_material.shine, 32.0f, texture_option);
-	
-	fragshading = vec4(selectedModel(m), 1.0);
-}
 
 subroutine (shadingModel) vec3 phong_shading(Material mat) {
 	
@@ -110,6 +99,19 @@ subroutine (shadingModel) vec3 cook_torrance(Material mat) {
 	return ambient_term + diffuse_term + specular_term;
 	//return specular_term;
 }
+
+
+void main(void) {
+	Material m;
+	//Fill the material either with the texture or from the current material
+	m.Ka = mix(current_material.Ka, vec3(texture2D(texture_map, fTextCoord)), texture_option);
+	m.Kd = mix(current_material.Kd, m.Ka, texture_option);
+	m.Ks = mix(current_material.Ks, vec3(1.0f), texture_option);
+	m.shine = mix(current_material.shine, 32.0f, texture_option);
+	
+	fragshading = vec4(selectedModel(m), 1.0);
+}
+
 
 float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
 	

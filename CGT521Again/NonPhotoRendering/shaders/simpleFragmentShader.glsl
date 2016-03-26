@@ -6,36 +6,14 @@ uniform sampler2D normal_map;
 
 out vec4 fragcolor;
 
-subroutine vec4 filterType();
+const vec4 black = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+const vec4 white = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-vec4 no_filter();
-vec4 average_3x3();
-vec4 average_9x9();
-vec4 edge_detection();
-vec4 sobel_filter();
-vec4 sobel_threshold();
-vec4 sobel_threshold_normals();
+subroutine vec4 filterType();
       
 ivec2 safe_position(ivec2 position);
 
 subroutine uniform filterType selectedFilter;
-
-const vec4 black = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-const vec4 white = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-  
-void main(void) {
-	
-	fragcolor = selectedFilter();
-	
-}
-
-//Calculate safe coordinates to evaluate texture 
-//and avoid branching
-ivec2 safe_position(ivec2 position) {
-	//All the textures have the same size!
-	ivec2 size	= textureSize(color_shade_map, 0);
-	return ivec2(mod(position + size, size));
-}
 
 subroutine (filterType) vec4 no_filter() {
 	ivec2 fPosition = ivec2(gl_FragCoord.xy);
@@ -197,6 +175,17 @@ subroutine (filterType) vec4 sobel_threshold_normals() {
 	return mix(white, black, edge);
 	//return vec4(edge * vec3(1.0f), 1.0f);
 }
+  
+void main(void) {
+	
+	fragcolor = selectedFilter();
+	
+}
 
-
-
+//Calculate safe coordinates to evaluate texture 
+//and avoid branching
+ivec2 safe_position(ivec2 position) {
+	//All the textures have the same size!
+	ivec2 size	= textureSize(color_shade_map, 0);
+	return ivec2(mod(position + size, size));
+}
