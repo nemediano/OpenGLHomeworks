@@ -136,18 +136,22 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 	switch (key) {
 		case GLUT_KEY_PAGE_UP:
 			++options::current_material_index %= options::materials.size();
+			cout << "Material changed to: " << options::materials[options::current_material_index].getName() << endl;
 		break;
 
 		case GLUT_KEY_PAGE_DOWN: 
 			options::current_material_index =  (options::current_material_index - 1 + options::materials.size()) % options::materials.size();
+			cout << "Material changed to: " << options::materials[options::current_material_index].getName() << endl;
 		break;
 
 		case GLUT_KEY_UP:
 			++options::lighting_model_option %= options::MODELS_NUMBER;
+			cout << "Lighting mode changed to " << (options::lighting_model_option ? "Cook Torrance" : "Phong") << endl;
 		break;
 
 		case GLUT_KEY_DOWN:
 			options::lighting_model_option = (options::lighting_model_option - 1 + options::MODELS_NUMBER) % options::MODELS_NUMBER;
+			cout << "Lighting mode changed to " << (options::lighting_model_option ? "Cook Torrance" : "Phong") << endl;
 		break;
 
 		case GLUT_KEY_F1:
@@ -155,6 +159,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "Amago0.obj";
 			options::texture_file = "AmagoT.bmp";
 			reload_mesh_and_texture();
+			cout << "Amago loaded!" << endl;
 		}
 		break;
 
@@ -163,6 +168,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "../models/suzanne.obj";
 			options::texture_file = "";
 			reload_mesh_and_texture();
+			cout << "Suzanne loaded!" << endl;
 		}
 		break;
 
@@ -171,6 +177,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "../models/teapot.obj";
 			options::texture_file = "";
 			reload_mesh_and_texture();
+			cout << "Teapot loaded!" << endl;
 		}
 		break;
 
@@ -179,6 +186,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "../models/bunny.obj";
 			options::texture_file = "";
 			reload_mesh_and_texture();
+			cout << "Bunny loaded!" << endl;
 		}
 		break;
 
@@ -187,6 +195,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "../models/cow.obj";
 			options::texture_file = "";
 			reload_mesh_and_texture();
+			cout << "Cow loaded!" << endl;
 		}
 		break;
 
@@ -195,6 +204,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "../models/armadillo.obj";
 			options::texture_file = "";
 			reload_mesh_and_texture();
+			cout << "Armadillo loaded!" << endl;
 		}
 		break;
 
@@ -203,6 +213,7 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 			options::mesh_file = "../models/dragon.obj";
 			options::texture_file = "";
 			reload_mesh_and_texture();
+			cout << "Dragon loaded!" << endl;
 		}
 		break;
 

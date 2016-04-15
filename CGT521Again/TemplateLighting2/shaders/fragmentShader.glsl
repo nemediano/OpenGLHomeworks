@@ -133,7 +133,7 @@ float roughness_term(vec3 n, vec3 h, float m) {
 }
 
 float fresnel_term_fast(vec3 n, vec3 v, float eta) {
-	float one_minus_n_dot_v_5th = pow(1.0f - dot(n, v), 5.0);
+	float one_minus_n_dot_v_5th = pow(1.0f - max(0.0, dot(n, v)), 5.0);
 	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
 	
 	return f_lambda + (1.0f - f_lambda) * one_minus_n_dot_v_5th;

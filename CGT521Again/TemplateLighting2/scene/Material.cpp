@@ -6,6 +6,7 @@ namespace scene {
 		setKd(glm::vec3(0.5f, 0.5f, 0.5f));
 		setKs(glm::vec3(1.0f, 1.0f, 1.0f));
 		setShininess(8.0f);
+		setName("");
 	}
 
 	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& shininess) {
@@ -13,6 +14,15 @@ namespace scene {
 		setKd(Kd);
 		setKs(Ks);
 		setShininess(shininess);
+		setName("");
+	}
+
+	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& shininess, const std::string& name) {
+		setKa(Ka);
+		setKd(Kd);
+		setKs(Ks);
+		setShininess(shininess);
+		setName(name);
 	}
 
 	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks) {
@@ -20,6 +30,7 @@ namespace scene {
 		setKd(Kd);
 		setKs(Ks);
 		setShininess(1.0f);
+		setName("");
 	}
 
 	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd) {
@@ -27,6 +38,7 @@ namespace scene {
 		setKd(Kd);
 		setKs(glm::vec3(1.0f, 1.0f, 1.0f));
 		setShininess(1.0f);
+		setName("");
 	}
 
 	Material::Material(const glm::vec3& ambientAndDiffuse, const glm::vec3& Ks, const float& shininess) {
@@ -34,6 +46,7 @@ namespace scene {
 		setKd(ambientAndDiffuse);
 		setKs(Ks);
 		setShininess(shininess);
+		setName("");
 	}
 
 	Material::Material(const glm::vec3& ambientAndDiffuse, const float& shininess) {
@@ -41,6 +54,7 @@ namespace scene {
 		setKd(ambientAndDiffuse);
 		setKs(glm::vec3(1.0f, 1.0f, 1.0f));
 		setShininess(shininess);
+		setName("");
 	}
 
 	Material::Material(const glm::vec3& ambientAndDiffuse) {
@@ -48,6 +62,7 @@ namespace scene {
 		setKd(ambientAndDiffuse);
 		setKs(glm::vec3(1.0f, 1.0f, 1.0f));
 		setShininess(1.0f);
+		setName("");
 	}
 	//Getter and setters
 	glm::vec3 Material::getKa() const {
@@ -64,6 +79,10 @@ namespace scene {
 
 	float Material::getShininnes() const {
 		return m_shininess;
+	}
+
+	std::string Material::getName() const {
+		return m_name;
 	}
 
 	void Material::setKa(const glm::vec3& Ka) {
@@ -99,5 +118,7 @@ namespace scene {
 		}
 	}
 
-	
+	void Material::setName(const std::string& name) {
+		m_name = name;
+	}
 }

@@ -22,6 +22,7 @@ using namespace std;
 #include "scene/Material.h"
 #include "scene/Mesh.h"
 #include "image/Texture.h"
+#include "imgui/imgui_impl_glut.h"
 
 #include "LightingDemo.h"
 
@@ -38,6 +39,7 @@ int main(int argc, char* argv[]) {
 	create_glut_window();
 
 	init_OpenGL();
+	ImGui_ImplGlut_Init(); //Initialize the imgui system
 	init_program();
 
 	create_glut_callbacks();
@@ -153,7 +155,7 @@ void init_program() {
 	glm::vec3 Kd = glm::vec3(0.714f, 0.4284f, 0.18144f);
 	glm::vec3 Ks = glm::vec3(0.393548f, 0.271906f, 0.166721f);
 	float shine = 10.0f;
-	options::materials.push_back(scene::Material(Ka, Kd, Ks, shine));
+	options::materials.push_back(scene::Material(Ka, Kd, Ks, shine, "Custom material"));
 	options::materials.push_back(scene::EMERALD);
 	options::materials.push_back(scene::JADE);
 	options::materials.push_back(scene::OBSIDIAN);
@@ -179,13 +181,14 @@ void init_program() {
 	options::materials.push_back(scene::WHITE_RUBBER);
 	options::materials.push_back(scene::YELLOW_RUBBER);
 	options::current_material_index = 0;
-
+	cout << "Material set to: " << options::materials[options::current_material_index].getName() << endl;
 	/************************************************************************/
 	/* Initial mesh value                                                   */
 	/************************************************************************/
 	options::mesh_file = "Amago0.obj";
 	options::texture_file = "AmagoT.bmp";
 	reload_mesh_and_texture();
+	cout << "Amago loaded" << endl;
 }
 
 
@@ -261,6 +264,9 @@ void display() {
 	/*  Send drawing command to gpu                                         */
 	/************************************************************************/
 	mesh_ptr->draw_triangles(options::a_position_loc, options::a_normal_loc, options::a_texture_coordinate_loc, 1);
+
+
+	
 	/************************************************************************/
 	/* Cleaning the state                                                   */
 	/************************************************************************/
@@ -268,7 +274,7 @@ void display() {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glUseProgram(0);
-
+	draw_gui();
 	glutSwapBuffers();
 	//opengl::gl_error("At the end of display");
 }
@@ -339,4 +345,19 @@ void reload_mesh_and_texture() {
 		delete texture_map_ptr;
 	}
 	texture_map_ptr = options::texture_file.empty() ? nullptr : new image::Texture(options::texture_file);
+}
+
+void draw_gui() {
+	ImGui_ImplGlut_NewFrame();
+
+	const int n_sliders = 4;
+	static float slider[n_sliders] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	const std::string labels[n_sliders] = { "gl_TessLevelOuter[0]", "gl_TessLevelOuter[1]", "gl_TessLevelOuter[2]", "gl_TessLevelInner[0]" };
+	for (int i = 0; i < n_sliders; i++)
+	{
+		ImGui::SliderFloat(labels[i].c_str(), &slider[i], 1, 20);
+	}
+	
+
+	ImGui::Render();
 }

@@ -19,4 +19,7 @@ void display();
 void reload_shaders();
 void reload_mesh_and_texture();
 
+//For the gui
+void draw_gui();
+
 #endif
