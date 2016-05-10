@@ -73,6 +73,12 @@ namespace options {
 	//Lighting model
 	extern int lighting_model_option;
 	extern const int MODELS_NUMBER;
+	extern float shininess;
+	extern float m;
+	extern float eta;
+	//Mesh to display
+	extern int current_mesh_model;
+	extern const int MESH_NUMBER;
 }
 
 struct Vertex {

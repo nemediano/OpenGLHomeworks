@@ -65,4 +65,10 @@ namespace options {
 	//Lighting model
 	int lighting_model_option = 0;
 	const int MODELS_NUMBER = 2;
+	float shininess = 1.0f;
+	float m = 0.9f;
+	float eta = 0.7f;
+	//Mesh to display
+	int current_mesh_model = 0;
+	const int MESH_NUMBER = 7;
 }

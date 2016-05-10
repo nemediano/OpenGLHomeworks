@@ -148,4 +148,18 @@
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\fragmentShader.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\simpleFragmentShader.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\simpleVertexShader.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vertexShader.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+  </ItemGroup>
 </Project>

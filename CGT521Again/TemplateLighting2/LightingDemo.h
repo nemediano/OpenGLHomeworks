@@ -18,6 +18,7 @@ void display();
 //For reloading thing after state change
 void reload_shaders();
 void reload_mesh_and_texture();
+void change_mesh();
 
 //For the gui
 void draw_gui();

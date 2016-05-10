@@ -127,10 +127,13 @@ void create_glut_callbacks() {
 	glutDisplayFunc(display);
 	glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
+	glutKeyboardUpFunc(keyboard_up);
 	glutMouseWheelFunc(mouse_wheel);
 	glutSpecialFunc(special_keyboard);
+	glutSpecialUpFunc(special_keybpard_up);
 	glutMouseFunc(mouse);
 	glutMotionFunc(mouse_active);
+	glutPassiveMotionFunc(mouse_passive);
 	glutReshapeFunc(reshape);
 }
 
@@ -200,8 +203,9 @@ void display() {
 	/************************************************************************/
 	/* Clear buffers an initialization                                      */
 	/************************************************************************/
-	options::program_ptr->use_program();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	options::program_ptr->use_program();
+
 	/************************************************************************/
 	/* Calculations per frame about camera                                  */
 	/************************************************************************/
@@ -265,8 +269,6 @@ void display() {
 	/************************************************************************/
 	mesh_ptr->draw_triangles(options::a_position_loc, options::a_normal_loc, options::a_texture_coordinate_loc, 1);
 
-
-	
 	/************************************************************************/
 	/* Cleaning the state                                                   */
 	/************************************************************************/
@@ -276,7 +278,7 @@ void display() {
 	glUseProgram(0);
 	draw_gui();
 	glutSwapBuffers();
-	//opengl::gl_error("At the end of display");
+	opengl::gl_error("At the end of display");
 }
 
 void pass_light() {
@@ -349,15 +351,97 @@ void reload_mesh_and_texture() {
 
 void draw_gui() {
 	ImGui_ImplGlut_NewFrame();
+	ImGui::Begin("Options");
+		ImGui::Text("Lighting model");
 
-	const int n_sliders = 4;
-	static float slider[n_sliders] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	const std::string labels[n_sliders] = { "gl_TessLevelOuter[0]", "gl_TessLevelOuter[1]", "gl_TessLevelOuter[2]", "gl_TessLevelInner[0]" };
-	for (int i = 0; i < n_sliders; i++)
-	{
-		ImGui::SliderFloat(labels[i].c_str(), &slider[i], 1, 20);
-	}
-	
+		ImGui::RadioButton("Phong", &options::lighting_model_option, 0);
+		ImGui::RadioButton("Cook - Torrance", &options::lighting_model_option, 1);
+		
+		if (ImGui::TreeNode("Phong options")) {
+			ImGui::DragFloat("Shininess", &options::shininess, 0.01f, 0.0f, 256.0f, "%.3f", 1.0f);
+			ImGui::TreePop();
+		}
+		
+		if (ImGui::TreeNode("Cook Torrance")) {
+			ImGui::DragFloat("Eta", &options::eta, 0.01f, 0.0f, 256.0f, "%.3f", 1.0f);
+			ImGui::DragFloat("m", &options::m, 0.01f, 0.0f, 256.0f, "%.3f", 1.0f);
+			ImGui::TreePop();
+		}
 
+		if (ImGui::TreeNode("Material")) {
+			vector<char*> list_materials(options::materials.size(), nullptr);
+			for (int i = 0; i < list_materials.size(); ++i) {
+				int j;
+				string name = options::materials[i].getName();
+				list_materials[i] = new char[name.length()];
+				for (j = 0; j < name.length(); ++j) {
+					list_materials[i][j] = name[j];
+				}
+				list_materials[i][j] = '\0';
+			}
+			
+			ImGui::ListBox("", &options::current_material_index, (const char**)list_materials.data(), list_materials.size(), 2);
+			
+			ImGui::TreePop();
+		}
+
+		vector<const char*> list_meshes(options::MESH_NUMBER, nullptr);
+		list_meshes[0] = "Amago";
+		list_meshes[1] = "Suzanne";
+		list_meshes[2] = "Teapot";
+		list_meshes[3] = "Bunny";
+		list_meshes[4] = "Cow";
+		list_meshes[5] = "Armadillo";
+		list_meshes[6] = "Dragon";
+		ImGui::Text("Mesh");
+		if (ImGui::ListBox("", &options::current_mesh_model, list_meshes.data(), options::MESH_NUMBER, 2)) {
+			//Do processing
+			change_mesh();
+			reload_mesh_and_texture();
+		}
+
+		if (ImGui::Button("Restart camera")) {
+			reset_camera();
+		}
+	ImGui::End();
 	ImGui::Render();
+}
+
+void change_mesh() {
+	switch (options::current_mesh_model) {
+		case 0: {
+			options::mesh_file = "Amago0.obj";
+			options::texture_file = "AmagoT.bmp";
+		} break;
+
+		case 1: {
+			options::mesh_file = "../models/suzanne.obj";
+			options::texture_file = "";
+		} break;
+
+		case 2: {
+			options::mesh_file = "../models/teapot.obj";
+			options::texture_file = "";
+		} break;
+
+		case 3: {
+			options::mesh_file = "../models/bunny.obj";
+			options::texture_file = "";
+		} break;
+
+		case 4: {
+			options::mesh_file = "../models/cow.obj";
+			options::texture_file = "";
+		} break;
+
+		case 5: {
+			options::mesh_file = "../models/armadillo.obj";
+			options::texture_file = "";
+		} break;
+
+		case 6: {
+			options::mesh_file = "../models/dragon.obj";
+			options::texture_file = "";
+		} break;
+	}
 }

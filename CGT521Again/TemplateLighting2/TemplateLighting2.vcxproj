@@ -194,6 +194,12 @@
   <ItemGroup>
     <Image Include="AmagoT.bmp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\fragmentShader.glsl" />
+    <None Include="shaders\simpleFragmentShader.glsl" />
+    <None Include="shaders\simpleVertexShader.glsl" />
+    <None Include="shaders\vertexShader.glsl" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

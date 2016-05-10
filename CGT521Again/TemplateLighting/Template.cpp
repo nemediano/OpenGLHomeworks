@@ -77,7 +77,6 @@ void init_OpenGL() {
 
 	opengl::get_error_log();
 
-
 	options::u_PVM_location = options::program_ptr->get_uniform_location("PVM");
 	options::u_NormalMatrix_location = options::program_ptr->get_uniform_location("NormalMatrix");
 	options::u_VM_location = options::program_ptr->get_uniform_location("VM");
@@ -103,7 +102,7 @@ void init_OpenGL() {
 	glEnable(GL_POLYGON_SMOOTH);
 	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	//initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
@@ -147,7 +146,6 @@ void init_program() {
 
 	//Create material
 	options::material = scene::Material(glm::vec3(1.0f, 1.0f, 0.0f), 32.0f);
-
 }
 
 
@@ -162,7 +160,7 @@ void display() {
 	mat4 I(1.0f);
 
 	//Model
-	mat4 M = glm::scale(I, glm::vec3(1.5f, 1.5f, 0.5f));
+	mat4 M = glm::scale(I, glm::vec3(1.0f, 1.0f, 1.0f));
 
 	//View
 	/* Camera rotation must be accumulated: base rotation then new rotation */
@@ -326,7 +324,7 @@ void create_sphere() {
 	glm::vec3 p_3 = glm::vec3(glm::sqrt(2.0 / 3.0), -glm::sqrt(2.0) / 3.0, -1.0 / 3.0);
 
 	//Iterate doing the decomposition
-	const int level = 4;
+	const int level = 3;
 	subdivide_face(p_0, p_2, p_3, level);
 	subdivide_face(p_0, p_3, p_1, level);
 	subdivide_face(p_0, p_1, p_2, level);

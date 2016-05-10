@@ -10,6 +10,7 @@
 #include "../opengl/HelperFunctions.h"
 #include "../LightingDemo.h"
 #include "Callbacks.h"
+#include "../imgui/imgui_impl_glut.h"
 
 void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
@@ -29,6 +30,7 @@ void idle() {
 }
 
 void keyboard(unsigned char key, int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_KeyCallback(key);
 	if (key == 27) {//press ESC to exit
 		exit_glut();
 	} else if (key == 'c' || key == 'C') {
@@ -37,23 +39,13 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		options::rotate_fish = (!options::rotate_fish);
 	} else if (key == 'r' || key == 'R') {
 		reload_shaders();
-	} else if (key == '1') {
-		
-	} else if (key == '2') {
-		
-	} else if (key == '3') {
-		
-	} else if (key == '4') {
-		
-	} else if (key == '5') {
-		
-	} else if (key == '6') {
-		
-	} else if (key == '7') {
-		
-	}
+	} 
 
 	glutPostRedisplay();
+}
+
+void keyboard_up(unsigned char key, int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_KeyUpCallback(key);
 }
 
 void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
@@ -69,6 +61,7 @@ void mouse_wheel(int wheel, int direction, int mouse_x, int mouse_y) {
 }
 
 void mouse_active(int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_MouseMotionCallback(mouse_x, mouse_y);
 	glm::vec2 mouse_current;
 	if (options::mouse_dragging) {
 		mouse_current = glm::vec2(static_cast<float>(mouse_x), static_cast<float>(mouse_y));
@@ -89,6 +82,14 @@ void mouse_active(int mouse_x, int mouse_y) {
 	glutPostRedisplay();
 }
 
+void mouse_motion(int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_MouseMotionCallback(mouse_x, mouse_y);
+}
+
+void mouse_passive(int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_PassiveMouseMotionCallback(mouse_x, mouse_y);
+}
+
 float projection_on_curve(glm::vec2 projected) {
 	const float radius = 0.5f;
 	float z = 0.0f;
@@ -104,7 +105,7 @@ float projection_on_curve(glm::vec2 projected) {
 }
 
 void mouse(int button, int state, int mouse_x, int mouse_y) {
-
+	ImGui_ImplGlut_MouseButtonCallback(button, state);
 	if (state == GLUT_DOWN && button == GLUT_LEFT_BUTTON) {
 		options::mouse_dragging = true;
 		options::mouse_start_drag.x = static_cast<float>(mouse_x);
@@ -133,6 +134,7 @@ void reset_camera() {
 }
 
 void special_keyboard(int key, int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_SpecialCallback(key);
 	switch (key) {
 		case GLUT_KEY_PAGE_UP:
 			++options::current_material_index %= options::materials.size();
@@ -156,8 +158,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F1:
 		{
-			options::mesh_file = "Amago0.obj";
-			options::texture_file = "AmagoT.bmp";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Amago loaded!" << endl;
 		}
@@ -165,8 +167,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F2:
 		{
-			options::mesh_file = "../models/suzanne.obj";
-			options::texture_file = "";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Suzanne loaded!" << endl;
 		}
@@ -174,8 +176,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F3:
 		{
-			options::mesh_file = "../models/teapot.obj";
-			options::texture_file = "";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Teapot loaded!" << endl;
 		}
@@ -183,8 +185,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F4:
 		{
-			options::mesh_file = "../models/bunny.obj";
-			options::texture_file = "";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Bunny loaded!" << endl;
 		}
@@ -192,8 +194,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F5:
 		{
-			options::mesh_file = "../models/cow.obj";
-			options::texture_file = "";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Cow loaded!" << endl;
 		}
@@ -201,8 +203,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F6:
 		{
-			options::mesh_file = "../models/armadillo.obj";
-			options::texture_file = "";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Armadillo loaded!" << endl;
 		}
@@ -210,8 +212,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F7:
 		{
-			options::mesh_file = "../models/dragon.obj";
-			options::texture_file = "";
+			options::current_mesh_model = 0;
+			change_mesh();
 			reload_mesh_and_texture();
 			cout << "Dragon loaded!" << endl;
 		}
@@ -222,4 +224,8 @@ void special_keyboard(int key, int mouse_x, int mouse_y) {
 	}
 
 	glutPostRedisplay();
+}
+
+void special_keybpard_up(int key, int mouse_x, int mouse_y) {
+	ImGui_ImplGlut_SpecialUpCallback(key);
 }
