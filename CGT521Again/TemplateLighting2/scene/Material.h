@@ -13,13 +13,21 @@ namespace scene {
 			glm::vec3 m_Kd;
 			//Specular material color
 			glm::vec3 m_Ks;
-			//Shininess material coefficient
+			//Shininess material coefficient (Phong)
 			float m_shininess;
+			//Eta (index of refraction for Cook torrance)
+			float m_refraction;
+			//M average of slope microfactes (for Cook Torrance)
+			float m_slope;
+			//Name of the material
 			std::string m_name;
 		public:
 			Material();
 			Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& shininess);
 			Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& shininess, const std::string& name);
+			Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const std::string& name);
+			Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& refraction, const float& slope, const std::string& name);
+			Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& refraction, const float& slope);
 			Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks);
 			Material(const glm::vec3& Ka, const glm::vec3& Kd);
 			Material(const glm::vec3& ambientAndDiffuse, const glm::vec3& Ks, const float& shininess);
@@ -30,11 +38,15 @@ namespace scene {
 			glm::vec3 getKd() const;
 			glm::vec3 getKs() const;
 			float getShininnes() const;
+			float getRoughness() const;
+			float getRefraction() const;
 			std::string getName() const;
 			void setKa(const glm::vec3& Ka);
 			void setKd(const glm::vec3& Kd);
 			void setKs(const glm::vec3& Ks);
 			void setShininess(const float& shininess);
+			void setRefraction(const float& refraction);
+			void setRoghness(const float& rougness);
 			void setName(const std::string& name);
 	};
 	using glm::vec3;

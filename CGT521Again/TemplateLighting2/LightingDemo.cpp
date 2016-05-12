@@ -93,6 +93,8 @@ void init_OpenGL() {
 	options::u_Kd_location = options::program_ptr->get_uniform_location("current_material.Kd");
 	options::u_Ks_location = options::program_ptr->get_uniform_location("current_material.Ks");
 	options::u_shininess_location = options::program_ptr->get_uniform_location("current_material.shine");
+	options::u_eta_location = options::program_ptr->get_uniform_location("current_material.eta");
+	options::u_mCof_location = options::program_ptr->get_uniform_location("current_material.m");
 
 	//Location for the different lighting models
 	options::u_lighting_model_option_location = options::program_ptr->get_subroutine_uniform_location(GL_FRAGMENT_SHADER, "selectedModel");
@@ -157,8 +159,8 @@ void init_program() {
 	glm::vec3 Ka = glm::vec3(0.2125f, 0.1275f, 0.054f);
 	glm::vec3 Kd = glm::vec3(0.714f, 0.4284f, 0.18144f);
 	glm::vec3 Ks = glm::vec3(0.393548f, 0.271906f, 0.166721f);
-	float shine = 10.0f;
-	options::materials.push_back(scene::Material(Ka, Kd, Ks, shine, "Custom material"));
+	options::shininess = 10.0f;
+	options::materials.push_back(scene::Material(Ka, Kd, Ks, options::shininess, "Custom material"));
 	options::materials.push_back(scene::EMERALD);
 	options::materials.push_back(scene::JADE);
 	options::materials.push_back(scene::OBSIDIAN);
@@ -248,6 +250,15 @@ void display() {
 	if (options::u_texture_option_location != -1) {
 		glUniform1i(options::u_texture_option_location, options::has_texture ? 1 : 0);
 	}
+	if (options::u_shininess_location != -1) {
+		glUniform1f(options::u_shininess_location, options::shininess);
+	}
+	if (options::u_eta_location != -1) {
+		glUniform1f(options::u_eta_location, options::eta);
+	}
+	if (options::u_mCof_location != -1) {
+		glUniform1f(options::u_mCof_location, options::m);
+	}
 
 	if (texture_map_ptr) {
 		glActiveTexture(GL_TEXTURE0);
@@ -328,9 +339,7 @@ void pass_material() {
 	if (options::u_Ks_location != -1) {
 		glUniform3fv(options::u_Ks_location, 1, glm::value_ptr(options::materials[options::current_material_index].getKs()));
 	}
-	if (options::u_shininess_location != -1) {
-		glUniform1f(options::u_shininess_location, options::materials[options::current_material_index].getShininnes());
-	}
+	
 }
 
 void reload_mesh_and_texture() {
@@ -358,7 +367,7 @@ void draw_gui() {
 		ImGui::RadioButton("Cook - Torrance", &options::lighting_model_option, 1);
 		
 		if (ImGui::TreeNode("Phong options")) {
-			ImGui::DragFloat("Shininess", &options::shininess, 0.01f, 0.0f, 256.0f, "%.3f", 1.0f);
+			ImGui::DragFloat("Shininess", &options::shininess, 0.1f, 0.1f, 128.0f, "%.3f", 1.0f);
 			ImGui::TreePop();
 		}
 		
@@ -368,22 +377,19 @@ void draw_gui() {
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNode("Material")) {
-			vector<char*> list_materials(options::materials.size(), nullptr);
-			for (int i = 0; i < list_materials.size(); ++i) {
-				int j;
-				string name = options::materials[i].getName();
-				list_materials[i] = new char[name.length()];
-				for (j = 0; j < name.length(); ++j) {
-					list_materials[i][j] = name[j];
-				}
-				list_materials[i][j] = '\0';
+		
+		vector<char*> list_materials(options::materials.size(), nullptr);
+		for (int i = 0; i < list_materials.size(); ++i) {
+			int j;
+			string name = options::materials[i].getName();
+			list_materials[i] = new char[name.length()];
+			for (j = 0; j < name.length(); ++j) {
+				list_materials[i][j] = name[j];
 			}
-			
-			ImGui::ListBox("", &options::current_material_index, (const char**)list_materials.data(), list_materials.size(), 2);
-			
-			ImGui::TreePop();
+			list_materials[i][j] = '\0';
 		}
+			
+		ImGui::Combo("Material", &options::current_material_index, (const char**)list_materials.data(), list_materials.size());
 
 		vector<const char*> list_meshes(options::MESH_NUMBER, nullptr);
 		list_meshes[0] = "Amago";
@@ -393,16 +399,22 @@ void draw_gui() {
 		list_meshes[4] = "Cow";
 		list_meshes[5] = "Armadillo";
 		list_meshes[6] = "Dragon";
-		ImGui::Text("Mesh");
-		if (ImGui::ListBox("", &options::current_mesh_model, list_meshes.data(), options::MESH_NUMBER, 2)) {
+		
+		if (ImGui::Combo("Mesh", &options::current_mesh_model, list_meshes.data(), options::MESH_NUMBER)) {
 			//Do processing
 			change_mesh();
 			reload_mesh_and_texture();
 		}
 
-		if (ImGui::Button("Restart camera")) {
+		if (ImGui::Button("Reset camera")) {
 			reset_camera();
 		}
+
+		if (ImGui::Button("Reload shaders")) {
+			reload_shaders();
+		}
+
+		ImGui::Checkbox("Rotate model", &options::rotate_fish);
 	ImGui::End();
 	ImGui::Render();
 }

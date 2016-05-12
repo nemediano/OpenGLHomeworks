@@ -61,6 +61,8 @@ namespace options {
 	GLint u_Kd_location;
 	GLint u_Ks_location;
 	GLint u_shininess_location;
+	GLint u_eta_location = -1;
+	GLint u_mCof_location = -1;
 	std::vector<scene::Material> materials;
 	//Lighting model
 	int lighting_model_option = 0;

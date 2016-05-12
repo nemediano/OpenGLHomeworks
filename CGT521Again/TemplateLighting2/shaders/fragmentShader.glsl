@@ -21,6 +21,8 @@ struct Material {
 	vec3 Kd;
 	vec3 Ks;
 	float shine;
+	float eta;
+	float m;
 };
 
 uniform Material current_material;
@@ -82,8 +84,8 @@ subroutine (shadingModel) vec3 cook_torrance(Material mat) {
 	
 	//Create the specular term using Cook-Torrance
 	//Parameters
-	float m = 0.9f;
-	float eta = 0.7f;
+	float m = mat.m;
+	float eta = mat.eta;
 	//float F = fresnel_term(h, v, eta);
 	//float F = fresnel_term_fast(n, v, eta);
 	float F = fresnel_term_2(n, v, eta);
@@ -107,7 +109,10 @@ void main(void) {
 	m.Ka = mix(current_material.Ka, vec3(texture2D(texture_map, fTextCoord)), texture_option);
 	m.Kd = mix(current_material.Kd, m.Ka, texture_option);
 	m.Ks = mix(current_material.Ks, vec3(1.0f), texture_option);
-	m.shine = mix(current_material.shine, 32.0f, texture_option);
+	//m.shine = mix(current_material.shine, 32.0f, texture_option);
+	m.shine = current_material.shine;
+	m.eta = current_material.eta;
+	m.m = current_material.m;
 	
 	fragshading = vec4(selectedModel(m), 1.0);
 }

@@ -24,6 +24,18 @@ namespace scene {
 		setShininess(shininess);
 		setName(name);
 	}
+	
+	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const std::string& name) {
+
+	}
+	
+	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& refraction, const float& slope, const std::string& name) {
+
+	}
+
+	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks, const float& refraction, const float& slope) {
+
+	}
 
 	Material::Material(const glm::vec3& Ka, const glm::vec3& Kd, const glm::vec3& Ks) {
 		setKa(Ka);
@@ -81,6 +93,14 @@ namespace scene {
 		return m_shininess;
 	}
 
+	float Material::getRoughness() const {
+		return m_slope;
+	}
+
+	float Material::getRefraction() const {
+		return m_refraction;
+	}
+
 	std::string Material::getName() const {
 		return m_name;
 	}
@@ -115,6 +135,23 @@ namespace scene {
 			m_shininess = shininess;
 		} else {
 			m_shininess = 1.0f;
+		}
+	}
+	void Material::setRefraction(const float& refraction) {
+		if (refraction >= 0.0 && refraction <= 256.0) {
+			m_refraction = refraction;
+		}
+		else {
+			m_refraction = 0.0f;
+		}
+	}
+
+	void Material::setRoghness(const float& rougness) {
+		if (rougness >= 0.0 && rougness <= 256.0) {
+			m_slope = rougness;
+		}
+		else {
+			m_slope = 1.0f;
 		}
 	}
 

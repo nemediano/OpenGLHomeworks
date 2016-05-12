@@ -69,6 +69,8 @@ namespace options {
 	extern GLint u_Kd_location;
 	extern GLint u_Ks_location;
 	extern GLint u_shininess_location;
+	extern GLint u_eta_location;
+	extern GLint u_mCof_location;
 	extern std::vector<scene::Material> materials;
 	//Lighting model
 	extern int lighting_model_option;
