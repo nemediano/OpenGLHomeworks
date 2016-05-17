@@ -366,15 +366,13 @@ void draw_gui() {
 		ImGui::RadioButton("Phong", &options::lighting_model_option, 0);
 		ImGui::RadioButton("Cook - Torrance", &options::lighting_model_option, 1);
 		
-		if (ImGui::TreeNode("Phong options")) {
+		if (options::lighting_model_option == 0) {
 			ImGui::DragFloat("Shininess", &options::shininess, 0.1f, 0.1f, 128.0f, "%.3f", 1.0f);
-			ImGui::TreePop();
 		}
 		
-		if (ImGui::TreeNode("Cook Torrance")) {
+		if (options::lighting_model_option == 1) {
 			ImGui::DragFloat("Eta", &options::eta, 0.01f, 0.0f, 256.0f, "%.3f", 1.0f);
 			ImGui::DragFloat("m", &options::m, 0.01f, 0.0f, 256.0f, "%.3f", 1.0f);
-			ImGui::TreePop();
 		}
 
 		
