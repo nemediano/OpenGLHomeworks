@@ -27,6 +27,7 @@
 #define OFFSET_OF(type, member) ((GLvoid*)(offsetof(type, member)))
 //Math constant equal two PI
 const float TAU = 6.28318f;
+const float PI  = 3.14159f;
 
 struct Vertex {
 	glm::vec3 position;
@@ -423,12 +424,12 @@ void display() {
 	glm::mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, glm::vec3(0.0f, 1.0f, 0.0f)) : I;
 	//View
 	glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 1.5f);
 	glm::vec3 camera_center = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::mat4 V = glm::lookAt(camera_position, camera_center, camera_up);
 	//Projection
 	GLfloat aspect = float(glutGet(GLUT_WINDOW_WIDTH)) / float(glutGet(GLUT_WINDOW_HEIGHT));
-	GLfloat fovy = TAU / 8.0f;
+	GLfloat fovy = PI / 8.0f;
 	GLfloat zNear = 0.1f;
 	GLfloat zFar = 3.0f;
 	glm::mat4 P = glm::perspective(fovy, aspect, zNear, zFar);
