@@ -15,3 +15,7 @@ CGT521Solution/CGT521Solution.v12.suo
 CGT521Solution/CGT521Solution.v12.suo
 CGT521Solution/CGT521Solution.v12.suo
 CGT521Solution/CGT521Solution.v12.suo
+*.iobj
+*.ipdb
+*.db
+*.opendb
