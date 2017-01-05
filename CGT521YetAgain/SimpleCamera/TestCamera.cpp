@@ -22,6 +22,12 @@
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
 #include "tiny_obj_loader.h"
 
+#include "Camera.h"
+#include "Trackball.h"
+using namespace camera;
+Camera cam;
+Trackball ball;
+
 // Define a helpful macro for handling offsets into buffer objects
 #define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
 #define OFFSET_OF(type, member) ((GLvoid*)(offsetof(type, member)))
@@ -114,6 +120,10 @@ void drawGUI() {
 	if (ImGui::Button("Quit")) {
 		exit_glut();
 	}
+	if (ImGui::Button("Reset camera")) {
+		cam.setFovY(PI / 8.0f);
+		ball.resetRotation();
+	}
 	ImGui::End();
 
 	/* End with this when you want to render GUI */
@@ -143,6 +153,7 @@ void create_glut_window() {
 }
 
 void init_program() {
+	using glm::vec3;
 	/* Initialize global variables for program control */
 	nTriangles = 1;
 	rotate = false;
@@ -151,6 +162,13 @@ void init_program() {
 	load_texture("../models/AmagoTexture.png");
 	seconds_elapsed = 0.0f;
 	angle = 0.0f;
+	//Set the default position of the camera
+	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
+	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	cam.setFovY(PI / 8.0f);
+	cam.setDepthView(0.1f, 3.0f);
+	//Create trackball camera
+	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 }
 
 void init_OpenGL() {
@@ -408,6 +426,8 @@ void create_glut_callbacks() {
 
 void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
+	cam.setAspectRatio(new_window_width, new_window_height);
+	ball.setWindowSize(new_window_width, new_window_height);
 }
 
 void display() {
@@ -423,16 +443,9 @@ void display() {
 	//Model
 	glm::mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, glm::vec3(0.0f, 1.0f, 0.0f)) : I;
 	//View
-	glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 1.5f);
-	glm::vec3 camera_center = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::mat4 V = glm::lookAt(camera_position, camera_center, camera_up);
+	glm::mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
-	GLfloat aspect = float(glutGet(GLUT_WINDOW_WIDTH)) / float(glutGet(GLUT_WINDOW_HEIGHT));
-	GLfloat fovy = PI / 8.0f;
-	GLfloat zNear = 0.1f;
-	GLfloat zFar = 3.0f;
-	glm::mat4 P = glm::perspective(fovy, aspect, zNear, zFar);
+	glm::mat4 P = cam.getProjectionMatrix();
 
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
@@ -520,6 +533,12 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		exit_glut();
 		break;
 
+	case 'c':
+	case 'C':
+		cam.setFovY(PI / 8.0f);
+		ball.resetRotation();
+	break;
+
 	default:
 		break;
 	}
@@ -542,8 +561,14 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 	else
 		io.MouseDown[1] = false;
 
-	/* Now, the app */
-
+	/* Camera trackball*/
+	if (button == GLUT_LEFT_BUTTON) {
+		if (state == GLUT_DOWN) {
+			ball.startDrag(glm::vec2(mouse_x, mouse_y));
+		} else {
+			ball.endDrag(glm::vec2(mouse_x, mouse_y));
+		}
+	}
 
 
 	glutPostRedisplay();
@@ -571,9 +596,16 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 		io.MouseWheel = -1.0;
 	}
 
-	/* Now, the app*/
-
-
+	/* Camera zoom in-out*/
+	const float DELTA_ANGLE = PI / 30.0f;
+	if (button == 0) {
+		if (dir > 0 && cam.getFovY() < (PI - 2.0f * DELTA_ANGLE)) {
+			cam.addFovY(DELTA_ANGLE);
+		}
+		else if (cam.getFovY() > 2.0 * DELTA_ANGLE) {
+			cam.addFovY(-DELTA_ANGLE);
+		}
+	}
 	glutPostRedisplay();
 }
 
@@ -582,7 +614,8 @@ void mouseDrag(int mouse_x, int mouse_y) {
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 
-	/*Now, the app*/
+	/*Trackball camera*/
+	ball.drag(glm::ivec2(mouse_x, mouse_y));
 
 	glutPostRedisplay();
 }

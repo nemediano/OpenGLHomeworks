@@ -57,10 +57,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;E:\Work\GitRepos\OpenGLHomeworks\CGT521YetAgain\CGTLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)lib;E:\Work\GitRepos\OpenGLHomeworks\CGT521YetAgain\CGTLibrary\x64\Debug</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -72,6 +74,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;E:\Work\GitRepos\OpenGLHomeworks\CGT521YetAgain\CGTLibrary</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -96,6 +99,11 @@
     <ClInclude Include="..\include\imgui\stb_textedit.h" />
     <ClInclude Include="..\include\imgui\stb_truetype.h" />
     <ClInclude Include="..\include\tiny_obj_loader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CGTLibrary\CGTLibrary.vcxproj">
+      <Project>{f6032f78-a0c5-43b9-bd83-d6ff2a1a8ff0}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
