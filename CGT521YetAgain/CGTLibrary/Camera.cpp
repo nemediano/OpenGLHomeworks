@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "Camera.h"
+#include "MathConstants.h"
+using namespace math;
 
 namespace camera {
 
@@ -55,7 +57,7 @@ namespace camera {
 	}
 
 	void Camera::setFovY(float fov_y) {
-		const float EPSILON = 0.001f;
+		
 		m_aperture = glm::clamp(fov_y, 0.000001f, PI - EPSILON);
 	}
 

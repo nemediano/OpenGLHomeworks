@@ -19,6 +19,30 @@
     <Filter Include="Source Files\camera">
       <UniqueIdentifier>{15ed9c10-00a0-495e-9fda-91b59182870d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\image">
+      <UniqueIdentifier>{501adf53-b68e-40e5-b646-62f30343cdb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\image">
+      <UniqueIdentifier>{7eb4fc47-cbde-4d88-8de3-a83abc9c0cbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mesh">
+      <UniqueIdentifier>{912d11dc-6e88-4197-b6de-d5b0ca3601e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\mesh">
+      <UniqueIdentifier>{f7194681-0b0d-4db2-a17f-c8382a8809ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ogl">
+      <UniqueIdentifier>{d99f95bd-cfb3-4003-8e48-8ca19c94c055}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ogl">
+      <UniqueIdentifier>{b291c03f-19a8-466a-945d-e248d95a7b9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\math">
+      <UniqueIdentifier>{f2e2bd80-aefe-440c-84e6-abe559765c66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\math">
+      <UniqueIdentifier>{eb72b7a7-8141-4635-a85c-c59945307ab4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -36,6 +60,27 @@
     <ClInclude Include="Trackball.h">
       <Filter>Header Files\camera</Filter>
     </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Header Files\image</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Header Files\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\tiny_obj_loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OGLHelpers.h">
+      <Filter>Header Files\ogl</Filter>
+    </ClInclude>
+    <ClInclude Include="MathConstants.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="Geometry.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="OGLProgram.h">
+      <Filter>Header Files\ogl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -46,6 +91,21 @@
     </ClCompile>
     <ClCompile Include="Trackball.cpp">
       <Filter>Source Files\camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Source Files\image</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source Files\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="OGLHelpers.cpp">
+      <Filter>Source Files\ogl</Filter>
+    </ClCompile>
+    <ClCompile Include="Geometry.cpp">
+      <Filter>Source Files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="OGLProgram.cpp">
+      <Filter>Source Files\ogl</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

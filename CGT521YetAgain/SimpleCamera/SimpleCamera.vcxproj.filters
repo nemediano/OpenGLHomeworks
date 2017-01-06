@@ -16,6 +16,9 @@
     <Filter Include="Header Files\imgui">
       <UniqueIdentifier>{e7860cf7-9fa7-4da9-b45c-e9c09d437618}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\shaders">
+      <UniqueIdentifier>{131295d8-d11f-45c7-846a-d3cccb257e61}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TestCamera.cpp">
