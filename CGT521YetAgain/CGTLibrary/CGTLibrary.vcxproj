@@ -78,10 +78,13 @@
     <ClInclude Include="..\include\tiny_obj_loader.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Geometry.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="MathConstants.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="OGLHelpers.h" />
     <ClInclude Include="OGLProgram.h" />
+    <ClInclude Include="Spotlight.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Texture.h" />
@@ -90,9 +93,12 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Geometry.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="OGLHelpers.cpp" />
     <ClCompile Include="OGLProgram.cpp" />
+    <ClCompile Include="Spotlight.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

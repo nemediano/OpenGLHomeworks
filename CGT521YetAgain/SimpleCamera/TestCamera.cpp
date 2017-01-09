@@ -16,30 +16,31 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glut.h"
 
+/* Include heders and namespaces from my CGT Library */
 #include "OGLHelpers.h"
-using namespace ogl;
-
 #include "MathConstants.h"
-using namespace math;
-
 #include "Texture.h"
-using namespace image;
-Texture* textureMapPtr = nullptr;
-
 #include "Mesh.h"
-using namespace mesh;
-Mesh* meshPtr = nullptr;
-
 #include "Camera.h"
 #include "Trackball.h"
+#include "OGLProgram.h"
+#include "Spotlight.h"
+#include "Material.h"
+using namespace ogl;
+using namespace math;
+using namespace image;
+using namespace mesh;
 using namespace camera;
+using namespace ogl;
+using namespace lighting;
+/* CGT Library related*/
 Camera cam;
 Trackball ball;
-
-#include "OGLProgram.h"
-using namespace ogl;
+Texture* textureMapPtr = nullptr;
+Mesh* meshPtr = nullptr;
 OGLProgram* programPtr = nullptr;
-
+Material mat;
+Spotlight light;
 GLint window = 0;
 // Location for shader variables
 GLint u_PVM_location = -1;
@@ -47,6 +48,22 @@ GLint u_texture_location = -1;
 GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
+
+//Lighting related variables
+//Light
+GLint u_LightCol_loc = -1;
+GLint u_LightInt_loc = -1;
+GLint u_LightApt_loc = -1;
+GLint u_LightPos_loc = -1;
+GLint u_LightDir_loc = -1;
+
+//Material
+GLint u_MatMetal_loc = -1;
+GLint u_MatRough_loc = -1;
+GLint u_F0_loc = -1;
+
+void allocateLighting();
+void passLightingState();
 
 //Global variables for the program logic
 bool rotate;
@@ -134,7 +151,7 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Simple example using framework");
+	window = glutCreateWindow("Simple example: using framework");
 }
 
 void init_program() {
@@ -142,7 +159,7 @@ void init_program() {
 	/* Initialize global variables for program control */
 	rotate = false;
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh("../models/Female.obj");
+	meshPtr = new Mesh("../models/Tiger.obj");
 	if (meshPtr) {
 		meshPtr->sendToGPU();
 	}
@@ -150,7 +167,7 @@ void init_program() {
 	scaleFactor = meshPtr->scaleFactor();
 	center = meshPtr->getBBCenter();
 
-	textureMapPtr = new Texture("../models/FemaleTexture.jpg");
+	textureMapPtr = new Texture("../models/bengal_tiger.jpg");
 	seconds_elapsed = 0.0f;
 	angle = 0.0f;
 	//Set the default position of the camera
@@ -160,6 +177,15 @@ void init_program() {
 	cam.setDepthView(0.1f, 3.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	//Default position of the spotlight
+	light.setPosition(vec3(0.0f, 0.0f, 2.0f));
+	light.setTarget(vec3(0.0f));
+	light.setAperture(10.0f * TO_RADIANS);
+	//Default material
+	mat.setF0(0.5f);
+	mat.setMetalicity(0.5f);
+	mat.setRoughness(0.2f);
+	mat.setBaseColor(vec3(0.5f, 1.0f, 0.25f));
 }
 
 void init_OpenGL() {
@@ -178,7 +204,8 @@ void init_OpenGL() {
 	/************************************************************************/
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
-	programPtr = new OGLProgram("shaders/simpleVertex.vert", "shaders/simpleFragment.frag");
+	//programPtr = new OGLProgram("shaders/simpleVertex.vert", "shaders/simpleFragment.frag");
+	programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragment.frag");
 	if (!programPtr || !programPtr->isOK()) {
 		cerr << "Something wrong in shader" << endl;
 	}
@@ -190,6 +217,7 @@ void init_OpenGL() {
 
 	u_PVM_location = programPtr->uniformLoc("PVM");
 	u_texture_location = programPtr->uniformLoc("texture_image");
+	allocateLighting();
 
 	a_position_loc = programPtr->attribLoc("Position");
 	a_normal_loc = programPtr->attribLoc("Normal");
@@ -204,6 +232,50 @@ void init_OpenGL() {
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 
 }
+
+void allocateLighting() {
+	//Light
+	u_LightCol_loc = programPtr->uniformLoc("lght.color");
+	u_LightInt_loc = programPtr->uniformLoc("lght.intensity");
+	u_LightApt_loc = programPtr->uniformLoc("lght.aperture");
+	u_LightPos_loc = programPtr->uniformLoc("lght.position");
+	u_LightDir_loc = programPtr->uniformLoc("lght.direction");
+	//Material
+	u_MatMetal_loc = programPtr->uniformLoc("mat.metalicity");
+	u_MatRough_loc = programPtr->uniformLoc("mat.roughness");
+	u_F0_loc = programPtr->uniformLoc("mat.F0");
+}
+
+void passLightingState() {
+	//Light
+	if (u_LightCol_loc != -1) {
+		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(light.getColor()));
+	}
+	if (u_LightInt_loc != -1) {
+		glUniform1f(u_LightInt_loc, light.getIntensity());
+	}
+	if (u_LightApt_loc != -1) {
+		glUniform1f(u_LightApt_loc, light.getAperture());
+	}
+	if (u_LightPos_loc != -1) {
+		glUniform3fv(u_LightPos_loc, 1, glm::value_ptr(light.getPosition()));
+	}
+	if (u_LightDir_loc != -1) {
+		glUniform3fv(u_LightDir_loc, 1, glm::value_ptr(light.getDirection()));
+	}
+	
+	//Material
+	if (u_MatMetal_loc != -1) {
+		glUniform1f(u_MatMetal_loc, mat.getMetalicity());
+	}
+	if (u_MatRough_loc != -1) {
+		glUniform1f(u_MatRough_loc, mat.getRoughness());
+	}
+	if (u_F0_loc != -1) {
+		glUniform3fv(u_F0_loc, 1, glm::value_ptr(mat.getF0()));
+	}
+}
+
 
 void create_glut_callbacks() {
 	glutDisplayFunc(display);
@@ -228,10 +300,6 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programPtr->use();
 
-	/************************************************************************/
-	/* Calculate  Model View Projection Matrices                            */
-	/************************************************************************/
-	//Identity matrix
 	glm::mat4 I(1.0f);
 	//Model
 	glm::mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, glm::vec3(0.0f, 1.0f, 0.0f)) : I;
@@ -254,7 +322,9 @@ void display() {
 	if (u_texture_location != -1) {
 		glUniform1i(u_texture_location, 0); // we bound our texture to texture unit 0
 	}
-	
+	//Send light and material
+	passLightingState();
+
 	/* Draw */
 	meshPtr->drawTriangles(a_position_loc, a_normal_loc, a_texture_loc);
 
@@ -356,21 +426,16 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 	if (dir > 0) {
 		io.MouseWheel = 1.0;
-	}
-	else if (dir < 0) {
+	} else if (dir < 0) {
 		io.MouseWheel = -1.0;
 	}
 
 	/* Camera zoom in-out*/
 	const float DELTA_ANGLE = PI / 30.0f;
 	if (button == 0) {
-		if (dir > 0 && cam.getFovY() < (PI - 2.0f * DELTA_ANGLE)) {
-			cam.addFovY(DELTA_ANGLE);
-		}
-		else if (cam.getFovY() > 2.0 * DELTA_ANGLE) {
-			cam.addFovY(-DELTA_ANGLE);
-		}
+		cam.addFovY(dir > 0 ? DELTA_ANGLE : -DELTA_ANGLE);
 	}
+
 	glutPostRedisplay();
 }
 

@@ -43,6 +43,12 @@
     <Filter Include="Source Files\math">
       <UniqueIdentifier>{eb72b7a7-8141-4635-a85c-c59945307ab4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\lighting">
+      <UniqueIdentifier>{5c946612-fa99-44f1-9b63-54b4d76dad36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\lighting">
+      <UniqueIdentifier>{e8eb9c95-fdfa-456c-bb28-7fe1d3828ae3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -81,6 +87,15 @@
     <ClInclude Include="OGLProgram.h">
       <Filter>Header Files\ogl</Filter>
     </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="Light.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="Spotlight.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -106,6 +121,15 @@
     </ClCompile>
     <ClCompile Include="OGLProgram.cpp">
       <Filter>Source Files\ogl</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="Light.cpp">
+      <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="Spotlight.cpp">
+      <Filter>Source Files\lighting</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

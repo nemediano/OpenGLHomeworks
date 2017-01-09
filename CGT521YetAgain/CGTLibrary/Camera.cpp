@@ -57,8 +57,7 @@ namespace camera {
 	}
 
 	void Camera::setFovY(float fov_y) {
-		
-		m_aperture = glm::clamp(fov_y, 0.000001f, PI - EPSILON);
+		m_aperture = glm::clamp(fov_y, 1.0f * TO_RADIANS, 89.0f * TO_RADIANS);
 	}
 
 	void Camera::addFovY(float deltaAngle) {

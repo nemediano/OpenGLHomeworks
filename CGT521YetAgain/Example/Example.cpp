@@ -137,7 +137,9 @@ void exit_glut() {
 }
 
 void create_glut_window() {
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	//Set number of samples per pixel
+	glutSetOption(GLUT_MULTISAMPLE, 8);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 600);
 	window = glutCreateWindow("Hello world OpenGL");
 }
@@ -252,10 +254,7 @@ void init_OpenGL() {
 	a_texture_loc = glGetAttribLocation(program, "TextCoord");
 
 	//Activate anti-alias
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_POLYGON_SMOOTH);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_MULTISAMPLE);
 
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
