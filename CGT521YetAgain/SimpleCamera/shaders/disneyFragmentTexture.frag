@@ -27,6 +27,7 @@ struct Material {
 #define EPSILON 0.001
 #endif
 
+layout (binding = 0) uniform sampler2D colorTexture;
 layout (location = 0) out vec4 fragcolor;
 
 uniform Material mat;
@@ -35,6 +36,7 @@ uniform vec3 cameraPos;
 
 //Inputs from vertex shader is in world space
 in vec3 fNormal;
+in vec2 fTextCoord;
 in vec3 fPosition;
 
 
@@ -52,6 +54,7 @@ vec3 shade(vec3 L, vec3 V, vec3 N, Material material);
 float safeDot(vec3 u, vec3 v);
 
 void main(void) {
+	vec3 color    = texture(colorTexture, fTextCoord).rgb;
 	vec3 position = fPosition;
 	vec3 normal   = normalize(fNormal);
 	
@@ -62,7 +65,7 @@ void main(void) {
 	light_space_pos = light_space_pos / light_space_pos.w;
 	
 	//Initialiation (Ambient term)
-	vec3 accumulated_light = 0.2 * mat.base_color;
+	vec3 accumulated_light = 0.2 * color;
 	
 	//Eliminate light space backprojection
 	if ( light_space_normal.z < 0.0  ) {
@@ -75,7 +78,8 @@ void main(void) {
 		//accumulated_light = normal * 0.5 + vec3(0.5, 0.5, 0.5); 
 	} else {
 	  //We lit this fragment 
-	  
+	  Material newMat = mat;
+	  newMat.base_color = color;
 	   //Normal is already normalized since geometry pass
 	  vec3 N = normalize(normal);
 	  //View vector, V = eye - position
@@ -83,7 +87,7 @@ void main(void) {
 	  //Light position in world space L = light - position
 	  vec3 L = normalize(spotLight.position - position);
 	  
-	  accumulated_light += spotLight.intensity * (shade(L, V, N, mat) * spotLight.color);
+	  accumulated_light += spotLight.intensity * (shade(L, V, N, newMat) * spotLight.color);
 	}
 	
 	fragcolor = vec4(min(accumulated_light, vec3(1.0)), 1.0);
