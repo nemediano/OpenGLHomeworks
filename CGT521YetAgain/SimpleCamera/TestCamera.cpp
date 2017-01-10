@@ -230,10 +230,10 @@ void init_program() {
 	light.setRatio(0.5f);
 	light.setIntensity(1.0f);
 	//Default material
-	mat.setF0(0.5f);
-	mat.setMetalicity(0.5f);
-	mat.setRoughness(0.2f);
-	mat.setBaseColor(vec3(0.85f, 0.85f, 0.85f));
+	mat.setF0(vec3(0.04f, 0.78f, 0.06f));
+	mat.setMetalicity(0.45f);
+	mat.setRoughness(0.6f);
+	mat.setBaseColor(vec3(0.12f, 0.5f, 0.85f));
 }
 
 void init_OpenGL() {
