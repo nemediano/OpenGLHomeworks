@@ -122,25 +122,63 @@ Since is inmediate mode this need to be called at the end of display
 */
 
 void drawGUI() {
+	using glm::vec3;
+
 	/* Always start with this call*/
 	ImGui_ImplGLUT_NewFrame(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	/* Position of the menu, if no imgui.ini exist */
 	ImGui::SetNextWindowSize(ImVec2(50, 50), ImGuiSetCond_FirstUseEver);
 
 	/*Create a new menu for my app*/
-	ImGui::Begin("My options");
-	ImGui::Checkbox("Rotation", &rotate);
-	if (ImGui::Button("Quit")) {
-		exit_glut();
+	ImGui::Begin("Options");
+	
+	if (ImGui::CollapsingHeader("Material editor")) {
+		//Edit Material
+		float metal = mat.getMetalicity();
+		float roughness = mat.getRoughness();
+		vec3 color = mat.getBaseColor();
+		vec3 f0 = mat.getF0();
+		ImGui::SliderFloat("Metalicity", &metal, 0.0f, 1.0f);
+		ImGui::SliderFloat("Rougness", &roughness, 0.0f, 1.0f);
+		ImGui::ColorEdit3("Base Color", glm::value_ptr(color));
+		ImGui::ColorEdit3("Specular", glm::value_ptr(f0));
+		mat.setMetalicity(metal);
+		mat.setRoughness(roughness);
+		mat.setBaseColor(color);
+		mat.setF0(f0);
 	}
-	if (ImGui::Button("Reset camera")) {
-		cam.setFovY(PI / 8.0f);
-		ball.resetRotation();
+		
+	if (ImGui::CollapsingHeader("Light physical properties")) {
+		//Edit Light
+		float intensity = light.getIntensity();
+		float ratio = light.getRatio();
+		vec3 lightColor = light.getColor();
+		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
+		ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
+		ImGui::ColorEdit3("Color", glm::value_ptr(lightColor));
+		light.setIntensity(intensity);
+		light.setRatio(ratio);
+		light.setColor(lightColor);
 	}
+
+	if (ImGui::CollapsingHeader("General options")) {
+		ImGui::Checkbox("Rotation", &rotate);
+		if (ImGui::Button("Quit")) {
+			exit_glut();
+		}
+		if (ImGui::Button("Reset camera")) {
+			cam.setFovY(PI / 8.0f);
+			ball.resetRotation();
+		}
+	}
+	
 	ImGui::End();
+	
 
 	/* End with this when you want to render GUI */
 	ImGui::Render();
+
+	
 }
 
 void exit_glut() {
@@ -167,7 +205,7 @@ void init_program() {
 	/* Initialize global variables for program control */
 	rotate = false;
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh("../models/Amago.obj");
+	meshPtr = new Mesh("../models/dragon.obj");
 	if (meshPtr) {
 		meshPtr->sendToGPU();
 	}
@@ -190,6 +228,7 @@ void init_program() {
 	light.setTarget(vec3(0.0f));
 	light.setAperture(30.0f * TO_RADIANS);
 	light.setRatio(0.5f);
+	light.setIntensity(1.0f);
 	//Default material
 	mat.setF0(0.5f);
 	mat.setMetalicity(0.5f);
@@ -215,6 +254,7 @@ void init_OpenGL() {
 	/************************************************************************/
 	//programPtr = new OGLProgram("shaders/simpleVertex.vert", "shaders/simpleFragment.frag");
 	programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragment.frag");
+	//programPtr = new OGLProgram("shaders/disneyVertexTexture.vert", "shaders/disneyFragmentTexture.frag");
 	if (!programPtr || !programPtr->isOK()) {
 		cerr << "Something wrong in shader" << endl;
 	}
@@ -332,6 +372,7 @@ void display() {
 	glm::mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, glm::vec3(0.0f, 1.0f, 0.0f)) : I;
 	M = glm::scale(M, glm::vec3(scaleFactor));
 	M = glm::translate(M, -center);
+
 	//View
 	glm::mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
