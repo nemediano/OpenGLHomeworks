@@ -7,7 +7,7 @@ uniform mat4 PVM;
 uniform mat4 M;
 uniform mat4 NormMat;
 
-//Output is in world space
+//Output for fragement shader is in world space
 out vec3 fNormal;
 out vec2 fTextCoord;
 out vec3 fPosition;

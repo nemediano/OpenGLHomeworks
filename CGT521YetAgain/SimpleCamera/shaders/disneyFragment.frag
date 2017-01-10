@@ -27,14 +27,18 @@ struct Material {
 #define EPSILON 0.001
 #endif
 
-uniform Material mat;
-uniform Light lght;
-
 layout (binding = 0) uniform sampler2D colorTexture;
-
-uniform vec3 camera_pos;
-
 layout (location = 0) out vec4 fragcolor;
+
+uniform Material mat;
+uniform Light spotLight;
+uniform vec3 cameraPos;
+
+//Inputs from vertex shader is in world space
+in vec3 fNormal;
+in vec2 fTextCoord;
+in vec3 fPosition;
+
 
 //Actual lighting calculation similars to Cook Torrance
 vec3 fresnelTerm(float VdH, vec3 F0);
@@ -49,28 +53,23 @@ vec3 shade(vec3 L, vec3 V, vec3 N, Material material);
 //Helper in calculation
 float safeDot(vec3 u, vec3 v);
 
-//Input form vertex sahder is in world space
-out vec3 fNormal;
-out vec2 fTextCoord;
-out vec3 fPosition;
-
 void main(void) {
 	vec3 color    = texture(colorTexture, fTextCoord).rgb;
 	vec3 position = fPosition;
 	vec3 normal   = normalize(fNormal);
 	
 	//Convert to light space to eliminate all the fragments that the light will not touch
-	vec4 light_space_pos = lght.PM * vec4(position, 1.0);
-	vec4 light_space_normal = lght.M * vec4(normal, 0.0);
+	vec4 light_space_pos = spotLight.PM * vec4(position, 1.0);
+	vec4 light_space_normal = spotLight.M * vec4(normal, 0.0);
 	//Perspective division
 	light_space_pos = light_space_pos / light_space_pos.w;
 	
 	//Initialiation (Ambient term)
-	vec3 accumulated_light = 0.2 * color;
+	vec3 accumulated_light = 0.1 * color;
 	
 	//Eliminate light space backprojection
 	if ( light_space_normal.z < 0.0  ) {
-		 //accumulated_light = vec3(1.0, 0.0, 0.0);
+		//accumulated_light = vec3(1.0, 0.0, 0.0);
 	} else if ( light_space_pos.z <= 0.0) {
 		// clipped in z, behind light (out grey) 
 		//accumulated_light = vec3(0.5, 0.5, 0.5);
@@ -81,18 +80,17 @@ void main(void) {
 	  //We lit this fragment 
 	  
 	   //Normal is already normalized since geometry pass
-	  vec3 N = normal;
+	  vec3 N = normalize(normal);
 	  //View vector, V = eye - position
-	  vec3 V = normalize(camera_pos - position);
+	  vec3 V = normalize(cameraPos - position);
 	  //Light position in world space L = light - position
-	  vec3 L = normalize(lght.position - position);
+	  vec3 L = normalize(spotLight.position - position);
 	  
-	  accumulated_light += lght.intensity * (shade(L, V, N, mat) * lght.color);
+	  accumulated_light += spotLight.intensity * (shade(L, V, N, mat) * spotLight.color);
 	}
 	
 	fragcolor = vec4(min(accumulated_light, vec3(1.0)), 1.0);
 }
-
 
 //Disney's lighting shader
 vec3 shade(vec3 L, float lightRadius, vec3 V, vec3 N, Material material) {

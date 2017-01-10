@@ -44,6 +44,8 @@ Spotlight light;
 GLint window = 0;
 // Location for shader variables
 GLint u_PVM_location = -1;
+GLint u_M_location = -1;
+GLint u_NormalMat_location = -1;
 GLint u_texture_location = -1;
 GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
@@ -55,12 +57,18 @@ GLint u_LightCol_loc = -1;
 GLint u_LightInt_loc = -1;
 GLint u_LightApt_loc = -1;
 GLint u_LightPos_loc = -1;
-GLint u_LightDir_loc = -1;
+GLint u_LightRatio_loc = -1;
+GLint u_LightPM_loc = -1;
+GLint u_LightP_loc = -1;
+GLint u_LightM_loc = -1;
 
 //Material
 GLint u_MatMetal_loc = -1;
 GLint u_MatRough_loc = -1;
 GLint u_F0_loc = -1;
+GLint u_MatBaseColor = -1;
+//Position of the eye
+GLint u_CamPos_loc = -1;
 
 void allocateLighting();
 void passLightingState();
@@ -159,7 +167,7 @@ void init_program() {
 	/* Initialize global variables for program control */
 	rotate = false;
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh("../models/Tiger.obj");
+	meshPtr = new Mesh("../models/Amago.obj");
 	if (meshPtr) {
 		meshPtr->sendToGPU();
 	}
@@ -167,7 +175,7 @@ void init_program() {
 	scaleFactor = meshPtr->scaleFactor();
 	center = meshPtr->getBBCenter();
 
-	textureMapPtr = new Texture("../models/bengal_tiger.jpg");
+	textureMapPtr = new Texture("../models/AmagoTexture.png");
 	seconds_elapsed = 0.0f;
 	angle = 0.0f;
 	//Set the default position of the camera
@@ -180,12 +188,13 @@ void init_program() {
 	//Default position of the spotlight
 	light.setPosition(vec3(0.0f, 0.0f, 2.0f));
 	light.setTarget(vec3(0.0f));
-	light.setAperture(10.0f * TO_RADIANS);
+	light.setAperture(30.0f * TO_RADIANS);
+	light.setRatio(0.5f);
 	//Default material
 	mat.setF0(0.5f);
 	mat.setMetalicity(0.5f);
 	mat.setRoughness(0.2f);
-	mat.setBaseColor(vec3(0.5f, 1.0f, 0.25f));
+	mat.setBaseColor(vec3(0.85f, 0.85f, 0.85f));
 }
 
 void init_OpenGL() {
@@ -216,7 +225,10 @@ void init_OpenGL() {
 	/************************************************************************/
 
 	u_PVM_location = programPtr->uniformLoc("PVM");
-	u_texture_location = programPtr->uniformLoc("texture_image");
+	u_M_location = programPtr->uniformLoc("M");;
+	u_NormalMat_location = programPtr->uniformLoc("NormMat");
+	u_texture_location = programPtr->uniformLoc("colorTexture");
+	u_CamPos_loc = programPtr->uniformLoc("cameraPos");
 	allocateLighting();
 
 	a_position_loc = programPtr->attribLoc("Position");
@@ -235,15 +247,19 @@ void init_OpenGL() {
 
 void allocateLighting() {
 	//Light
-	u_LightCol_loc = programPtr->uniformLoc("lght.color");
-	u_LightInt_loc = programPtr->uniformLoc("lght.intensity");
-	u_LightApt_loc = programPtr->uniformLoc("lght.aperture");
-	u_LightPos_loc = programPtr->uniformLoc("lght.position");
-	u_LightDir_loc = programPtr->uniformLoc("lght.direction");
+	u_LightCol_loc = programPtr->uniformLoc("spotLight.color");
+	u_LightInt_loc = programPtr->uniformLoc("spotLight.intensity");
+	u_LightApt_loc = programPtr->uniformLoc("spotLight.aperture");
+	u_LightRatio_loc = programPtr->uniformLoc("spotLight.ratio");
+	u_LightPos_loc = programPtr->uniformLoc("spotLight.position");
+	u_LightPM_loc = programPtr->uniformLoc("spotLight.PM");
+	u_LightP_loc = programPtr->uniformLoc("spotLight.P");
+	u_LightM_loc = programPtr->uniformLoc("spotLight.M");
 	//Material
 	u_MatMetal_loc = programPtr->uniformLoc("mat.metalicity");
 	u_MatRough_loc = programPtr->uniformLoc("mat.roughness");
 	u_F0_loc = programPtr->uniformLoc("mat.F0");
+	u_MatBaseColor = programPtr->uniformLoc("mat.base_color");
 }
 
 void passLightingState() {
@@ -260,10 +276,18 @@ void passLightingState() {
 	if (u_LightPos_loc != -1) {
 		glUniform3fv(u_LightPos_loc, 1, glm::value_ptr(light.getPosition()));
 	}
-	if (u_LightDir_loc != -1) {
-		glUniform3fv(u_LightDir_loc, 1, glm::value_ptr(light.getDirection()));
+	if (u_LightRatio_loc != -1) {
+		glUniform1f(u_LightRatio_loc, light.getRatio());
 	}
-	
+	if (u_LightM_loc != -1) {
+		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
+	}
+	if (u_LightP_loc != -1) {
+		glUniformMatrix4fv(u_LightP_loc, 1, GL_FALSE, glm::value_ptr(light.getP()));
+	}
+	if (u_LightPM_loc != -1) {
+		glUniformMatrix4fv(u_LightPM_loc, 1, GL_FALSE, glm::value_ptr(light.getPM()));
+	}
 	//Material
 	if (u_MatMetal_loc != -1) {
 		glUniform1f(u_MatMetal_loc, mat.getMetalicity());
@@ -273,6 +297,9 @@ void passLightingState() {
 	}
 	if (u_F0_loc != -1) {
 		glUniform3fv(u_F0_loc, 1, glm::value_ptr(mat.getF0()));
+	}
+	if (u_MatBaseColor != -1) {
+		glUniform3fv(u_MatBaseColor, 1, glm::value_ptr(mat.getBaseColor()));
 	}
 }
 
@@ -315,6 +342,15 @@ void display() {
 	/************************************************************************/
 	if (u_PVM_location != -1) {
 		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	}
+	if (u_M_location != -1) {
+		glUniformMatrix4fv(u_M_location, 1, GL_FALSE, glm::value_ptr(M));
+	}
+	if (u_NormalMat_location != -1) {
+		glUniformMatrix4fv(u_NormalMat_location, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+	}
+	if (u_CamPos_loc != -1) {
+		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(ball.getRotation() * glm::vec4(cam.getPosition(), 1.0f))));
 	}
 	//Set active texture and bind
 	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
