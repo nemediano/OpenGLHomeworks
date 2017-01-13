@@ -25,7 +25,9 @@
 #include "Trackball.h"
 #include "OGLProgram.h"
 #include "Spotlight.h"
+#include "Directional.h"
 #include "Material.h"
+#include "Geometries.h"
 using namespace ogl;
 using namespace math;
 using namespace image;
@@ -41,6 +43,7 @@ Mesh* meshPtr = nullptr;
 OGLProgram* programPtr = nullptr;
 Material mat;
 Spotlight light;
+Directional dirLight;
 GLint window = 0;
 // Location for shader variables
 GLint u_PVM_location = -1;
@@ -55,12 +58,11 @@ GLint a_texture_loc = -1;
 //Light
 GLint u_LightCol_loc = -1;
 GLint u_LightInt_loc = -1;
-GLint u_LightApt_loc = -1;
 GLint u_LightPos_loc = -1;
 GLint u_LightRatio_loc = -1;
 GLint u_LightPM_loc = -1;
-GLint u_LightP_loc = -1;
 GLint u_LightM_loc = -1;
+GLint u_LightDir_loc = -1;
 
 //Material
 GLint u_MatMetal_loc = -1;
@@ -75,6 +77,8 @@ void passLightingState();
 
 //Global variables for the program logic
 bool rotate;
+glm::vec2 light_angles;
+float light_distance;
 float seconds_elapsed;
 float angle;
 float scaleFactor;
@@ -160,7 +164,17 @@ void drawGUI() {
 		light.setRatio(ratio);
 		light.setColor(lightColor);
 	}
-
+	bool spotLight = false;
+	if (spotLight && ImGui::CollapsingHeader("Light position")) {
+		ImGui::SliderAngle("Angle X", &light_angles.x, -180.0f, 180.0f);
+		ImGui::SliderAngle("Angle Y", &light_angles.y, -180.0f, 180.0f);
+		ImGui::SliderFloat("Radius", &light_distance, 0.0f, 10.0f, "%.2f", 3.0f);
+	}
+	bool directional = true;
+	if (directional && ImGui::CollapsingHeader("Light direction")) {
+		ImGui::SliderAngle("Angle X", &light_angles.x, -180.0f, 180.0f);
+		ImGui::SliderAngle("Angle Y", &light_angles.y, -180.0f, 180.0f);
+	}
 	if (ImGui::CollapsingHeader("General options")) {
 		ImGui::Checkbox("Rotation", &rotate);
 		if (ImGui::Button("Quit")) {
@@ -171,14 +185,10 @@ void drawGUI() {
 			ball.resetRotation();
 		}
 	}
-	
 	ImGui::End();
 	
-
 	/* End with this when you want to render GUI */
-	ImGui::Render();
-
-	
+	ImGui::Render();	
 }
 
 void exit_glut() {
@@ -197,7 +207,7 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Simple example: using framework");
+	window = glutCreateWindow("Disney shading");
 }
 
 void init_program() {
@@ -205,7 +215,10 @@ void init_program() {
 	/* Initialize global variables for program control */
 	rotate = false;
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh("../models/dragon.obj");
+	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
+	//meshPtr = new Mesh("../models/09-mujer_en_plataforma_repared.obj");
+	meshPtr = new Mesh(Geometries::icosphere(3));
+	
 	if (meshPtr) {
 		meshPtr->sendToGPU();
 	}
@@ -213,7 +226,7 @@ void init_program() {
 	scaleFactor = meshPtr->scaleFactor();
 	center = meshPtr->getBBCenter();
 
-	textureMapPtr = new Texture("../models/AmagoTexture.png");
+	textureMapPtr = new Texture("../models/rham_diff.png");
 	seconds_elapsed = 0.0f;
 	angle = 0.0f;
 	//Set the default position of the camera
@@ -224,11 +237,16 @@ void init_program() {
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Default position of the spotlight
-	light.setPosition(vec3(0.0f, 0.0f, 2.0f));
+	light_angles = glm::vec2(0.0f);
+	light_distance = 2.0f;
+	light.setPosition(vec3(0.0f, 0.0f, light_distance));
 	light.setTarget(vec3(0.0f));
 	light.setAperture(30.0f * TO_RADIANS);
 	light.setRatio(0.5f);
 	light.setIntensity(1.0f);
+	//Default direction of the directional light
+	dirLight.setIntensity(1.0f);
+	dirLight.setDirection(vec3(0.0f, 0.0f, -1.0f));
 	//Default material
 	mat.setF0(vec3(0.04f, 0.78f, 0.06f));
 	mat.setMetalicity(0.45f);
@@ -253,17 +271,16 @@ void init_OpenGL() {
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
 	//programPtr = new OGLProgram("shaders/simpleVertex.vert", "shaders/simpleFragment.frag");
-	programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragment.frag");
+	//programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragment.frag");
+	programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragmentDirectional.frag");
 	//programPtr = new OGLProgram("shaders/disneyVertexTexture.vert", "shaders/disneyFragmentTexture.frag");
 	if (!programPtr || !programPtr->isOK()) {
 		cerr << "Something wrong in shader" << endl;
 	}
 
-
 	/************************************************************************/
 	/* Allocating variables for shaders                                     */
 	/************************************************************************/
-
 	u_PVM_location = programPtr->uniformLoc("PVM");
 	u_M_location = programPtr->uniformLoc("M");;
 	u_NormalMat_location = programPtr->uniformLoc("NormMat");
@@ -287,14 +304,16 @@ void init_OpenGL() {
 
 void allocateLighting() {
 	//Light
-	u_LightCol_loc = programPtr->uniformLoc("spotLight.color");
-	u_LightInt_loc = programPtr->uniformLoc("spotLight.intensity");
-	u_LightApt_loc = programPtr->uniformLoc("spotLight.aperture");
-	u_LightRatio_loc = programPtr->uniformLoc("spotLight.ratio");
+	//u_LightCol_loc = programPtr->uniformLoc("spotLight.color");
+	u_LightCol_loc = programPtr->uniformLoc("dir.color");
+	//u_LightInt_loc = programPtr->uniformLoc("spotLight.intensity");
+	u_LightInt_loc = programPtr->uniformLoc("dir.intensity");
+	//u_LightRatio_loc = programPtr->uniformLoc("spotLight.ratio");
+	u_LightRatio_loc = programPtr->uniformLoc("dir.ratio");
 	u_LightPos_loc = programPtr->uniformLoc("spotLight.position");
 	u_LightPM_loc = programPtr->uniformLoc("spotLight.PM");
-	u_LightP_loc = programPtr->uniformLoc("spotLight.P");
 	u_LightM_loc = programPtr->uniformLoc("spotLight.M");
+	u_LightDir_loc = programPtr->uniformLoc("dir.direction");
 	//Material
 	u_MatMetal_loc = programPtr->uniformLoc("mat.metalicity");
 	u_MatRough_loc = programPtr->uniformLoc("mat.roughness");
@@ -305,28 +324,28 @@ void allocateLighting() {
 void passLightingState() {
 	//Light
 	if (u_LightCol_loc != -1) {
-		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(light.getColor()));
+		//glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(light.getColor()));
+		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(dirLight.getColor()));
 	}
 	if (u_LightInt_loc != -1) {
-		glUniform1f(u_LightInt_loc, light.getIntensity());
-	}
-	if (u_LightApt_loc != -1) {
-		glUniform1f(u_LightApt_loc, light.getAperture());
+		//glUniform1f(u_LightInt_loc, light.getIntensity());
+		glUniform1f(u_LightInt_loc, dirLight.getIntensity());
 	}
 	if (u_LightPos_loc != -1) {
 		glUniform3fv(u_LightPos_loc, 1, glm::value_ptr(light.getPosition()));
 	}
 	if (u_LightRatio_loc != -1) {
-		glUniform1f(u_LightRatio_loc, light.getRatio());
+		//glUniform1f(u_LightRatio_loc, light.getRatio());
+		glUniform1f(u_LightRatio_loc, 0.0f);
 	}
 	if (u_LightM_loc != -1) {
 		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
 	}
-	if (u_LightP_loc != -1) {
-		glUniformMatrix4fv(u_LightP_loc, 1, GL_FALSE, glm::value_ptr(light.getP()));
-	}
 	if (u_LightPM_loc != -1) {
 		glUniformMatrix4fv(u_LightPM_loc, 1, GL_FALSE, glm::value_ptr(light.getPM()));
+	}
+	if (u_LightDir_loc != -1) {
+		glUniform3fv(u_LightDir_loc, 1, glm::value_ptr(dirLight.getDirection()));
 	}
 	//Material
 	if (u_MatMetal_loc != -1) {
@@ -363,21 +382,33 @@ void reshape(int new_window_width, int new_window_height) {
 }
 
 void display() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::vec2;
+	using glm::mat4;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programPtr->use();
 
-	glm::mat4 I(1.0f);
+	mat4 I(1.0f);
 	//Model
-	glm::mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, glm::vec3(0.0f, 1.0f, 0.0f)) : I;
-	M = glm::scale(M, glm::vec3(scaleFactor));
+	mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
+	//M = glm::rotate(M, TAU / 4.0f, vec3(1.0, 0.0f, 0.0f));
+	M = glm::scale(M, vec3(scaleFactor));
 	M = glm::translate(M, -center);
 
 	//View
-	glm::mat4 V = cam.getViewMatrix() * ball.getRotation();
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
-	glm::mat4 P = cam.getProjectionMatrix();
+	mat4 P = cam.getProjectionMatrix();
 
+	//Move light to corresponding position
+	/*mat4 L_p = glm::rotate(I, light_angles.x, vec3(1.0f, 0.0f, 0.0f));
+	L_p = glm::rotate(L_p, light_angles.y, vec3(0.0f, 1.0f, 0.0f));
+	light.setPosition(vec3(L_p * vec4(vec3(0.0, 0.0, light_distance), 1.0)));*/
+	//Rotate directional light
+	dirLight.setDirection(vec3(0.0f, 0.0f, -1.0f));
+	dirLight.rotate(light_angles.x, light_angles.y, 0.0f);
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
@@ -391,7 +422,7 @@ void display() {
 		glUniformMatrix4fv(u_NormalMat_location, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
 	}
 	if (u_CamPos_loc != -1) {
-		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(ball.getRotation() * glm::vec4(cam.getPosition(), 1.0f))));
+		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(cam.getPosition())));
 	}
 	//Set active texture and bind
 	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
@@ -482,7 +513,6 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 		}
 	}
 
-
 	glutPostRedisplay();
 }
 
@@ -492,7 +522,6 @@ void special(int key, int mouse_x, int mouse_y) {
 	io.AddInputCharacter(key);
 
 	/* Now, the app*/
-
 	glutPostRedisplay();
 }
 
@@ -533,6 +562,5 @@ void mousePasiveMotion(int mouse_x, int mouse_y) {
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 
 	/*Now, the app*/
-
 	glutPostRedisplay();
 }

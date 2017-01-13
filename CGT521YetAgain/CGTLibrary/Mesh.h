@@ -29,6 +29,7 @@ namespace mesh {
 		void update_bounding_box();
 		void ask_locations();
 		void release_locations();
+		
 	public:
 		Mesh();
 		Mesh(const std::string& input_file);
@@ -43,7 +44,7 @@ namespace mesh {
 		GLuint getVertexLocation() const;
 		GLuint getIndexLocation() const;
 		void drawTriangles(const GLint& position_location, const GLint& normal_location, const GLint& texture_coordinates_location, const GLsizei& instances = 1) const;
-		void setVertices(const std::vector<Vertex>& vertices);
+		void setVertices(const std::vector<Vertex>& vertices, bool normals = false, bool textCoords = false);
 		void setIndex(const std::vector<unsigned int>& indices);
 		void indexFromTriangles(const std::vector<Triangle>& triangles);
 		float scaleFactor() const;

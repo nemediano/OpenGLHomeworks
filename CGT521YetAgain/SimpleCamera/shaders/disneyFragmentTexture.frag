@@ -3,7 +3,6 @@
 //Light container
 struct Light {
 	mat4 PM;
-	mat4 P;
 	mat4 M;
 	vec3 position;
 	vec3 color;
@@ -69,13 +68,13 @@ void main(void) {
 	
 	//Eliminate light space backprojection
 	if ( light_space_normal.z < 0.0  ) {
-		//accumulated_light = vec3(1.0, 0.0, 0.0);
+		accumulated_light = vec3(1.0, 0.0, 0.0);
 	} else if ( light_space_pos.z <= 0.0) {
 		// clipped in z, behind light (out grey) 
-		//accumulated_light = vec3(0.5, 0.5, 0.5);
+		accumulated_light = vec3(0.5, 0.5, 0.5);
 	} else if (light_space_pos.x >= 1.0 || light_space_pos.x <= -1.0 || light_space_pos.y >= 1.0 || light_space_pos.y <= -1.0 ) {
 		// draw normal
-		//accumulated_light = normal * 0.5 + vec3(0.5, 0.5, 0.5); 
+		accumulated_light = normal * 0.5 + vec3(0.5, 0.5, 0.5); 
 	} else {
 	  //We lit this fragment 
 	  Material newMat = mat;
@@ -87,7 +86,7 @@ void main(void) {
 	  //Light position in world space L = light - position
 	  vec3 L = normalize(spotLight.position - position);
 	  
-	  accumulated_light += spotLight.intensity * (shade(L, V, N, newMat) * spotLight.color);
+	  accumulated_light += spotLight.intensity * (shade(L, spotLight.ratio, V, N, newMat) * spotLight.color);
 	}
 	
 	fragcolor = vec4(min(accumulated_light, vec3(1.0)), 1.0);

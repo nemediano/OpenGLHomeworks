@@ -3,7 +3,6 @@
 //Light container
 struct Light {
 	mat4 PM;
-	mat4 P;
 	mat4 M;
 	vec3 position;
 	vec3 color;
@@ -57,15 +56,17 @@ void main(void) {
 	
 	//Convert to light space to eliminate all the fragments that the light will not touch
 	vec4 light_space_pos = spotLight.PM * vec4(position, 1.0);
-	vec4 light_space_normal = spotLight.M * vec4(normal, 0.0);
+	vec4 light_space_normal = inverse(transpose(spotLight.M)) * vec4(normal, 0.0);
 	//Perspective division
 	light_space_pos = light_space_pos / light_space_pos.w;
 	
 	//Initialiation (Ambient term)
 	vec3 accumulated_light = 0.2 * mat.base_color;
+	//vec3 accumulated_light = vec3(0.0, 0.0, 0.0);
 	
 	//Eliminate light space backprojection
 	if ( light_space_normal.z < 0.0  ) {
+		//Red if you are inside light projection but your normal is backwards
 		//accumulated_light = vec3(1.0, 0.0, 0.0);
 	} else if ( light_space_pos.z <= 0.0) {
 		// clipped in z, behind light (out grey) 
@@ -83,7 +84,7 @@ void main(void) {
 	  //Light position in world space L = light - position
 	  vec3 L = normalize(spotLight.position - position);
 	  
-	  accumulated_light += spotLight.intensity * (shade(L, V, N, mat) * spotLight.color);
+	  accumulated_light += spotLight.intensity * (shade(L, spotLight.ratio, V, N, mat) * spotLight.color);
 	}
 	
 	fragcolor = vec4(min(accumulated_light, vec3(1.0)), 1.0);

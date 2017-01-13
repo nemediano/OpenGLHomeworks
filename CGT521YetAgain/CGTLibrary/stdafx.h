@@ -12,6 +12,8 @@
 // TODO: reference additional headers your program requires here
 #include <iostream>
 #include <vector>
+#include <set>
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -26,7 +28,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/norm.hpp>
 #include <glm/gtx/vector_angle.hpp>
-
+#include <glm/gtx/euler_angles.hpp>
 
 #include <FreeImage.h>
 

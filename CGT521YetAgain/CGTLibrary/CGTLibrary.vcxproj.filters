@@ -96,6 +96,12 @@
     <ClInclude Include="Spotlight.h">
       <Filter>Header Files\lighting</Filter>
     </ClInclude>
+    <ClInclude Include="Geometries.h">
+      <Filter>Header Files\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Directional.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -129,6 +135,12 @@
       <Filter>Source Files\lighting</Filter>
     </ClCompile>
     <ClCompile Include="Spotlight.cpp">
+      <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="Geometries.cpp">
+      <Filter>Source Files\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Directional.cpp">
       <Filter>Source Files\lighting</Filter>
     </ClCompile>
   </ItemGroup>

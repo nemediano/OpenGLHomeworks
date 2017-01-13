@@ -154,9 +154,12 @@ namespace mesh {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 
-	void Mesh::setVertices(const std::vector<Vertex>& vertices) {
+	void Mesh::setVertices(const std::vector<Vertex>& vertices, bool normals, bool textCoords) {
 		if (!vertices.empty()) {
 			m_vertices = vertices;
+			m_has_normals = normals;
+			m_has_texture = textCoords;
+			update_bounding_box();
 		}
 	}
 
@@ -165,9 +168,65 @@ namespace mesh {
 			m_indices = indices;
 		}
 	}
+
+	/* Compare function for using to define a weak order in a container */
+	bool Vector3DLessThan(const glm::vec3& rhs, const glm::vec3& lhs) {
+		const float EPSILON = 1e-5f;
+		if (glm::abs(lhs.x - rhs.x) > EPSILON) {
+			return lhs.x < rhs.x;
+		}
+		else if (glm::abs(lhs.y - rhs.y) > EPSILON) {
+			return lhs.y < rhs.y;
+		}
+		else if (glm::abs(lhs.z - rhs.z) > EPSILON) {
+			return lhs.z < rhs.z;
+		}
+		else {
+			return false;
+		}
+	}
 	
 	void Mesh::indexFromTriangles(const std::vector<Triangle>& triangles) {
+		//This set will be used to get rid of the duplicate vertex
+		std::set<glm::vec3, bool(*)(const glm::vec3&, const glm::vec3&)> tmp_storage(Vector3DLessThan);
+		//Clear the previous data in the indices and points arrays, since we are about to start a new indexing
+		m_indices.clear();
+		m_vertices.clear();
+		//Insert all the vertex in the tmp_storage
+		for (auto triangle : triangles) {
+			tmp_storage.insert(triangle.p_0);
+			tmp_storage.insert(triangle.p_1);
+			tmp_storage.insert(triangle.p_2);
+		}
 
+		//Insert index for the vertices
+		for (auto triangle : triangles) {
+			// V_0
+			auto it = tmp_storage.find(triangle.p_0);
+			auto index = std::distance(tmp_storage.begin(), it);
+			m_indices.push_back(static_cast<unsigned int>(index));
+			// V_1
+			it = tmp_storage.find(triangle.p_1);
+			index = std::distance(tmp_storage.begin(), it);
+			m_indices.push_back(static_cast<unsigned int>(index));
+			// P_2
+			it = tmp_storage.find(triangle.p_2);
+			index = std::distance(tmp_storage.begin(), it);
+			m_indices.push_back(static_cast<unsigned int>(index));
+		}
+
+		//Create the Vertex storage
+		Vertex tmp_vertex;
+		for (auto position : tmp_storage) {
+			tmp_vertex.position = position;
+			tmp_vertex.normal = glm::normalize(position);
+			tmp_vertex.textCoord = glm::vec2(0.0f);
+			m_vertices.push_back(tmp_vertex);
+		}
+		m_has_normals = true;
+		m_has_texture = false;
+
+		update_bounding_box();
 	}
 
 	bool Mesh::inGPU() const {
