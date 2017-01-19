@@ -18,6 +18,7 @@
 static const std::string vertex_shader("demo1_vs.glsl");
 static const std::string fragment_shader("demo1_fs.glsl");
 GLuint shader_program = -1;
+GLfloat time_elapsed;
 
 static const std::string mesh_name = "cow.ply";
 MeshData mesh_data;
@@ -34,10 +35,13 @@ void display()
 
    glUseProgram(shader_program);
    int PVM_loc = glGetUniformLocation(shader_program, "PVM");
-   if(PVM_loc != -1)
-   {
+   int Time_loc = glGetUniformLocation(shader_program, "time");
+   if(PVM_loc != -1) {
       glm::mat4 PVM = P*V*M;
       glUniformMatrix4fv(PVM_loc, 1, false, glm::value_ptr(PVM));
+   }
+   if (Time_loc != -1) {
+	   glUniform1f(Time_loc, time_elapsed);
    }
 
    glBindVertexArray(mesh_data.mVao);
@@ -52,7 +56,7 @@ void idle()
 
    const int time_ms = glutGet(GLUT_ELAPSED_TIME);
    float time_sec = 0.001f*time_ms;
-   
+   time_elapsed += time_sec;
 }
 
 void reload_shader()
@@ -113,7 +117,7 @@ void initOpenGl()
    // Try uncommenting one of these lines at a time, and rerunning the program
    //glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
+   time_elapsed = 0.0f;
    reload_shader();
    mesh_data = LoadMesh(mesh_name);
 }
