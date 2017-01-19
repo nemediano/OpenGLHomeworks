@@ -20,3 +20,5 @@ CGT521Solution/CGT521Solution.v12.suo
 *.db
 *.opendb
 *.cache
+*.ipch
+*.cache

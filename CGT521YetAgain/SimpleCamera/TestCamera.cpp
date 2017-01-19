@@ -154,15 +154,20 @@ void drawGUI() {
 		
 	if (ImGui::CollapsingHeader("Light physical properties")) {
 		//Edit Light
-		float intensity = light.getIntensity();
+		/*float intensity = light.getIntensity();
 		float ratio = light.getRatio();
 		vec3 lightColor = light.getColor();
+		*/
+		float intensity = dirLight.getIntensity();
+		vec3 lightColor = dirLight.getColor();
 		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
-		ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
+		//ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
 		ImGui::ColorEdit3("Color", glm::value_ptr(lightColor));
-		light.setIntensity(intensity);
+		/*light.setIntensity(intensity);
 		light.setRatio(ratio);
-		light.setColor(lightColor);
+		light.setColor(lightColor);*/
+		dirLight.setIntensity(intensity);
+		dirLight.setColor(lightColor);
 	}
 	bool spotLight = false;
 	if (spotLight && ImGui::CollapsingHeader("Light position")) {

@@ -9,6 +9,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleCamera", "SimpleCamer
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CGTLibrary", "CGTLibrary\CGTLibrary.vcxproj", "{F6032F78-A0C5-43B9-BD83-D6FF2A1A8FF0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimDemo0", "TimDemo0\TimDemo0.vcxproj", "{819CED27-52EE-42C7-A62F-93BB94CDDAE3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimDemo1", "TimDemo1\TimDemo1.vcxproj", "{F45FF243-6422-4951-A0C7-98778D401E05}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -27,6 +31,14 @@ Global
 		{F6032F78-A0C5-43B9-BD83-D6FF2A1A8FF0}.Debug|x64.Build.0 = Debug|x64
 		{F6032F78-A0C5-43B9-BD83-D6FF2A1A8FF0}.Release|x64.ActiveCfg = Release|x64
 		{F6032F78-A0C5-43B9-BD83-D6FF2A1A8FF0}.Release|x64.Build.0 = Release|x64
+		{819CED27-52EE-42C7-A62F-93BB94CDDAE3}.Debug|x64.ActiveCfg = Debug|x64
+		{819CED27-52EE-42C7-A62F-93BB94CDDAE3}.Debug|x64.Build.0 = Debug|x64
+		{819CED27-52EE-42C7-A62F-93BB94CDDAE3}.Release|x64.ActiveCfg = Release|x64
+		{819CED27-52EE-42C7-A62F-93BB94CDDAE3}.Release|x64.Build.0 = Release|x64
+		{F45FF243-6422-4951-A0C7-98778D401E05}.Debug|x64.ActiveCfg = Debug|x64
+		{F45FF243-6422-4951-A0C7-98778D401E05}.Debug|x64.Build.0 = Debug|x64
+		{F45FF243-6422-4951-A0C7-98778D401E05}.Release|x64.ActiveCfg = Release|x64
+		{F45FF243-6422-4951-A0C7-98778D401E05}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
