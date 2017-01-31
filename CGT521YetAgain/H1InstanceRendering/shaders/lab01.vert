@@ -2,12 +2,13 @@
 in vec3 Position;
 in vec3 Normal;
 in vec2 TextCoord;
+in vec3 Color;
 
 uniform mat4 PVM;
 
 out vec3 fNormal;
 out vec2 fTextCoord;
-flat out int finstanceID;
+flat out vec3 fColor;
 
 void main(void) {
 
@@ -23,5 +24,5 @@ void main(void) {
 	gl_Position = PVM * vec4(modifiedPos, 1.0f);
 	fNormal = Normal;
 	fTextCoord = TextCoord;
-	finstanceID = gl_InstanceID;
+	fColor = Color;
 }

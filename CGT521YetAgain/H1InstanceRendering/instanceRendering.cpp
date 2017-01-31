@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/random.hpp>
 
 /* Include heders and namespaces from my CGT Library */
 #include "OGLHelpers.h"
@@ -22,6 +23,7 @@ using namespace ogl;
 using namespace math;
 using namespace mesh;
 using namespace camera;
+using namespace std;
 
 /* CGT Library related*/
 OGLProgram* programPtr = nullptr;
@@ -35,10 +37,20 @@ GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
+
+// Instance atributes
+//Instance attribute
+GLint a_color_loc = -1; 
+//VBO for instanced attribute
+GLuint color_buffer_id = 0;
+
 //Global variables for the program logic
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
+const unsigned int instace_number = 9;
+
+vector<glm::vec3> colors;
 
 void create_glut_window();
 void init_program();
@@ -101,6 +113,20 @@ void init_program() {
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
 	cam.setDepthView(0.1f, 3.5f);
+	/*Create a buffer for the color atribute */
+	glGenBuffers(1, &color_buffer_id);
+	/* Generate a bunch of random colors*/
+	vec3 color;
+	for (int i = 0; i < instace_number; ++i) {
+		color = glm::linearRand(vec3(0.2f), vec3(1.0f));
+		colors.push_back(color);
+	}
+	/* Send the colors to GPU */
+	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
+	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(vec3), colors.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//This set this attribute as an instanced attribute
+	glVertexAttribDivisor(a_color_loc, 1);
 }
 
 void init_OpenGL() {
@@ -156,6 +182,7 @@ void reload_shaders() {
 	a_position_loc = programPtr->attribLoc("Position");
 	a_normal_loc = programPtr->attribLoc("Normal");
 	a_texture_loc = programPtr->attribLoc("TextCoord");
+	a_color_loc = programPtr->attribLoc("Color");
 }
 
 
@@ -202,8 +229,19 @@ void display() {
 	if (u_Time_location != -1) {
 		glUniform1f(u_Time_location, seconds_elapsed);
 	}
+	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
+	if (a_color_loc != -1) {
+		glEnableVertexAttribArray(a_color_loc);
+		//Colors in this buffer are thigly packes so the zero at the end
+		glVertexAttribPointer(a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
+	}
+
 	/* Draw */
-	meshPtr->drawTriangles(a_position_loc, a_normal_loc, a_texture_loc, 9);
+	meshPtr->drawTriangles(a_position_loc, a_normal_loc, a_texture_loc, instace_number);
+
+	if (a_color_loc != -1) {
+		glDisableVertexAttribArray(a_color_loc);
+	}
 
 	//Unbind an clean
 	glUseProgram(0);
