@@ -1,4 +1,4 @@
-#version 140
+#version 430
 in vec3 fNormal;
 in vec2 fTextCoord;
 flat in vec3 fColor;

@@ -31,26 +31,28 @@ Mesh* meshPtr = nullptr;
 Camera cam;
 GLint window = 0;
 // Location for shader variables
-GLint u_PVM_location = -1;
+GLint u_PV_location = -1;
+GLint u_M_location = -1;
 GLint u_Time_location = -1;
 GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
 
-// Instance atributes
 //Instance attribute
 GLint a_color_loc = -1; 
+GLint a_transformation_loc = -1;
 //VBO for instanced attribute
 GLuint color_buffer_id = 0;
-
+GLuint transformation_buffer_id = 0;
 //Global variables for the program logic
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
-const unsigned int instace_number = 9;
+const unsigned int instace_number = 1;
 
 vector<glm::vec3> colors;
+vector<glm::mat2> transformations;
 
 void create_glut_window();
 void init_program();
@@ -94,11 +96,12 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Lab 01");
+	window = glutCreateWindow("Jorge Garcia, Homework 1");
 }
 
 void init_program() {
 	using glm::vec3;
+	using glm::mat4;
 	/* Initialize global variables for program control */
 	seconds_elapsed = 0.0f;
 	/* Create simple plane geometry and send it to GPU */
@@ -109,24 +112,48 @@ void init_program() {
 		meshPtr->sendToGPU();
 	}
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
 	cam.setDepthView(0.1f, 3.5f);
-	/*Create a buffer for the color atribute */
+	/*Create a buffers for the instanced atributes */
 	glGenBuffers(1, &color_buffer_id);
+	glGenBuffers(1, &transformation_buffer_id);
 	/* Generate a bunch of random colors*/
 	vec3 color;
 	for (int i = 0; i < instace_number; ++i) {
 		color = glm::linearRand(vec3(0.2f), vec3(1.0f));
 		colors.push_back(color);
 	}
-	/* Send the colors to GPU */
+	/* Generate the transformation matrices */
+	//Model
+	mat4 I = mat4(1.0f);
+	mat4 M;
+	M = glm::scale(I, scaleFactor * vec3(1.0f));
+	M = glm::translate(M, -meshCenter);
+	//mat4 T = I;
+	for (int i = 0; i < instace_number; ++i) {
+		//mat4 T = glm::translate(T, vec3(0.2f, 0.2f, 0.0f));
+		transformations.push_back(M);
+	}
+
+	/* Send the colors and transformation to GPU*/
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(vec3), colors.data(), GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//This set this attribute as an instanced attribute
 	glVertexAttribDivisor(a_color_loc, 1);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
+	glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+	//Making instanciated
+	/*for (int i = 0; i < 4; ++i) {
+		glVertexAttribDivisor(a_transformation_loc + i, 1);
+	}*/
+	
+	
 }
 
 void init_OpenGL() {
@@ -152,7 +179,7 @@ void init_OpenGL() {
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
 	//Dark black background color
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 
 }
 
@@ -171,18 +198,20 @@ void reload_shaders() {
 	}
 	else {
 		programPtr = tmpProgram;
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
 
 	/************************************************************************/
 	/* Allocating variables for shaders                                     */
 	/************************************************************************/
-	u_PVM_location = programPtr->uniformLoc("PVM");
+	u_PV_location = programPtr->uniformLoc("PV");
+	u_M_location = programPtr->uniformLoc("M");
 	u_Time_location = programPtr->uniformLoc("time");
 	a_position_loc = programPtr->attribLoc("Position");
 	a_normal_loc = programPtr->attribLoc("Normal");
 	a_texture_loc = programPtr->attribLoc("TextCoord");
 	a_color_loc = programPtr->attribLoc("Color");
+	a_transformation_loc = programPtr->attribLoc("M");
 }
 
 
@@ -210,11 +239,12 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programPtr->use();
 
-	mat4 I(1.0f);
+	mat4 I = mat4(1.0f);
 	//Model
-	mat4 M = glm::scale(I, 0.5f * vec3(1.0f));
-	M = glm::scale(M, scaleFactor * vec3(1.0f));
+	mat4 M;
+	M = glm::scale(I, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
+	
 	//View
 	mat4 V = cam.getViewMatrix();
 	//Projection
@@ -223,8 +253,11 @@ void display() {
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
-	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	if (u_M_location != -1) {
+		glUniformMatrix4fv(u_M_location, 1, GL_FALSE, glm::value_ptr(M));
+	}
+	if (u_PV_location != -1) {
+		glUniformMatrix4fv(u_PV_location, 1, GL_FALSE, glm::value_ptr(P * V));
 	}
 	if (u_Time_location != -1) {
 		glUniform1f(u_Time_location, seconds_elapsed);
@@ -235,15 +268,43 @@ void display() {
 		//Colors in this buffer are thigly packes so the zero at the end
 		glVertexAttribPointer(a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
 	}
-
+	/* Matrix atribute location actually uses four location one per column
+	  This code is taken form the OpenGL programming guide pg 130*/
+	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
+	if (a_transformation_loc != -1) {
+		for (int i = 0; i < 4; i++) {
+			// Set up the vertex attribute
+			if (a_transformation_loc + i != -1) {
+				// Enable it
+				glEnableVertexAttribArray(a_transformation_loc + i);
+				glVertexAttribPointer(a_transformation_loc + i, // Location
+					4, GL_FLOAT, GL_FALSE, // vec4
+					sizeof(mat4), // Stride
+					(void *)(sizeof(vec4) * i)); // Start offset
+											
+				//Making instanciated
+				glVertexAttribDivisor(a_transformation_loc + i, 1);
+			}
+		}
+	}
+	
 	/* Draw */
 	meshPtr->drawTriangles(a_position_loc, a_normal_loc, a_texture_loc, instace_number);
+
+	if (a_transformation_loc != -1) {
+		for (int i = 0; i < 4; i++) {
+			if (a_transformation_loc + i != -1) {
+				glDisableVertexAttribArray(a_transformation_loc + i);
+			}
+		}
+	}
 
 	if (a_color_loc != -1) {
 		glDisableVertexAttribArray(a_color_loc);
 	}
 
 	//Unbind an clean
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glUseProgram(0);
 
 	glutSwapBuffers();
