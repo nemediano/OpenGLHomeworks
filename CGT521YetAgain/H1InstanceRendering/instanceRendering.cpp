@@ -19,16 +19,19 @@
 #include "OGLProgram.h"
 #include "Geometries.h"
 #include "Camera.h"
+#include "Trackball.h"
 using namespace ogl;
 using namespace math;
 using namespace mesh;
 using namespace camera;
 using namespace std;
+/*Camera related function*/
+Camera cam;
+Trackball ball;
 
 /* CGT Library related*/
 OGLProgram* programPtr = nullptr;
 Mesh* meshPtr = nullptr;
-Camera cam;
 GLint window = 0;
 // Location for shader variables
 GLint u_PV_location = -1;
@@ -37,8 +40,6 @@ GLint u_Time_location = -1;
 GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
-
-
 //Instance attribute
 GLint a_color_loc = -1; 
 GLint a_transformation_loc = -1;
@@ -49,11 +50,11 @@ GLuint transformation_buffer_id = 0;
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
-const unsigned int instace_number = 60;
+const unsigned int instace_number = 400;
 glm::mat4 M;
 
 vector<glm::vec3> colors;
-vector<glm::mat2> transformations;
+vector<glm::mat4> transformations;
 
 void create_glut_window();
 void init_program();
@@ -67,7 +68,9 @@ void display();
 void reshape(int new_window_width, int new_window_height);
 void idle();
 void keyboard(unsigned char key, int mouse_x, int mouse_y);
-void special(int key, int mouse_x, int mouse_y);
+void mouse(int button, int state, int x, int y);
+void mouseWheel(int button, int dir, int mouse_x, int mouse_y);
+void mouseDrag(int mouse_x, int mouse_y);
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
@@ -113,10 +116,12 @@ void init_program() {
 		meshPtr->sendToGPU();
 	}
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 3.5f);
+	cam.setDepthView(0.1f, 3.0f);
+	//Create trackball camera
+	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	/*Create a buffers for the instanced atributes */
 	glGenBuffers(1, &color_buffer_id);
 	glGenBuffers(1, &transformation_buffer_id);
@@ -128,14 +133,14 @@ void init_program() {
 	}
 	/* Generate the transformation matrices */
 	//Model
-	mat4 models_matrices[instace_number];
 	mat4 I = mat4(1.0f);
 	M = glm::scale(I, 0.5f * vec3(1.0f));
 	M = glm::scale(M, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
 	for (int i = 0; i < instace_number; ++i) {
-		mat4 T = glm::translate(I, glm::linearRand(vec3(-0.75f), vec3(0.75f)));
-		models_matrices[i] = T * M;
+		mat4 T = glm::scale(I, glm::linearRand(0.5f, 1.0f) * vec3(1.0f));
+		T = glm::translate(T, glm::linearRand(vec3(-0.9f), vec3(0.9f)));
+		transformations.push_back(T * M);
 	}
 
 	/* Send the colors and transformation to GPU*/
@@ -145,8 +150,8 @@ void init_program() {
 	glVertexAttribDivisor(a_color_loc, 1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
-	//glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(models_matrices), &models_matrices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
+	
 	//Making instanciated
 	for (int i = 0; i < 4; ++i) {
 		glVertexAttribDivisor(a_transformation_loc + i, 1);
@@ -219,13 +224,15 @@ void create_glut_callbacks() {
 	glutReshapeFunc(reshape);
 	glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
-	glutSpecialFunc(special);
-
+	glutMouseFunc(mouse);
+	glutMouseWheelFunc(mouseWheel);
+	glutMotionFunc(mouseDrag);
 }
 
 void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
 	cam.setAspectRatio(new_window_width, new_window_height);
+	ball.setWindowSize(new_window_width, new_window_height);
 }
 
 void display() {
@@ -241,7 +248,7 @@ void display() {
 	//Model
 		
 	//View
-	mat4 V = cam.getViewMatrix();
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 
@@ -276,9 +283,6 @@ void display() {
 					4, GL_FLOAT, GL_FALSE, // vec4
 					sizeof(mat4), // Stride
 					(void *)(sizeof(vec4) * i)); // Start offset
-											
-				//Making instanciated
-				//glVertexAttribDivisor(a_transformation_loc + i, 1);
 			}
 		}
 	}
@@ -335,12 +339,34 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	glutPostRedisplay();
 }
 
+void mouse(int button, int state, int mouse_x, int mouse_y) {
 
+	/* Camera trackball*/
+	if (button == GLUT_LEFT_BUTTON) {
+		if (state == GLUT_DOWN) {
+			ball.startDrag(glm::vec2(mouse_x, mouse_y));
+		}
+		else {
+			ball.endDrag(glm::vec2(mouse_x, mouse_y));
+		}
+	}
 
-void special(int key, int mouse_x, int mouse_y) {
-
-	/* Now, the app*/
 	glutPostRedisplay();
 }
 
+void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
+	/* Camera zoom in-out*/
+	const float DELTA_ANGLE = PI / 30.0f;
+	if (button == 0) {
+		cam.addFovY(dir > 0 ? DELTA_ANGLE : -DELTA_ANGLE);
+	}
+
+	glutPostRedisplay();
+}
+
+void mouseDrag(int mouse_x, int mouse_y) {
+	/*Trackball camera*/
+	ball.drag(glm::ivec2(mouse_x, mouse_y));
+	glutPostRedisplay();
+}
 
