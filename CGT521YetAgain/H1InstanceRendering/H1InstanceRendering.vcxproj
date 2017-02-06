@@ -90,6 +90,13 @@
       <Project>{f6032f78-a0c5-43b9-bd83-d6ff2a1a8ff0}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\hm01Instanciated.frag" />
+    <None Include="shaders\hm01Instanciated.vert" />
+    <None Include="shaders\hm01Normal.vert" />
+    <None Include="shaders\simple.frag" />
+    <None Include="shaders\simple.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

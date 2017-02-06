@@ -19,4 +19,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\hm01Instanciated.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\hm01Instanciated.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\simple.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\simple.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\hm01Normal.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

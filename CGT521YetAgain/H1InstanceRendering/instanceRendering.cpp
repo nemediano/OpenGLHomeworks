@@ -30,7 +30,8 @@ Camera cam;
 Trackball ball;
 
 /* CGT Library related*/
-OGLProgram* programPtr = nullptr;
+OGLProgram* programInstanciatedPtr = nullptr;
+OGLProgram* programNormalPtr = nullptr;
 Mesh* meshPtr = nullptr;
 GLint window = 0;
 // Location for shader variables
@@ -52,7 +53,7 @@ float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
 const unsigned int instace_number = 1500;
-glm::mat4 M;
+
 
 vector<glm::vec3> colors;
 vector<glm::mat4> transformations;
@@ -90,7 +91,7 @@ int main(int argc, char* argv[]) {
 
 void exit_glut() {
 	delete meshPtr;
-	delete programPtr;
+	delete programInstanciatedPtr;
 	/* Delete window (freeglut) */
 	glutDestroyWindow(window);
 	exit(EXIT_SUCCESS);
@@ -135,6 +136,7 @@ void init_program() {
 	/* Generate the transformation matrices */
 	//Model
 	mat4 I = mat4(1.0f);
+	glm::mat4 M;
 	M = glm::scale(I, 0.5f * vec3(1.0f));
 	M = glm::scale(M, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
@@ -174,7 +176,7 @@ void init_OpenGL() {
 	}
 	cout << getOpenGLInfo() << endl;
 	/* Create a default program that should always work */
-	programPtr = new OGLProgram("shaders/simple.vert", "shaders/simple.frag");
+	programInstanciatedPtr = new OGLProgram("shaders/simple.vert", "shaders/simple.frag");
 
 	reload_shaders();
 
@@ -194,7 +196,7 @@ void reload_shaders() {
 	/************************************************************************/
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
-	auto tmpProgram = new OGLProgram("shaders/lab01.vert", "shaders/lab01.frag");
+	auto tmpProgram = new OGLProgram("shaders/hm01Instanciated.vert", "shaders/hm01Instanciated.frag");
 
 	if (!tmpProgram || !tmpProgram->isOK()) {
 		cerr << "Something wrong in shader" << endl;
@@ -202,22 +204,34 @@ void reload_shaders() {
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	}
 	else {
-		programPtr = tmpProgram;
+		programInstanciatedPtr = tmpProgram;
+		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	}
+
+	tmpProgram = new OGLProgram("shaders/hm01Normal.vert", "shaders/hm01Instanciated.frag");
+
+	if (!tmpProgram || !tmpProgram->isOK()) {
+		cerr << "Something wrong in shader" << endl;
+		delete tmpProgram;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	}
+	else {
+		programNormalPtr = tmpProgram;
 		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
 
 	/************************************************************************/
 	/* Allocating variables for shaders                                     */
 	/************************************************************************/
-	u_PV_location = programPtr->uniformLoc("PV");
-	u_M_location = programPtr->uniformLoc("M");
-	u_Time_location = programPtr->uniformLoc("time");
-	u_NormMat_location = programPtr->uniformLoc("NormMat");
-	a_position_loc = programPtr->attribLoc("Position");
-	a_normal_loc = programPtr->attribLoc("Normal");
-	a_texture_loc = programPtr->attribLoc("TextCoord");
-	a_color_loc = programPtr->attribLoc("Color");
-	a_transformation_loc = programPtr->attribLoc("M");
+	u_PV_location = programInstanciatedPtr->uniformLoc("PV");
+	u_M_location = programInstanciatedPtr->uniformLoc("M");
+	u_Time_location = programInstanciatedPtr->uniformLoc("time");
+	u_NormMat_location = programInstanciatedPtr->uniformLoc("NormMat");
+	a_position_loc = programInstanciatedPtr->attribLoc("Position");
+	a_normal_loc = programInstanciatedPtr->attribLoc("Normal");
+	a_texture_loc = programInstanciatedPtr->attribLoc("TextCoord");
+	a_color_loc = programInstanciatedPtr->attribLoc("Color");
+	a_transformation_loc = programInstanciatedPtr->attribLoc("M");
 }
 
 
@@ -245,10 +259,14 @@ void display() {
 	using namespace std;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	programPtr->use();
+	programInstanciatedPtr->use();
 
 	//Model
-		
+	mat4 M;
+	mat4 I = mat4(1.0f);
+	M = glm::scale(I, 0.5f * vec3(1.0f));
+	M = glm::scale(M, scaleFactor * vec3(1.0f));
+	M = glm::translate(M, -meshCenter);
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
