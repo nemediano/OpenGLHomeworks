@@ -36,6 +36,7 @@ GLint window = 0;
 // Location for shader variables
 GLint u_PV_location = -1;
 GLint u_M_location = -1;
+GLint u_NormMat_location = -1;
 GLint u_Time_location = -1;
 GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
@@ -50,7 +51,7 @@ GLuint transformation_buffer_id = 0;
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
-const unsigned int instace_number = 400;
+const unsigned int instace_number = 1500;
 glm::mat4 M;
 
 vector<glm::vec3> colors;
@@ -116,7 +117,7 @@ void init_program() {
 		meshPtr->sendToGPU();
 	}
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
 	cam.setDepthView(0.1f, 3.0f);
@@ -139,7 +140,7 @@ void init_program() {
 	M = glm::translate(M, -meshCenter);
 	for (int i = 0; i < instace_number; ++i) {
 		mat4 T = glm::scale(I, glm::linearRand(0.5f, 1.0f) * vec3(1.0f));
-		T = glm::translate(T, glm::linearRand(vec3(-0.9f), vec3(0.9f)));
+		T = glm::translate(T, glm::ballRand(3.0f));
 		transformations.push_back(T * M);
 	}
 
@@ -211,6 +212,7 @@ void reload_shaders() {
 	u_PV_location = programPtr->uniformLoc("PV");
 	u_M_location = programPtr->uniformLoc("M");
 	u_Time_location = programPtr->uniformLoc("time");
+	u_NormMat_location = programPtr->uniformLoc("NormMat");
 	a_position_loc = programPtr->attribLoc("Position");
 	a_normal_loc = programPtr->attribLoc("Normal");
 	a_texture_loc = programPtr->attribLoc("TextCoord");
@@ -260,6 +262,9 @@ void display() {
 	}
 	if (u_PV_location != -1) {
 		glUniformMatrix4fv(u_PV_location, 1, GL_FALSE, glm::value_ptr(P * V));
+	}
+	if (u_NormMat_location != -1) {
+		glUniformMatrix4fv(u_NormMat_location, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
 	}
 	if (u_Time_location != -1) {
 		glUniform1f(u_Time_location, seconds_elapsed);
