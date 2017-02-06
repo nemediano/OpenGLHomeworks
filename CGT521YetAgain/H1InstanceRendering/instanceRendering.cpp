@@ -49,7 +49,8 @@ GLuint transformation_buffer_id = 0;
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
-const unsigned int instace_number = 1;
+const unsigned int instace_number = 2;
+glm::mat4 M;
 
 vector<glm::vec3> colors;
 vector<glm::mat2> transformations;
@@ -128,7 +129,6 @@ void init_program() {
 	/* Generate the transformation matrices */
 	//Model
 	mat4 I = mat4(1.0f);
-	mat4 M;
 	M = glm::scale(I, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
 	//mat4 T = I;
@@ -140,20 +140,19 @@ void init_program() {
 	/* Send the colors and transformation to GPU*/
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(vec3), colors.data(), GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//This set this attribute as an instanced attribute
 	glVertexAttribDivisor(a_color_loc, 1);
 	
+	glm::mat4 models_matrices[2] = {M, M};
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
-	glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
+	//glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(models_matrices), &models_matrices[0], GL_STATIC_DRAW);
 	//Making instanciated
-	/*for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < 4; ++i) {
 		glVertexAttribDivisor(a_transformation_loc + i, 1);
-	}*/
+	}
 	
-	
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void init_OpenGL() {
@@ -239,12 +238,8 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programPtr->use();
 
-	mat4 I = mat4(1.0f);
 	//Model
-	mat4 M;
-	M = glm::scale(I, scaleFactor * vec3(1.0f));
-	M = glm::translate(M, -meshCenter);
-	
+		
 	//View
 	mat4 V = cam.getViewMatrix();
 	//Projection
@@ -283,7 +278,7 @@ void display() {
 					(void *)(sizeof(vec4) * i)); // Start offset
 											
 				//Making instanciated
-				glVertexAttribDivisor(a_transformation_loc + i, 1);
+				//glVertexAttribDivisor(a_transformation_loc + i, 1);
 			}
 		}
 	}
