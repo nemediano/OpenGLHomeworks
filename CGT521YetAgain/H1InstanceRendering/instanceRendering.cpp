@@ -52,6 +52,7 @@ GLuint transformation_buffer_id = 0;
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
+bool drawInstanciated;
 const unsigned int instace_number = 1500;
 
 
@@ -124,6 +125,8 @@ void init_program() {
 	cam.setDepthView(0.1f, 3.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	//Instanciated mode
+	drawInstanciated = true;
 	/*Create a buffers for the instanced atributes */
 	glGenBuffers(1, &color_buffer_id);
 	glGenBuffers(1, &transformation_buffer_id);
