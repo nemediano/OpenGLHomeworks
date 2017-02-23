@@ -104,6 +104,10 @@ void mousePasiveMotion(int mouse_x, int mouse_y);
 //Imgui related function
 void drawGUI();
 
+//Time query managers
+GLuint timer_query;
+GLuint nanoseconds;
+
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
@@ -152,7 +156,8 @@ void drawGUI() {
 	int tmp = int(instace_number) / 100;
 	ImGui::InputInt("Instances number", &tmp);
 	instace_number = glm::clamp(unsigned int(tmp * 100), 0U, MAX_INSTANCES);
-
+	
+	ImGui::Text("Time in nanoseconds %u", nanoseconds);
 	if (ImGui::Button("Quit")) {
 		exit_glut();
 	}
@@ -248,6 +253,8 @@ void init_OpenGL() {
 	//Dark black background color
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 
+	//For the time query
+	glGenQueries(1, &timer_query);
 }
 
 void reload_shaders() {
@@ -325,7 +332,7 @@ void display() {
 	using glm::vec4;
 	using glm::mat4;
 	using namespace std;
-
+	glBeginQuery(GL_TIME_ELAPSED, timer_query);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	if (instanciated) {
@@ -343,6 +350,9 @@ void display() {
 	/* But, before flushing the drawinng commands*/
 
 	glutSwapBuffers();
+	glFinish();
+	glEndQuery(GL_TIME_ELAPSED);
+	glGetQueryObjectuiv(timer_query, GL_QUERY_RESULT, &nanoseconds);
 }
 
 void drawInstanciated() {
