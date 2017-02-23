@@ -29,6 +29,10 @@ using namespace std;
 Camera cam;
 Trackball ball;
 
+/*Headers needed for imgui */
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glut.h"
+
 /* CGT Library related*/
 OGLProgram* programInstanciatedPtr = nullptr;
 OGLProgram* programNormalPtr = nullptr;
@@ -70,8 +74,8 @@ float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
 bool instanciated;
-const unsigned int instace_number = 10;
-
+const unsigned int MAX_INSTANCES = 2000;
+unsigned int instace_number = 100;
 
 vector<glm::vec3> colors;
 vector<glm::mat4> transformations;
@@ -89,17 +93,24 @@ void drawUnInstanciated();
 void display();
 void reshape(int new_window_width, int new_window_height);
 void idle();
+/*I am forced to implement all this callbacks, for the GUI to work propertly*/
 void keyboard(unsigned char key, int mouse_x, int mouse_y);
+void special(int key, int mouse_x, int mouse_y);
 void mouse(int button, int state, int x, int y);
 void mouseWheel(int button, int dir, int mouse_x, int mouse_y);
 void mouseDrag(int mouse_x, int mouse_y);
+void mousePasiveMotion(int mouse_x, int mouse_y);
+
+//Imgui related function
+void drawGUI();
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
 	create_glut_window();
 	init_OpenGL();
-
+	/*You need to call this once at the begining of your program for ImGui to work*/
+	ImGui_ImplGLUT_Init();
 	init_program();
 
 	create_glut_callbacks();
@@ -129,6 +140,24 @@ void create_glut_window() {
 	
 }
 
+void drawGUI() {
+	/* Always start with this call*/
+	ImGui_ImplGLUT_NewFrame(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	/* Position of the menu, if no imgui.ini exist */
+	ImGui::SetNextWindowSize(ImVec2(50, 50), ImGuiSetCond_FirstUseEver);
+
+	/*Create a new menu for my app*/
+	ImGui::Begin("Render options");
+	ImGui::Checkbox("Draw instanciated", &instanciated);
+	if (ImGui::Button("Quit")) {
+		exit_glut();
+	}
+	ImGui::End();
+
+	/* End with this when you want to render GUI */
+	ImGui::Render();
+}
+
 void init_program() {
 	using glm::vec3;
 	using glm::mat4;
@@ -155,7 +184,7 @@ void init_program() {
 	glGenBuffers(1, &transformation_buffer_id);
 	/* Generate a bunch of random colors*/
 	vec3 color;
-	for (int i = 0; i < instace_number; ++i) {
+	for (int i = 0; i < MAX_INSTANCES; ++i) {
 		color = glm::linearRand(vec3(0.2f), vec3(1.0f));
 		colors.push_back(color);
 	}
@@ -166,7 +195,7 @@ void init_program() {
 	M = glm::scale(I, 0.5f * vec3(1.0f));
 	M = glm::scale(M, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
-	for (int i = 0; i < instace_number; ++i) {
+	for (int i = 0; i < MAX_INSTANCES; ++i) {
 		mat4 T = glm::scale(I, glm::linearRand(0.5f, 1.0f) * vec3(1.0f));
 		T = glm::translate(T, glm::ballRand(3.0f));
 		transformations.push_back(T * M);
@@ -274,9 +303,11 @@ void create_glut_callbacks() {
 	glutReshapeFunc(reshape);
 	glutIdleFunc(idle);
 	glutKeyboardFunc(keyboard);
+	glutSpecialFunc(special);
 	glutMouseFunc(mouse);
 	glutMouseWheelFunc(mouseWheel);
 	glutMotionFunc(mouseDrag);
+	glutPassiveMotionFunc(mousePasiveMotion);
 }
 
 void reshape(int new_window_width, int new_window_height) {
@@ -302,6 +333,10 @@ void display() {
 	//Unbind an clean
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glUseProgram(0);
+
+	/* You need to call this to draw the GUI, After unbinding your program*/
+	drawGUI();
+	/* But, before flushing the drawinng commands*/
 
 	glutSwapBuffers();
 }
@@ -431,30 +466,56 @@ void idle() {
 }
 
 void keyboard(unsigned char key, int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.AddInputCharacter(key);
 	switch (key) {
 
-	case 'R':
-	case 'r':
-		reload_shaders();
+		case 'R':
+		case 'r':
+			reload_shaders();
 		break;
 
-	case 27:
-		exit_glut();
+		case 27:
+			exit_glut();
 		break;
 	
-	case 'i':
-	case 'I':
-		instanciated = !instanciated;
+		case 'i':
+		case 'I':
+			instanciated = !instanciated;
 		break;
 
-	default:
+		default:
 		break;
 	}
 
 	glutPostRedisplay();
 }
 
+void special(int key, int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.AddInputCharacter(key);
+
+	/* Now, the app*/
+
+	glutPostRedisplay();
+}
+
 void mouse(int button, int state, int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+
+	if (state == GLUT_DOWN && (button == GLUT_LEFT_BUTTON))
+		io.MouseDown[0] = true;
+	else
+		io.MouseDown[0] = false;
+
+	if (state == GLUT_DOWN && (button == GLUT_RIGHT_BUTTON))
+		io.MouseDown[1] = true;
+	else
+		io.MouseDown[1] = false;
 
 	/* Camera trackball*/
 	if (button == GLUT_LEFT_BUTTON) {
@@ -470,6 +531,16 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 }
 
 void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+	if (dir > 0) {
+		io.MouseWheel = 1.0;
+	}
+	else if (dir < 0) {
+		io.MouseWheel = -1.0;
+	}
+
 	/* Camera zoom in-out*/
 	const float DELTA_ANGLE = PI / 30.0f;
 	if (button == 0) {
@@ -480,8 +551,21 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 }
 
 void mouseDrag(int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+
+
 	/*Trackball camera*/
 	ball.drag(glm::ivec2(mouse_x, mouse_y));
 	glutPostRedisplay();
 }
 
+void mousePasiveMotion(int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+
+	/*Now, the app*/
+	glutPostRedisplay();
+}
