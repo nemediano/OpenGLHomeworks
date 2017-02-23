@@ -149,6 +149,10 @@ void drawGUI() {
 	/*Create a new menu for my app*/
 	ImGui::Begin("Render options");
 	ImGui::Checkbox("Draw instanciated", &instanciated);
+	int tmp = int(instace_number) / 100;
+	ImGui::InputInt("Instances number", &tmp);
+	instace_number = glm::clamp(unsigned int(tmp * 100), 0U, MAX_INSTANCES);
+
 	if (ImGui::Button("Quit")) {
 		exit_glut();
 	}
@@ -216,7 +220,7 @@ void init_program() {
 	}
 	
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	instanciated = false;
+	instanciated = true;
 }
 
 void init_OpenGL() {
@@ -432,7 +436,7 @@ void drawUnInstanciated() {
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
-	for (int i = 0; i < instace_number; ++i) {
+	for (unsigned int i = 0; i < instace_number; ++i) {
 		M = transformations[i];
 		
 		if (unInstLoc.u_PVM_location != -1) {
