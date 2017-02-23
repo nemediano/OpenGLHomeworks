@@ -30,38 +30,22 @@ Camera cam;
 Trackball ball;
 
 /* CGT Library related*/
-OGLProgram* programInstanciatedPtr = nullptr;
+OGLProgram* programGeometryPassPtr = nullptr;
 OGLProgram* programNormalPtr = nullptr;
+
 Mesh* meshPtr = nullptr;
 GLint window = 0;
-
-struct InstancedLocation {
-	GLint u_PV_location = -1;
-	GLint u_NormMat_location = -1;
-	GLint u_Time_location = -1;
-	GLint a_position_loc = -1;
-	GLint a_normal_loc = -1;
-	GLint a_texture_loc = -1;
-	//Instance attribute
-	GLint a_color_loc = -1;
-	GLint a_transformation_loc = -1;
-};
-
-struct UnInstancedLocation {
-	GLint u_PVM_location = -1;
-	GLint u_NormMat_location = -1;
-	GLint u_color_loc = -1;
-	GLint u_Time_location = -1;
-	GLint a_position_loc = -1;
-	GLint a_normal_loc = -1;
-	GLint a_texture_loc = -1;
-};
-
-InstancedLocation instLoc;
-UnInstancedLocation unInstLoc;
-
 // Location for shader variables
-
+GLint u_PV_location = -1;
+GLint u_M_location = -1;
+GLint u_NormMat_location = -1;
+GLint u_Time_location = -1;
+GLint a_position_loc = -1;
+GLint a_normal_loc = -1;
+GLint a_texture_loc = -1;
+//Instance attribute
+GLint a_color_loc = -1; 
+GLint a_transformation_loc = -1;
 //VBO for instanced attribute
 GLuint color_buffer_id = 0;
 GLuint transformation_buffer_id = 0;
@@ -69,8 +53,8 @@ GLuint transformation_buffer_id = 0;
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
-bool instanciated;
-const unsigned int instace_number = 10;
+bool drawInstanciated;
+const unsigned int instace_number = 2;
 
 
 vector<glm::vec3> colors;
@@ -82,8 +66,6 @@ void init_OpenGL();
 void create_glut_callbacks();
 void exit_glut();
 void reload_shaders();
-void drawInstanciated();
-void drawUnInstanciated();
 
 //Glut callback functions
 void display();
@@ -111,7 +93,7 @@ int main(int argc, char* argv[]) {
 
 void exit_glut() {
 	delete meshPtr;
-	delete programInstanciatedPtr;
+	delete programGeometryPassPtr;
 	/* Delete window (freeglut) */
 	glutDestroyWindow(window);
 	exit(EXIT_SUCCESS);
@@ -125,7 +107,7 @@ void create_glut_window() {
 	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE | GLUT_DEBUG);
 #endif
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Jorge Garcia, Homework 1");
+	window = glutCreateWindow("Jorge Garcia, Homework 2");
 	
 }
 
@@ -142,14 +124,14 @@ void init_program() {
 		meshPtr->sendToGPU();
 	}
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 3.0f);
+	cam.setDepthView(0.1f, 3.5f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Instanciated mode
-	instanciated = true;
+	drawInstanciated = true;
 	/*Create a buffers for the instanced atributes */
 	glGenBuffers(1, &color_buffer_id);
 	glGenBuffers(1, &transformation_buffer_id);
@@ -167,8 +149,10 @@ void init_program() {
 	M = glm::scale(M, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
 	for (int i = 0; i < instace_number; ++i) {
-		mat4 T = glm::scale(I, glm::linearRand(0.5f, 1.0f) * vec3(1.0f));
-		T = glm::translate(T, glm::ballRand(3.0f));
+		//mat4 T = glm::scale(I, glm::linearRand(0.5f, 1.0f) * vec3(1.0f));
+		mat4 T = glm::translate(I, glm::linearRand(-1.0f, 1.0f) * vec3(1.0f, 0.0, 0.0f));
+		T = glm::translate(T, glm::linearRand(-1.0f, 1.0f) * vec3(0.0f, 1.0, 0.0f));
+		//T = glm::translate(T, glm::ballRand(3.0f));
 		transformations.push_back(T * M);
 	}
 
@@ -176,18 +160,17 @@ void init_program() {
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(vec3), colors.data(), GL_STATIC_DRAW);
 	//This set this attribute as an instanced attribute
-	glVertexAttribDivisor(instLoc.a_color_loc, 1);
+	glVertexAttribDivisor(a_color_loc, 1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
 	
 	//Making instanciated
 	for (int i = 0; i < 4; ++i) {
-		glVertexAttribDivisor(instLoc.a_transformation_loc + i, 1);
+		glVertexAttribDivisor(a_transformation_loc + i, 1);
 	}
 	
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	instanciated = false;
 }
 
 void init_OpenGL() {
@@ -203,7 +186,8 @@ void init_OpenGL() {
 	}
 	cout << getOpenGLInfo() << endl;
 	ogl::getErrorLog();
-	
+	/* Create a default program that should always work */
+	programInstanciatedPtr = new OGLProgram("shaders/simple.vert", "shaders/simple.frag");
 
 	reload_shaders();
 
@@ -231,7 +215,7 @@ void reload_shaders() {
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	}
 	else {
-		programInstanciatedPtr = tmpProgram;
+		programGeometryPassPtr = tmpProgram;
 		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
 
@@ -250,22 +234,15 @@ void reload_shaders() {
 	/************************************************************************/
 	/* Allocating variables for shaders                                     */
 	/************************************************************************/
-	/* Instanciated first */
-	instLoc.u_PV_location = programInstanciatedPtr->uniformLoc("PV");
-	instLoc.u_Time_location = programInstanciatedPtr->uniformLoc("time");
-	instLoc.u_NormMat_location = programInstanciatedPtr->uniformLoc("NormMat");
-	instLoc.a_position_loc = programInstanciatedPtr->attribLoc("Position");
-	instLoc.a_normal_loc = programInstanciatedPtr->attribLoc("Normal");
-	instLoc.a_texture_loc = programInstanciatedPtr->attribLoc("TextCoord");
-	instLoc.a_color_loc = programInstanciatedPtr->attribLoc("Color");
-	instLoc.a_transformation_loc = programInstanciatedPtr->attribLoc("M");
-	/* UnInstanciated second */
-	unInstLoc.u_PVM_location = programNormalPtr->uniformLoc("PVM");
-	unInstLoc.u_NormMat_location = programNormalPtr->uniformLoc("NormMat");
-	unInstLoc.u_color_loc = programNormalPtr->uniformLoc("Color");
-	unInstLoc.a_position_loc = programNormalPtr->attribLoc("Position");
-	unInstLoc.a_normal_loc = programNormalPtr->attribLoc("Normal");
-	unInstLoc.a_texture_loc = programNormalPtr->attribLoc("TextCoord");
+	u_PV_location = programGeometryPassPtr->uniformLoc("PV");
+	u_M_location = programGeometryPassPtr->uniformLoc("M");
+	u_Time_location = programGeometryPassPtr->uniformLoc("time");
+	u_NormMat_location = programGeometryPassPtr->uniformLoc("NormMat");
+	a_position_loc = programGeometryPassPtr->attribLoc("Position");
+	a_normal_loc = programGeometryPassPtr->attribLoc("Normal");
+	a_texture_loc = programGeometryPassPtr->attribLoc("TextCoord");
+	a_color_loc = programGeometryPassPtr->attribLoc("Color");
+	a_transformation_loc = programGeometryPassPtr->attribLoc("M");
 }
 
 
@@ -288,30 +265,12 @@ void reshape(int new_window_width, int new_window_height) {
 void display() {
 	using glm::vec3;
 	using glm::vec4;
+	using glm::vec2;
 	using glm::mat4;
 	using namespace std;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-	if (instanciated) {
-		drawInstanciated();
-	} else {
-		drawUnInstanciated();
-	}
-	
-	//Unbind an clean
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-
-	glutSwapBuffers();
-}
-
-void drawInstanciated() {
-	using glm::vec3;
-	using glm::vec4;
-	using glm::mat4;
-	
-	programInstanciatedPtr->use();
+	programGeometryPassPtr->use();
 
 	//Model
 	mat4 M;
@@ -327,95 +286,61 @@ void drawInstanciated() {
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
-
-	if (instLoc.u_PV_location != -1) {
-		glUniformMatrix4fv(instLoc.u_PV_location, 1, GL_FALSE, glm::value_ptr(P * V));
+	if (u_M_location != -1) {
+		glUniformMatrix4fv(u_M_location, 1, GL_FALSE, glm::value_ptr(M));
 	}
-	if (instLoc.u_NormMat_location != -1) {
-		glUniformMatrix4fv(instLoc.u_NormMat_location, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
+	if (u_PV_location != -1) {
+		glUniformMatrix4fv(u_PV_location, 1, GL_FALSE, glm::value_ptr(P * V));
 	}
-	if (instLoc.u_Time_location != -1) {
-		glUniform1f(instLoc.u_Time_location, seconds_elapsed);
+	if (u_NormMat_location != -1) {
+		glUniformMatrix4fv(u_NormMat_location, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
+	}
+	if (u_Time_location != -1) {
+		glUniform1f(u_Time_location, seconds_elapsed);
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
-	if (instLoc.a_color_loc != -1) {
-		glEnableVertexAttribArray(instLoc.a_color_loc);
+	if (a_color_loc != -1) {
+		glEnableVertexAttribArray(a_color_loc);
 		//Colors in this buffer are thigly packes so the zero at the end
-		glVertexAttribPointer(instLoc.a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
+		glVertexAttribPointer(a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
 	}
 	/* Matrix atribute location actually uses four location one per column
-	This code is taken form the OpenGL programming guide pg 130*/
+	  This code is taken form the OpenGL programming guide pg 130*/
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
-	if (instLoc.a_transformation_loc != -1) {
+	if (a_transformation_loc != -1) {
 		for (int i = 0; i < 4; i++) {
 			// Set up the vertex attribute
-			if (instLoc.a_transformation_loc + i != -1) {
+			if (a_transformation_loc + i != -1) {
 				// Enable it
-				glEnableVertexAttribArray(instLoc.a_transformation_loc + i);
-				glVertexAttribPointer(instLoc.a_transformation_loc + i, // Location
+				glEnableVertexAttribArray(a_transformation_loc + i);
+				glVertexAttribPointer(a_transformation_loc + i, // Location
 					4, GL_FLOAT, GL_FALSE, // vec4
 					sizeof(mat4), // Stride
 					(void *)(sizeof(vec4) * i)); // Start offset
 			}
 		}
 	}
-
+	
 	/* Draw */
-	meshPtr->drawTriangles(instLoc.a_position_loc, instLoc.a_normal_loc, instLoc.a_texture_loc, instace_number);
+	meshPtr->drawTriangles(a_position_loc, a_normal_loc, a_texture_loc, instace_number);
 
-	if (instLoc.a_transformation_loc != -1) {
+	if (a_transformation_loc != -1) {
 		for (int i = 0; i < 4; i++) {
-			if (instLoc.a_transformation_loc + i != -1) {
-				glDisableVertexAttribArray(instLoc.a_transformation_loc + i);
+			if (a_transformation_loc + i != -1) {
+				glDisableVertexAttribArray(a_transformation_loc + i);
 			}
 		}
 	}
 
-	if (instLoc.a_color_loc != -1) {
-		glDisableVertexAttribArray(instLoc.a_color_loc);
-	}
-}
-
-void drawUnInstanciated() {
-	using glm::vec3;
-	using glm::vec4;
-	using glm::mat4;
-
-	programNormalPtr->use();
-
-	//Model
-	mat4 M;
-	//View
-	mat4 V = cam.getViewMatrix() * ball.getRotation();
-	//Projection
-	mat4 P = cam.getProjectionMatrix();
-	vec3 color;
-	if (unInstLoc.u_Time_location != -1) {
-		glUniform1f(unInstLoc.u_Time_location, seconds_elapsed);
+	if (a_color_loc != -1) {
+		glDisableVertexAttribArray(a_color_loc);
 	}
 
-	/************************************************************************/
-	/* Send uniform values to shader                                        */
-	/************************************************************************/
-	for (int i = 0; i < instace_number; ++i) {
-		M = transformations[i];
-		
-		if (unInstLoc.u_PVM_location != -1) {
-			glUniformMatrix4fv(unInstLoc.u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
-		}
-		
-		if (unInstLoc.u_NormMat_location != -1) {
-			glUniformMatrix4fv(unInstLoc.u_NormMat_location, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
-		}
-		color = colors[i];
-		if (unInstLoc.u_color_loc != -1) {
-			glUniform3fv(unInstLoc.u_color_loc, 1, glm::value_ptr(color));
-		}
+	//Unbind an clean
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glUseProgram(0);
 
-		/* Draw */
-		meshPtr->drawTriangles(unInstLoc.a_position_loc, unInstLoc.a_normal_loc, unInstLoc.a_texture_loc);
-	}
-	
+	glutSwapBuffers();
 }
 
 void idle() {
@@ -441,12 +366,6 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	case 27:
 		exit_glut();
 		break;
-	
-	case 'i':
-	case 'I':
-		instanciated = !instanciated;
-		break;
-
 	default:
 		break;
 	}
