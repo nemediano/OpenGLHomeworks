@@ -20,6 +20,8 @@
 #include "Geometries.h"
 #include "Camera.h"
 #include "Trackball.h"
+#include "Texture.h"
+using namespace image;
 using namespace ogl;
 using namespace math;
 using namespace mesh;
@@ -29,22 +31,23 @@ using namespace std;
 Camera cam;
 Trackball ball;
 
-
 /* CGT Library related*/
 OGLProgram* programGeomPassPtr = nullptr;
 Mesh* meshPtr = nullptr;
+Texture* textureMapPtr = nullptr;
 GLint window = 0;
 
 struct Locations {
-	GLint u_PV_location = -1;
-	GLint u_NormMat_location = -1;
-	GLint u_Time_location = -1;
-	GLint a_position_loc = -1;
-	GLint a_normal_loc = -1;
-	GLint a_texture_loc = -1;
+	GLint u_P = -1;
+	GLint u_V = -1;
+	GLint u_Time = -1;
+	GLint u_Texture = -1;
+	GLint a_position = -1;
+	GLint a_normal = -1;
+	GLint a_texture = -1;
 	//Instance attribute
-	GLint a_color_loc = -1;
-	GLint a_transformation_loc = -1;
+	GLint a_color = -1;
+	GLint a_transformation = -1;
 };
 
 Locations loc;
@@ -59,9 +62,8 @@ GLuint transformation_buffer_id = 0;
 float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
-bool instanciated;
-const unsigned int MAX_INSTANCES = 3000;
-unsigned int instace_number = 100;
+const unsigned int MAX_INSTANCES = 100;
+unsigned int instace_number = 10;
 
 vector<glm::vec3> colors;
 vector<glm::mat4> transformations;
@@ -130,6 +132,7 @@ void init_program() {
 		scaleFactor = meshPtr->scaleFactor();
 		meshPtr->sendToGPU();
 	}
+	textureMapPtr = new Texture("../models/AmagoTexture.png");
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -163,14 +166,14 @@ void init_program() {
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(vec3), colors.data(), GL_STATIC_DRAW);
 	//This set this attribute as an instanced attribute
-	glVertexAttribDivisor(loc.a_color_loc, 1);
+	glVertexAttribDivisor(loc.a_color, 1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
 
 	//Making instanciated
 	for (int i = 0; i < 4; ++i) {
-		glVertexAttribDivisor(loc.a_transformation_loc + i, 1);
+		glVertexAttribDivisor(loc.a_transformation + i, 1);
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -222,14 +225,15 @@ void reload_shaders() {
 	}
 
 	/* Geometry pass first */
-	loc.u_PV_location = programGeomPassPtr->uniformLoc("PV");
-	loc.u_Time_location = programGeomPassPtr->uniformLoc("time");
-	loc.u_NormMat_location = programGeomPassPtr->uniformLoc("NormMat");
-	loc.a_position_loc = programGeomPassPtr->attribLoc("Position");
-	loc.a_normal_loc = programGeomPassPtr->attribLoc("Normal");
-	loc.a_texture_loc = programGeomPassPtr->attribLoc("TextCoord");
-	loc.a_color_loc = programGeomPassPtr->attribLoc("Color");
-	loc.a_transformation_loc = programGeomPassPtr->attribLoc("M");
+	loc.u_P = programGeomPassPtr->uniformLoc("P");
+	loc.u_Time = programGeomPassPtr->uniformLoc("time");
+	loc.u_V = programGeomPassPtr->uniformLoc("V");
+	loc.u_Texture = programGeomPassPtr->uniformLoc("textureMap");
+	loc.a_position = programGeomPassPtr->attribLoc("Position");
+	loc.a_normal = programGeomPassPtr->attribLoc("Normal");
+	loc.a_texture = programGeomPassPtr->attribLoc("TextCoord");
+	loc.a_color = programGeomPassPtr->attribLoc("Color");
+	loc.a_transformation = programGeomPassPtr->attribLoc("M");
 }
 
 
@@ -258,10 +262,10 @@ void display() {
 	using namespace std;
 	
 	geomPass();
-	
 
 	//Unbind an clean
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
 
 	glutSwapBuffers();
@@ -289,31 +293,31 @@ void geomPass() {
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
 
-	if (loc.u_PV_location != -1) {
-		glUniformMatrix4fv(loc.u_PV_location, 1, GL_FALSE, glm::value_ptr(P * V));
+	if (loc.u_P != -1) {
+		glUniformMatrix4fv(loc.u_P, 1, GL_FALSE, glm::value_ptr(P));
 	}
-	if (loc.u_NormMat_location != -1) {
-		glUniformMatrix4fv(loc.u_NormMat_location, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
+	if (loc.u_V != -1) {
+		glUniformMatrix4fv(loc.u_V, 1, GL_FALSE, glm::value_ptr(V));
 	}
-	if (loc.u_Time_location != -1) {
-		glUniform1f(loc.u_Time_location, seconds_elapsed);
+	if (loc.u_Time != -1) {
+		glUniform1f(loc.u_Time, seconds_elapsed);
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
-	if (loc.a_color_loc != -1) {
-		glEnableVertexAttribArray(loc.a_color_loc);
+	if (loc.a_color != -1) {
+		glEnableVertexAttribArray(loc.a_color);
 		//Colors in this buffer are thigly packes so the zero at the end
-		glVertexAttribPointer(loc.a_color_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
+		glVertexAttribPointer(loc.a_color, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
 	}
 	/* Matrix atribute location actually uses four location one per column
 	This code is taken form the OpenGL programming guide pg 130*/
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
-	if (loc.a_transformation_loc != -1) {
+	if (loc.a_transformation != -1) {
 		for (int i = 0; i < 4; i++) {
 			// Set up the vertex attribute
-			if (loc.a_transformation_loc + i != -1) {
+			if (loc.a_transformation + i != -1) {
 				// Enable it
-				glEnableVertexAttribArray(loc.a_transformation_loc + i);
-				glVertexAttribPointer(loc.a_transformation_loc + i, // Location
+				glEnableVertexAttribArray(loc.a_transformation + i);
+				glVertexAttribPointer(loc.a_transformation + i, // Location
 					4, GL_FLOAT, GL_FALSE, // vec4
 					sizeof(mat4), // Stride
 					(void *)(sizeof(vec4) * i)); // Start offset
@@ -321,19 +325,26 @@ void geomPass() {
 		}
 	}
 
-	/* Draw */
-	meshPtr->drawTriangles(loc.a_position_loc, loc.a_position_loc, loc.a_position_loc, instace_number);
+	//Set active texture and bind
+	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+	textureMapPtr->bind(); //The next binded texture will be refered with the active texture unit
+	if (loc.u_Texture != -1) {
+		glUniform1i(loc.u_Texture, 0); // we bound our texture to texture unit 0
+	}
 
-	if (loc.a_transformation_loc != -1) {
+	/* Draw */
+	meshPtr->drawTriangles(loc.a_position, loc.a_normal, loc.a_texture, instace_number);
+
+	if (loc.a_transformation != -1) {
 		for (int i = 0; i < 4; i++) {
-			if (loc.a_transformation_loc + i != -1) {
-				glDisableVertexAttribArray(loc.a_transformation_loc + i);
+			if (loc.a_transformation + i != -1) {
+				glDisableVertexAttribArray(loc.a_transformation + i);
 			}
 		}
 	}
 
-	if (loc.a_color_loc != -1) {
-		glDisableVertexAttribArray(loc.a_color_loc);
+	if (loc.a_color != -1) {
+		glDisableVertexAttribArray(loc.a_color);
 	}
 }
 
@@ -359,11 +370,6 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 
 		case 27:
 			exit_glut();
-		break;
-
-		case 'i':
-		case 'I':
-			instanciated = !instanciated;
 		break;
 
 		default:
