@@ -82,16 +82,21 @@ void mousePasiveMotion(int mouse_x, int mouse_y);
 //Imgui related function
 void drawGUI();
 
+//OpenGL debug context
+void APIENTRY openglCallbackFunction(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
 	create_glut_window();
+	create_glut_callbacks();
+
 	init_OpenGL();
 	/*You need to call this once at the begining of your program for ImGui to work*/
 	ImGui_ImplGLUT_Init();
 	init_program();
 
-	create_glut_callbacks();
+	
 	glutMainLoop();
 
 	return EXIT_SUCCESS;
@@ -137,9 +142,21 @@ void exit_glut() {
 }
 
 void create_glut_window() {
+	//glutInitContextVersion(4, 5);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
+	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE
+#if _DEBUG		
+		| GLUT_DEBUG
+#endif
+	);
+	glutSetOption(
+		GLUT_ACTION_ON_WINDOW_CLOSE,
+		GLUT_ACTION_GLUTMAINLOOP_RETURNS
+	);
 	//Set number of samples per pixel
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
+	//glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(800, 600);
 	window = glutCreateWindow("Hello world OpenGL");
 }
@@ -162,10 +179,29 @@ void init_OpenGL() {
 	/************************************************************************/
 	/*                    Init OpenGL context   info                        */
 	/************************************************************************/
+	glewExperimental = true;
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		cerr << "Error: " << glewGetErrorString(err) << endl;
 	}
+
+#if _DEBUG
+	if (glDebugMessageCallback) {
+		cout << "Register OpenGL debug callback " << endl;
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageCallback(openglCallbackFunction, nullptr);
+		GLuint unusedIds = 0;
+		glDebugMessageControl(GL_DONT_CARE,
+			GL_DONT_CARE,
+			GL_DONT_CARE,
+			0,
+			&unusedIds,
+			true);
+	}
+	else
+		cout << "glDebugMessageCallback not available" << endl;
+#endif
+
 	cout << "Hardware specification: " << endl;
 	cout << "Vendor: " << glGetString(GL_VENDOR) << endl;
 	cout << "Renderer: " << glGetString(GL_RENDERER) << endl;
@@ -594,4 +630,55 @@ void mousePasiveMotion(int mouse_x, int mouse_y) {
 	/*Now, the app*/
 
 	glutPostRedisplay();
+}
+
+void APIENTRY openglCallbackFunction(GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* message,
+	const void* userParam) {
+	using namespace std;
+
+	cout << "---------------------opengl-callback-start------------" << endl;
+	cout << "message: " << message << endl;
+	cout << "type: ";
+	switch (type) {
+	case GL_DEBUG_TYPE_ERROR:
+		cout << "ERROR";
+		break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+		cout << "DEPRECATED_BEHAVIOR";
+		break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+		cout << "UNDEFINED_BEHAVIOR";
+		break;
+	case GL_DEBUG_TYPE_PORTABILITY:
+		cout << "PORTABILITY";
+		break;
+	case GL_DEBUG_TYPE_PERFORMANCE:
+		cout << "PERFORMANCE";
+		break;
+	case GL_DEBUG_TYPE_OTHER:
+		cout << "OTHER";
+		break;
+	}
+	cout << endl;
+
+	cout << "id: " << id << endl;
+	cout << "severity: ";
+	switch (severity) {
+	case GL_DEBUG_SEVERITY_LOW:
+		cout << "LOW";
+		break;
+	case GL_DEBUG_SEVERITY_MEDIUM:
+		cout << "MEDIUM";
+		break;
+	case GL_DEBUG_SEVERITY_HIGH:
+		cout << "HIGH";
+		break;
+	}
+	cout << endl;
+	cout << "---------------------opengl-callback-end--------------" << endl;
 }

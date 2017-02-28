@@ -1,0 +1,5 @@
+Please review the submission guidelines. You need to submitt only the project folder, not the whole solution folder.
+
+After the third scene is displayed, if you return to the previous two they are not displayed correctlly.
+
+After the third scene is displayed, if you return to the first one it is not displayed correctlly.

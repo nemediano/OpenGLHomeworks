@@ -74,7 +74,7 @@ float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
 bool instanciated;
-const unsigned int MAX_INSTANCES = 2000;
+const unsigned int MAX_INSTANCES = 3000;
 unsigned int instace_number = 100;
 
 vector<glm::vec3> colors;
@@ -154,9 +154,10 @@ void drawGUI() {
 	ImGui::Begin("Render options");
 	ImGui::Checkbox("Draw instanciated", &instanciated);
 	int tmp = int(instace_number) / 100;
-	ImGui::InputInt("Instances number", &tmp);
+	ImGui::Text("Instances (hundreds)");
+	ImGui::InputInt("", &tmp);
 	instace_number = glm::clamp(unsigned int(tmp * 100), 0U, MAX_INSTANCES);
-	
+	ImGui::Text("Time in seconds %f", double(nanoseconds) / 1000000000.0);
 	ImGui::Text("Time in nanoseconds %u", nanoseconds);
 	if (ImGui::Button("Quit")) {
 		exit_glut();
@@ -183,7 +184,7 @@ void init_program() {
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 3.0f);
+	cam.setDepthView(0.1f, 9.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Instanciated mode
