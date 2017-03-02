@@ -83,12 +83,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\include\imgui\imgui.cpp" />
+    <ClCompile Include="..\include\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\include\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\include\imgui\imgui_impl_glut.cpp" />
     <ClCompile Include="FBOPicking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CGTLibrary\CGTLibrary.vcxproj">
       <Project>{f6032f78-a0c5-43b9-bd83-d6ff2a1a8ff0}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\imgui\imconfig.h" />
+    <ClInclude Include="..\include\imgui\imgui.h" />
+    <ClInclude Include="..\include\imgui\imgui_impl_glut.h" />
+    <ClInclude Include="..\include\imgui\imgui_internal.h" />
+    <ClInclude Include="..\include\imgui\stb_rect_pack.h" />
+    <ClInclude Include="..\include\imgui\stb_textedit.h" />
+    <ClInclude Include="..\include\imgui\stb_truetype.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

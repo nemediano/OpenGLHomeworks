@@ -30,10 +30,17 @@ using namespace std;
 /*Camera related function*/
 Camera cam;
 Trackball ball;
+/*Headers needed for imgui */
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glut.h"
 
 /* CGT Library related*/
 OGLProgram* programGeomPassPtr = nullptr;
 OGLProgram* programFilterPtr = nullptr;
+OGLProgram* programNoFilterPtr = nullptr;
+OGLProgram* programAvg3FilterPtr = nullptr;
+OGLProgram* programAvg5FilterPtr = nullptr;
+OGLProgram* programEdgeFilterPtr = nullptr;
 
 Mesh* meshPtr = nullptr;
 Mesh* quadMeshPtr = nullptr;
@@ -81,6 +88,7 @@ GLuint color_buffer_id = 0;
 GLuint transformation_buffer_id = 0;
 //Global variables for the program logic
 float seconds_elapsed;
+int filter_option;
 glm::vec3 meshCenter;
 float scaleFactor;
 const unsigned int MAX_INSTANCES = 100;
@@ -94,6 +102,7 @@ void init_program();
 void init_OpenGL();
 void create_glut_callbacks();
 void exit_glut();
+void changeFilter();
 void reload_shaders();
 void geomPass();
 void setupGeomPass();
@@ -117,12 +126,16 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y);
 void mouseDrag(int mouse_x, int mouse_y);
 void mousePasiveMotion(int mouse_x, int mouse_y);
 
+//Imgui related function
+void drawGUI();
+
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
 	create_glut_window();
 	init_OpenGL();
-	
+	/*You need to call this once at the begining of your program for ImGui to work*/
+	ImGui_ImplGLUT_Init();
 	init_program();
 
 	create_glut_callbacks();
@@ -156,6 +169,7 @@ void init_program() {
 	
 	/* Initialize global variables for program control */
 	seconds_elapsed = 0.0f;
+	filter_option = 0;
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -168,6 +182,7 @@ void init_program() {
 	setupFilterPass();
 	//Moved to reshape I believe
 	//createFBO();
+	changeFilter();
 }
 
 void setupGeomPass() {
@@ -260,8 +275,7 @@ void reload_shaders() {
 		cerr << "Something wrong in shader" << endl;
 		delete tmpProgram;
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-	}
-	else {
+	} else {
 		programGeomPassPtr = tmpProgram;
 		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
@@ -272,12 +286,44 @@ void reload_shaders() {
 		cerr << "Something wrong in shader" << endl;
 		delete tmpProgram;
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-	}
-	else {
-		programFilterPtr = tmpProgram;
+	} else {
+		programFilterPtr = programNoFilterPtr = tmpProgram;
 		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
 
+	tmpProgram = new OGLProgram("shaders/hm02FilterPass.vert", "shaders/hm02Avg3Filter.frag");
+
+	if (!tmpProgram || !tmpProgram->isOK()) {
+		cerr << "Something wrong in shader" << endl;
+		delete tmpProgram;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	} else {
+		programAvg3FilterPtr = tmpProgram;
+		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	}
+
+	tmpProgram = new OGLProgram("shaders/hm02FilterPass.vert", "shaders/hm02Avg5Filter.frag");
+
+	if (!tmpProgram || !tmpProgram->isOK()) {
+		cerr << "Something wrong in shader" << endl;
+		delete tmpProgram;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	} else {
+		programAvg5FilterPtr = tmpProgram;
+		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	}
+
+	tmpProgram = new OGLProgram("shaders/hm02FilterPass.vert", "shaders/hm02EdgeFilter.frag");
+
+	if (!tmpProgram || !tmpProgram->isOK()) {
+		cerr << "Something wrong in shader" << endl;
+		delete tmpProgram;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	} else {
+		programEdgeFilterPtr = tmpProgram;
+		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	}
+	
 	/* Geometry pass first */
 	loc.u_P = programGeomPassPtr->uniformLoc("P");
 	loc.u_Time = programGeomPassPtr->uniformLoc("time");
@@ -326,6 +372,10 @@ void display() {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
+
+	/* You need to call this to draw the GUI, After unbinding your program*/
+	drawGUI();
+	/* But, before flushing the drawinng commands*/
 
 	glutSwapBuffers();
 }
@@ -503,17 +553,47 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 }
 
 void special(int key, int mouse_x, int mouse_y) {
-	
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.AddInputCharacter(key);
+
+	switch (key) {
+		case GLUT_KEY_RIGHT:
+			filter_option = ++filter_option % 4;
+			changeFilter();
+		break;
+
+		case GLUT_KEY_LEFT:
+			filter_option = (--filter_option + 4) % 4;
+			changeFilter();
+		break;
+
+		default:
+		break;
+	}
 	glutPostRedisplay();
 }
 
 void mouse(int button, int state, int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+
+	if (state == GLUT_DOWN && (button == GLUT_LEFT_BUTTON))
+		io.MouseDown[0] = true;
+	else
+		io.MouseDown[0] = false;
+
+	if (state == GLUT_DOWN && (button == GLUT_RIGHT_BUTTON))
+		io.MouseDown[1] = true;
+	else
+		io.MouseDown[1] = false;
+
 	/* Camera trackball*/
 	if (button == GLUT_LEFT_BUTTON) {
 		if (state == GLUT_DOWN) {
 			ball.startDrag(glm::vec2(mouse_x, mouse_y));
-		}
-		else {
+		} else {
 			ball.endDrag(glm::vec2(mouse_x, mouse_y));
 		}
 	}
@@ -522,7 +602,16 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 }
 
 void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
-	
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+	if (dir > 0) {
+		io.MouseWheel = 1.0;
+	}
+	else if (dir < 0) {
+		io.MouseWheel = -1.0;
+	}
+
 	/* Camera zoom in-out*/
 	const float DELTA_ANGLE = PI / 30.0f;
 	if (button == 0) {
@@ -533,12 +622,20 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 }
 
 void mouseDrag(int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+
 	/*Trackball camera*/
 	ball.drag(glm::ivec2(mouse_x, mouse_y));
 	glutPostRedisplay();
 }
 
 void mousePasiveMotion(int mouse_x, int mouse_y) {
+	/* See if ImGui handles it*/
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
+
 	/*Now, the app*/
 	glutPostRedisplay();
 }
@@ -598,4 +695,42 @@ void deleteFBO() {
 		GLuint textures[2] = {fbo.colorTex, fbo.pickTex};
 		glDeleteTextures(2, textures);
 	}
+}
+
+void changeFilter() {
+	switch (filter_option) {
+		case 0:
+			programFilterPtr = programNoFilterPtr;
+		break;
+
+		case 1:
+			programFilterPtr = programAvg3FilterPtr;
+		break;
+
+		case 2:
+			programFilterPtr = programAvg5FilterPtr;
+		break;
+
+		case 3:
+			programFilterPtr = programEdgeFilterPtr;
+		break;
+	}
+}
+
+void drawGUI() {
+	/* Always start with this call*/
+	ImGui_ImplGLUT_NewFrame(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	/* Position of the menu, if no imgui.ini exist */
+	ImGui::SetNextWindowSize(ImVec2(50, 50), ImGuiSetCond_FirstUseEver);
+
+	/*Create a new menu for my app*/
+	ImGui::Begin("Filter options");
+	
+	if (ImGui::Button("Quit")) {
+		exit_glut();
+	}
+	ImGui::End();
+
+	/* End with this when you want to render GUI */
+	ImGui::Render();
 }

@@ -13,10 +13,48 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\imgui">
+      <UniqueIdentifier>{b854b672-b23d-4645-9a39-cda57411887f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FBOPicking.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\include\imgui\imgui.cpp">
+      <Filter>Header Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\imgui\imgui_demo.cpp">
+      <Filter>Header Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\imgui\imgui_draw.cpp">
+      <Filter>Header Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\imgui\imgui_impl_glut.cpp">
+      <Filter>Header Files\imgui</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\imgui\imconfig.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\imgui\imgui.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\imgui\imgui_impl_glut.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\imgui\imgui_internal.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\imgui\stb_rect_pack.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\imgui\stb_textedit.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\imgui\stb_truetype.h">
+      <Filter>Header Files\imgui</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
