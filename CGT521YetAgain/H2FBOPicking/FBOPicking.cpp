@@ -726,6 +726,11 @@ void drawGUI() {
 	/*Create a new menu for my app*/
 	ImGui::Begin("Filter options");
 	
+	ImGui::RadioButton("No filter", &filter_option, 0);
+	ImGui::RadioButton("Average 3x3", &filter_option, 1);
+	ImGui::RadioButton("Average 5x5", &filter_option, 2);
+	ImGui::RadioButton("Edge detection", &filter_option, 3);
+	changeFilter();
 	if (ImGui::Button("Quit")) {
 		exit_glut();
 	}
