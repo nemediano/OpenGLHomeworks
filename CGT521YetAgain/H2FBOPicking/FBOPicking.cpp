@@ -33,11 +33,14 @@ Trackball ball;
 
 /* CGT Library related*/
 OGLProgram* programGeomPassPtr = nullptr;
+OGLProgram* programFilterPtr = nullptr;
+
 Mesh* meshPtr = nullptr;
+Mesh* quadMeshPtr = nullptr;
 Texture* textureMapPtr = nullptr;
 GLint window = 0;
 
-struct Locations {
+struct GeomLocations {
 	GLint u_P = -1;
 	GLint u_V = -1;
 	GLint u_Time = -1;
@@ -50,10 +53,28 @@ struct Locations {
 	GLint a_transformation = -1;
 };
 
-Locations loc;
+GeomLocations loc;
 
+struct FilterLocations {
+	GLint u_PVM = -1;
+	GLint u_colTex = -1;
+	GLint a_position = -1;
+	GLint a_normal = -1;
+	GLint a_texture = -1;
+};
 
-// Location for shader variables
+FilterLocations filoc;
+
+struct FBOproperties {
+	GLuint id = 0;
+	int width = 0;
+	int height = 0;
+	GLuint colorTex = 0;
+	GLuint pickTex = 0;
+	GLuint depthTex = 0;
+};
+
+FBOproperties fbo;
 
 //VBO for instanced attribute
 GLuint color_buffer_id = 0;
@@ -63,7 +84,7 @@ float seconds_elapsed;
 glm::vec3 meshCenter;
 float scaleFactor;
 const unsigned int MAX_INSTANCES = 100;
-unsigned int instace_number = 10;
+unsigned int instace_number = 100;
 
 vector<glm::vec3> colors;
 vector<glm::mat4> transformations;
@@ -75,7 +96,14 @@ void create_glut_callbacks();
 void exit_glut();
 void reload_shaders();
 void geomPass();
+void setupGeomPass();
+void filterPass();
+void setupFilterPass();
 void drawUnInstanciated();
+
+//FBO manages related functions
+void createFBO(int width, int height);
+void deleteFBO();
 
 //Glut callback functions
 void display();
@@ -107,6 +135,8 @@ int main(int argc, char* argv[]) {
 void exit_glut() {
 	delete meshPtr;
 	delete programGeomPassPtr;
+	delete quadMeshPtr;
+	delete programFilterPtr;
 	/* Delete window (freeglut) */
 	glutDestroyWindow(window);
 	exit(EXIT_SUCCESS);
@@ -117,14 +147,33 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Jorge Garcia, Homework 1");
+	window = glutCreateWindow("Jorge Garcia, Homework 2");
 }
 
 void init_program() {
 	using glm::vec3;
 	using glm::mat4;
+	
 	/* Initialize global variables for program control */
 	seconds_elapsed = 0.0f;
+	//Set the default position of the camera
+	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
+	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	cam.setFovY(PI / 4.0f);
+	cam.setDepthView(0.1f, 9.0f);
+	//Create trackball camera
+	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	
+	setupGeomPass();
+	setupFilterPass();
+	//Moved to reshape I believe
+	//createFBO();
+}
+
+void setupGeomPass() {
+	using glm::vec3;
+	using glm::mat4;
+
 	/* Load a mesh from file and send it to GPU */
 	meshPtr = new Mesh("../models/Amago.obj");
 	if (meshPtr) {
@@ -133,16 +182,7 @@ void init_program() {
 		meshPtr->sendToGPU();
 	}
 	textureMapPtr = new Texture("../models/AmagoTexture.png");
-	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
-	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 9.0f);
-	//Create trackball camera
-	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-	/*Create a buffers for the instanced atributes */
-	glGenBuffers(1, &color_buffer_id);
-	glGenBuffers(1, &transformation_buffer_id);
+
 	/* Generate a bunch of random colors*/
 	vec3 color;
 	for (int i = 0; i < MAX_INSTANCES; ++i) {
@@ -153,30 +193,39 @@ void init_program() {
 	//Model
 	mat4 I = mat4(1.0f);
 	glm::mat4 M;
-	M = glm::scale(I, 0.5f * vec3(1.0f));
-	M = glm::scale(M, scaleFactor * vec3(1.0f));
+	M = glm::scale(I, scaleFactor * vec3(1.0f));
 	M = glm::translate(M, -meshCenter);
 	for (int i = 0; i < MAX_INSTANCES; ++i) {
-		mat4 T = glm::scale(I, glm::linearRand(0.5f, 1.0f) * vec3(1.0f));
+		mat4 T = glm::scale(I, glm::linearRand(0.25f, 0.5f) * vec3(1.0f));
 		T = glm::translate(T, glm::ballRand(3.0f));
 		transformations.push_back(T * M);
 	}
+	/*Create a buffers for the instanced atributes */
+	glGenBuffers(1, &color_buffer_id);
+	glGenBuffers(1, &transformation_buffer_id);
 
-	/* Send the colors and transformation to GPU*/
+	/* Send the colors to GPU*/
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(vec3), colors.data(), GL_STATIC_DRAW);
 	//This set this attribute as an instanced attribute
 	glVertexAttribDivisor(loc.a_color, 1);
-
+	/* Send the attributes to GPU*/
 	glBindBuffer(GL_ARRAY_BUFFER, transformation_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, transformations.size() * sizeof(mat4), transformations.data(), GL_STATIC_DRAW);
-
 	//Making instanciated
 	for (int i = 0; i < 4; ++i) {
 		glVertexAttribDivisor(loc.a_transformation + i, 1);
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void setupFilterPass() {
+	quadMeshPtr = new Mesh(Geometries::plane());
+	if (quadMeshPtr) {
+		quadMeshPtr->sendToGPU();
+	}
+
 }
 
 void init_OpenGL() {
@@ -193,16 +242,9 @@ void init_OpenGL() {
 	cout << getOpenGLInfo() << endl;
 	ogl::getErrorLog();
 
-
 	reload_shaders();
 
-	//Activate antialliasing
-	glEnable(GL_MULTISAMPLE);
-
-	//Initialize some basic rendering state
-	glEnable(GL_DEPTH_TEST);
-	//Dark black background color
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	
 
 }
 
@@ -224,6 +266,18 @@ void reload_shaders() {
 		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
 
+	tmpProgram = new OGLProgram("shaders/hm02FilterPass.vert", "shaders/hm02FilterPass.frag");
+
+	if (!tmpProgram || !tmpProgram->isOK()) {
+		cerr << "Something wrong in shader" << endl;
+		delete tmpProgram;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	}
+	else {
+		programFilterPtr = tmpProgram;
+		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	}
+
 	/* Geometry pass first */
 	loc.u_P = programGeomPassPtr->uniformLoc("P");
 	loc.u_Time = programGeomPassPtr->uniformLoc("time");
@@ -234,6 +288,13 @@ void reload_shaders() {
 	loc.a_texture = programGeomPassPtr->attribLoc("TextCoord");
 	loc.a_color = programGeomPassPtr->attribLoc("Color");
 	loc.a_transformation = programGeomPassPtr->attribLoc("M");
+
+	/* Filter pass*/
+	filoc.u_PVM = programFilterPtr->uniformLoc("PVM");
+	filoc.u_colTex = programFilterPtr->uniformLoc("colorTexture");
+	filoc.a_position = programFilterPtr->attribLoc("Position");
+	filoc.a_normal = programFilterPtr->attribLoc("Normal");
+	filoc.a_texture = programFilterPtr->attribLoc("TextCoord");
 }
 
 
@@ -253,15 +314,13 @@ void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
 	cam.setAspectRatio(new_window_width, new_window_height);
 	ball.setWindowSize(new_window_width, new_window_height);
+	createFBO(new_window_width, new_window_height);
 }
 
 void display() {
-	using glm::vec3;
-	using glm::vec4;
-	using glm::mat4;
-	using namespace std;
 	
 	geomPass();
+	filterPass();
 
 	//Unbind an clean
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -275,15 +334,25 @@ void geomPass() {
 	using glm::vec3;
 	using glm::vec4;
 	using glm::mat4;
+
+	//We are gonna render to this FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo.id);
+	//We need to say that this pass will render two buffers, one with the Phong shading
+	//and one with the instances id
+	GLenum fbo_textures_to_render[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, fbo_textures_to_render);
+	//Make the viewport dimensions match the texture in the FBO
+	glViewport(0, 0, fbo.width, fbo.height);
+	//Activate antialliasing
+	glEnable(GL_MULTISAMPLE);
+	//Initialize some basic rendering state
+	glEnable(GL_DEPTH_TEST);
+	//Dark black background color
+	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programGeomPassPtr->use();
 
-	//Model
-	mat4 M;
-	mat4 I = mat4(1.0f);
-	M = glm::scale(I, 0.5f * vec3(1.0f));
-	M = glm::scale(M, scaleFactor * vec3(1.0f));
-	M = glm::translate(M, -meshCenter);
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
@@ -292,7 +361,6 @@ void geomPass() {
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
-
 	if (loc.u_P != -1) {
 		glUniformMatrix4fv(loc.u_P, 1, GL_FALSE, glm::value_ptr(P));
 	}
@@ -346,6 +414,61 @@ void geomPass() {
 	if (loc.a_color != -1) {
 		glDisableVertexAttribArray(loc.a_color);
 	}
+
+	glUseProgram(0);
+
+	glDisable(GL_MULTISAMPLE);
+	//Initialize some basic rendering state
+	glDisable(GL_DEPTH_TEST);
+}
+
+void filterPass() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
+	//Do not render this pass to FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//Render to back buffer
+	glDrawBuffer(GL_BACK);
+
+	//Dark black background color
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glViewport(0, 0, fbo.width, fbo.height);
+	glClear(GL_COLOR_BUFFER_BIT);
+	programFilterPtr->use();
+
+	mat4 I(1.0f);
+	//Model
+	mat4 M = glm::scale(I, vec3(2.0f));
+	//View
+	mat4 V = glm::lookAt(vec3(0.0f, 0.0f, 1.0f), vec3(0.0f), vec3(0.0, 1.0, 0.0));
+	//Projection
+	/*In ortho as in orthoRH, the far and near coordinate are inverted.
+	Either pass it inverted or use orthoLH*/
+	mat4 P = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f);
+
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+	if (filoc.u_PVM != -1) {
+		glUniformMatrix4fv(filoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	}
+
+	//Set active texture and bind
+	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+	// NEED to bind the corresponding texture form FBO
+	glBindTexture(GL_TEXTURE_2D, fbo.colorTex); //The next binded texture will be refered with the active texture unit
+	if (filoc.u_colTex != -1) {
+		glUniform1i(filoc.u_colTex, 0); // we bound our texture to texture unit 0
+	}
+
+	/* Draw */
+	quadMeshPtr->drawTriangles(loc.a_position, loc.a_normal, loc.a_texture);
+
+	
+	glUseProgram(0);
+	
 }
 
 void idle() {
@@ -418,4 +541,61 @@ void mouseDrag(int mouse_x, int mouse_y) {
 void mousePasiveMotion(int mouse_x, int mouse_y) {
 	/*Now, the app*/
 	glutPostRedisplay();
+}
+
+void createFBO(int width, int height) {
+	deleteFBO();
+	fbo.width = width;
+	fbo.height = height;
+	//Create a texture to render pass 1 into
+	glGenTextures(1, &fbo.colorTex);
+	glBindTexture(GL_TEXTURE_2D, fbo.colorTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, fbo.width, fbo.height, 0, GL_RGB, GL_FLOAT, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//Create a texture to store the picking
+	glGenTextures(1, &fbo.pickTex);
+	glBindTexture(GL_TEXTURE_2D, fbo.pickTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fbo.width, fbo.height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	//Create render buffer for depth.
+	glGenRenderbuffers(1, &fbo.depthTex);
+	glBindRenderbuffer(GL_RENDERBUFFER, fbo.depthTex);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, fbo.width, fbo.height);
+	//Create the Frame Buffer object
+	glGenFramebuffers(1, &fbo.id);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo.id);
+	//Attach texture to render into it
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo.colorTex, 0);
+	//Attach texture to store the picking ids
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fbo.pickTex, 0);
+	//Attach depth buffer to FBO
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
+	if (!ogl::framebufferStatus()) {
+		cerr << "Could not create FBO" << endl;
+	}
+	//Bind the default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void deleteFBO() {
+	if (fbo.width != 0 && fbo.height != 0) {
+		//Bind the default framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//Now, that you are sure it is not binded: delete it
+		glDeleteFramebuffers(1, &fbo.id);
+		//Delete depth texture
+		glDeleteRenderbuffers(1, &fbo.depthTex);
+		//Bind default texture
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//Now, that you are sure they are not binded: delete them
+		GLuint textures[2] = {fbo.colorTex, fbo.pickTex};
+		glDeleteTextures(2, textures);
+	}
 }

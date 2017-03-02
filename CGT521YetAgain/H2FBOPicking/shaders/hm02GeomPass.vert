@@ -10,11 +10,13 @@ uniform mat4 V;
 
 out vec3 fNormal;
 out vec2 fTextCoord;
-flat out vec3 fColor;
+out flat vec3 fColor;
+out flat int fInstanceId;
 
 void main(void) {
 	gl_Position = P * V * M * vec4(Position, 1.0);
 	fNormal = vec3(inverse(transpose(V * M)) * vec4(Normal, 0.0));
 	fTextCoord = TextCoord;
 	fColor = Color;
+	fInstanceId = gl_InstanceID;
 }

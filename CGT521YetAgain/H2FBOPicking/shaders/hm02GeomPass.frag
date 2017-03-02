@@ -1,12 +1,15 @@
 #version 430
 in vec3 fNormal;
 in vec2 fTextCoord;
-flat in vec3 fColor;
+in flat vec3 fColor;
+//Instance id of this mesh
+in flat int fInstanceId;
 
 uniform float time;
 layout (binding = 0) uniform sampler2D textureMap;
 
-out vec4 fragcolor;
+layout (location = 0) out vec3 fragcolor;
+layout (location = 1) out vec3 instanceId;
 
 vec3 light_dir = vec3(1.0);
 
@@ -27,5 +30,6 @@ void main(void) {
 	vec3 difusseColor  = texture(textureMap, fTextCoord).rgb;
 	vec3 color = diffuse * difusseColor + ambient * fColor + specular * vec3(0.85);
 	
-	fragcolor = vec4(min(color, vec3(1.0)), 1.0);
+	fragcolor = min(color, vec3(1.0));
+	instanceId = vec3(fInstanceId, 0, 0);
 }
