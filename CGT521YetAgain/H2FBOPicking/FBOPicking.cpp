@@ -51,6 +51,7 @@ struct GeomLocations {
 	GLint u_P = -1;
 	GLint u_V = -1;
 	GLint u_Time = -1;
+	GLint u_selected = -1;
 	GLint u_Texture = -1;
 	GLint a_position = -1;
 	GLint a_normal = -1;
@@ -89,10 +90,11 @@ GLuint transformation_buffer_id = 0;
 //Global variables for the program logic
 float seconds_elapsed;
 int filter_option;
+unsigned int instance_selected;
 glm::vec3 meshCenter;
 float scaleFactor;
-const unsigned int MAX_INSTANCES = 100;
-unsigned int instace_number = 100;
+const unsigned int MAX_INSTANCES = 254;
+unsigned int instace_number = 254;
 
 vector<glm::vec3> colors;
 vector<glm::mat4> transformations;
@@ -170,6 +172,7 @@ void init_program() {
 	/* Initialize global variables for program control */
 	seconds_elapsed = 0.0f;
 	filter_option = 0;
+	instance_selected = 0;
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -328,6 +331,7 @@ void reload_shaders() {
 	loc.u_P = programGeomPassPtr->uniformLoc("P");
 	loc.u_Time = programGeomPassPtr->uniformLoc("time");
 	loc.u_V = programGeomPassPtr->uniformLoc("V");
+	loc.u_selected = programGeomPassPtr->uniformLoc("selected");
 	loc.u_Texture = programGeomPassPtr->uniformLoc("textureMap");
 	loc.a_position = programGeomPassPtr->attribLoc("Position");
 	loc.a_normal = programGeomPassPtr->attribLoc("Normal");
@@ -419,6 +423,9 @@ void geomPass() {
 	}
 	if (loc.u_Time != -1) {
 		glUniform1f(loc.u_Time, seconds_elapsed);
+	}
+	if (loc.u_selected != -1) {
+		glUniform1i(loc.u_selected, instance_selected);
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	if (loc.a_color != -1) {
@@ -596,6 +603,19 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 		} else {
 			ball.endDrag(glm::vec2(mouse_x, mouse_y));
 		}
+	} else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+		GLubyte pixel[4] = {0};
+		//Temporaly bind the fbo for read form pick texture
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo.id);
+		//Read from pick texture (attachment 1)
+		glReadBuffer(GL_COLOR_ATTACHMENT1);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glReadPixels(mouse_x, fbo.height - mouse_y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+		//Finish reading unbind it
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//Use pixel to get the id (background is clear to (38, 38, 38))
+		//If the blue component is zero, then we are not in background
+		instance_selected = pixel[1] != 0 ? 0 : pixel[0];
 	}
 
 	glutPostRedisplay();
@@ -648,10 +668,10 @@ void createFBO(int width, int height) {
 	glGenTextures(1, &fbo.colorTex);
 	glBindTexture(GL_TEXTURE_2D, fbo.colorTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, fbo.width, fbo.height, 0, GL_RGB, GL_FLOAT, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	//Create a texture to store the picking
 	glGenTextures(1, &fbo.pickTex);
 	glBindTexture(GL_TEXTURE_2D, fbo.pickTex);
@@ -731,6 +751,10 @@ void drawGUI() {
 	ImGui::RadioButton("Average 5x5", &filter_option, 2);
 	ImGui::RadioButton("Edge detection", &filter_option, 3);
 	changeFilter();
+	//ImGui::ImageButton((ImTextureID)fbo.colorTex, ImVec2(fbo.width * 0.2f, fbo.height * 0.2f), ImVec2(0,0), ImVec2(1, 1), -1, ImVec4(0,0,0,0), ImVec4(1,1,1,1));
+	ImGui::Image((ImTextureID)fbo.pickTex, ImVec2(fbo.width * 0.2f, fbo.height * 0.2f), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
+	//ImGui::Image((ImTextureID)textureMapPtr->get_id(), ImVec2(textureMapPtr->get_width() * 0.5f, textureMapPtr->get_height() * 0.5f), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
+	ImGui::Text("Instance selected %u", instance_selected);
 	if (ImGui::Button("Quit")) {
 		exit_glut();
 	}

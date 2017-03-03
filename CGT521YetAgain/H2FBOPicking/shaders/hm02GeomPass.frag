@@ -6,6 +6,7 @@ in flat vec3 fColor;
 in flat int fInstanceId;
 
 uniform float time;
+uniform int selected;
 layout (binding = 0) uniform sampler2D textureMap;
 
 layout (location = 0) out vec3 fragcolor;
@@ -29,7 +30,11 @@ void main(void) {
 	const float ambient = 0.2;
 	vec3 difusseColor  = texture(textureMap, fTextCoord).rgb;
 	vec3 color = diffuse * difusseColor + ambient * fColor + specular * vec3(0.85);
-	
+	if (selected == fInstanceId + 1) {
+		color = 0.8 * fColor + specular * vec3(0.85);
+	}
+	 
 	fragcolor = min(color, vec3(1.0));
-	instanceId = vec3(fInstanceId, 0, 0);
+	
+	instanceId = float(fInstanceId + 1) / 255.0f * vec3(1.0f, 0.0f, 0.0f);;
 }

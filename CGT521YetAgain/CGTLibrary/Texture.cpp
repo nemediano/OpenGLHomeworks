@@ -55,6 +55,10 @@ namespace image {
 		return static_cast<int>(m_height);
 	}
 
+	GLuint Texture::get_id() const {
+		return m_texture_id;
+	}
+
 	void Texture::send_to_gpu() {
 
 		if (m_texture_id == 0) {

@@ -23,6 +23,7 @@ namespace image {
 		void bind() const;
 		int get_width() const;
 		int get_height() const;
+		GLuint get_id() const;
 	};
 }
 #endif
