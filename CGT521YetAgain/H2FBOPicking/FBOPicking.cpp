@@ -93,7 +93,7 @@ int filter_option;
 unsigned int instance_selected;
 glm::vec3 meshCenter;
 float scaleFactor;
-const unsigned int MAX_INSTANCES = 254;
+const unsigned int MAX_INSTANCES = 1024;
 unsigned int instace_number = 254;
 
 vector<glm::vec3> colors;
@@ -261,9 +261,6 @@ void init_OpenGL() {
 	ogl::getErrorLog();
 
 	reload_shaders();
-
-	
-
 }
 
 void reload_shaders() {

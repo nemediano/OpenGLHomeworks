@@ -36,5 +36,5 @@ void main(void) {
 	 
 	fragcolor = min(color, vec3(1.0));
 	
-	instanceId = float(fInstanceId + 1) / 255.0f * vec3(1.0f, 0.0f, 0.0f);;
+	instanceId = float(fInstanceId + 1) / 255.0f * vec3(1.0f, 0.0f, 0.0f);
 }
