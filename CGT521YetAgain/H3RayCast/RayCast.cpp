@@ -16,54 +16,85 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glut.h"
 
-/*For image loading */
-#include <FreeImage.h>
-//For obj loading
-#define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
-#include "tiny_obj_loader.h"
+/* Include heders and namespaces from my CGT Library */
+#include "OGLHelpers.h"
+#include "MathConstants.h"
+#include "Camera.h"
+#include "Trackball.h"
+#include "OGLProgram.h"
+#include "Geometries.h"
+using namespace ogl;
+using namespace math;
+using namespace camera;
+using namespace ogl;
 
-// Define a helpful macro for handling offsets into buffer objects
-#define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
-#define OFFSET_OF(type, member) ((GLvoid*)(offsetof(type, member)))
-//Math constant equal two PI
-const float TAU = 6.28318f;
-const float PI = 3.14159f;
+/* CGT Library related*/
+Camera cam;
+Trackball ball;
+OGLProgram* programPtr = nullptr;
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
-struct Vertex {
-	glm::vec3 position;
-	glm::vec2 textCoord;
-	glm::vec3 normal;
+struct FBO {
+	GLuint id = 0;
+	GLuint depthTex = 0;
+	GLuint backFacesTex = 0;
+	GLuint frontFacesTex = 0;
+	GLuint renderTex = 0;
+	int width = 0;
+	int height = 0;
 };
 
+struct Mesh {
+	GLuint vertex_id = 0;
+	GLuint index_id = 0;
+	int num_vertex = 0;
+	int num_indices = 0;
+};
+
+struct Locations {
+	//Attributes
+	GLint a_pos = -1;
+	GLint a_tex = -1;
+	//Uniforms
+	GLint u_Q = -1;
+	GLint u_M = -1;
+	GLint u_PV = -1;
+	GLint u_Time = -1;
+	GLint u_Pass = -1;
+	GLint u_Tex = -1;
+};
+
+FBO fbo;
+Locations loc;
+Mesh cube;
 
 GLint window = 0;
 // Location for shader variables
 GLint u_PVM_location = -1;
+GLint u_M_location = -1;
+GLint u_NormalMat_location = -1;
 GLint u_texture_location = -1;
 GLint a_position_loc = -1;
 GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
-// OpenGL program handlers
-GLuint vertex_shader;
-GLuint fragment_shader;
-GLuint program;
-GLuint texture_id;
 
 //Global variables for the program logic
-int nTriangles;
-bool rotate;
+const int NUM_SAMPLES = 8;
+GLenum texture_target;
 float seconds_elapsed;
-float angle;
-
-//Manage the Vertex Buffer Object
-GLuint vbo;
-GLuint indexBuffer;
+bool rotate;
+glm::vec3 cubeTranslation;
+float cubeScale;
+glm::vec3 backgroundColor;
 
 void create_glut_window();
 void init_program();
 void init_OpenGL();
-void create_primitives();
-bool load_texture(const std::string& file_name);
+void create_fbo(int width, int height);
+void delete_fbo();
+void reload_shaders();
+void create_cube();
+void drawCube();
 void create_glut_callbacks();
 void exit_glut();
 
@@ -78,25 +109,19 @@ void mouse(int button, int state, int x, int y);
 void mouseWheel(int button, int dir, int mouse_x, int mouse_y);
 void mouseDrag(int mouse_x, int mouse_y);
 void mousePasiveMotion(int mouse_x, int mouse_y);
-
 //Imgui related function
 void drawGUI();
-
-//OpenGL debug context
-void APIENTRY openglCallbackFunction(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 
 	create_glut_window();
-	create_glut_callbacks();
-
 	init_OpenGL();
 	/*You need to call this once at the begining of your program for ImGui to work*/
 	ImGui_ImplGLUT_Init();
 	init_program();
 
-
+	create_glut_callbacks();
 	glutMainLoop();
 
 	return EXIT_SUCCESS;
@@ -113,11 +138,21 @@ void drawGUI() {
 	/* Position of the menu, if no imgui.ini exist */
 	ImGui::SetNextWindowSize(ImVec2(50, 50), ImGuiSetCond_FirstUseEver);
 
-	/*Create a new menu for my app*/
-	ImGui::Begin("My options");
-	ImGui::Checkbox("Rotation", &rotate);
-	if (ImGui::Button("Quit")) {
-		exit_glut();
+	ImGui::Begin("Raytracer options");
+	if (ImGui::Button("Reload shader")) {
+		reload_shaders();
+	}
+	ImGui::Checkbox("Pause rotate", &rotate);
+	ImGui::SliderFloat3("Translation", glm::value_ptr(cubeTranslation), -10.0f, 10.0f);
+	ImGui::SliderFloat("Scale", &cubeScale, 0.001f, 10.0f);
+
+	static bool wireframe = false;
+	ImGui::Checkbox("Wireframe", &wireframe);
+	if (wireframe == true) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	else {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 	ImGui::End();
 
@@ -125,51 +160,33 @@ void drawGUI() {
 	ImGui::Render();
 }
 
-void exit_glut() {
-	/* Delete Texture on GPU */
-	glDeleteTextures(1, &texture_id);
-	/* Delete OpenGL program */
-	glDetachShader(program, vertex_shader);
-	glDetachShader(program, fragment_shader);
-	glDeleteShader(vertex_shader);
-	glDeleteShader(fragment_shader);
-	glDeleteProgram(program);
-	/* Shut down the gui */
-	ImGui_ImplGLUT_Shutdown();
-	/* Delete window (freeglut) */
-	glutDestroyWindow(window);
-	exit(EXIT_SUCCESS);
-}
-
 void create_glut_window() {
-	//glutInitContextVersion(4, 5);
-	glutInitContextProfile(GLUT_CORE_PROFILE);
-	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE
-#if _DEBUG		
-		| GLUT_DEBUG
-#endif
-	);
-	glutSetOption(
-		GLUT_ACTION_ON_WINDOW_CLOSE,
-		GLUT_ACTION_GLUTMAINLOOP_RETURNS
-	);
-	//Set number of samples per pixel
-	glutSetOption(GLUT_MULTISAMPLE, 8);
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
-	//glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	if (NUM_SAMPLES > 1) {
+		glutSetOption(GLUT_MULTISAMPLE, NUM_SAMPLES);
+		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
+	} else {
+		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	}
+	glutInitWindowPosition(5, 5);
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Hello world OpenGL");
+	window = glutCreateWindow("Jorge Garcia's Homework 3 Raycast");
 }
 
 void init_program() {
+	using glm::vec3;
 	/* Initialize global variables for program control */
-	nTriangles = 1;
 	rotate = false;
-	/* Then, create primitives (load them from mesh) */
-	create_primitives();
-	load_texture("../models/AmagoTexture.png");
 	seconds_elapsed = 0.0f;
-	angle = 0.0f;
+	cubeTranslation = vec3(0.0f);
+	cubeScale = 1.0f;
+	backgroundColor = vec3(0.8f, 0.8f, 0.9f);
+	//Set the default position of the camera
+	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
+	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	cam.setFovY(PI / 4.0f);
+	cam.setDepthView(0.1f, 3.0f);
+	//Create trackball camera
+	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 }
 
 void init_OpenGL() {
@@ -179,254 +196,320 @@ void init_OpenGL() {
 	/************************************************************************/
 	/*                    Init OpenGL context   info                        */
 	/************************************************************************/
-	glewExperimental = true;
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		cerr << "Error: " << glewGetErrorString(err) << endl;
 	}
+	cout << getOpenGLInfo() << endl;
 
-#if _DEBUG
-	if (glDebugMessageCallback) {
-		cout << "Register OpenGL debug callback " << endl;
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback(openglCallbackFunction, nullptr);
-		GLuint unusedIds = 0;
-		glDebugMessageControl(GL_DONT_CARE,
-			GL_DONT_CARE,
-			GL_DONT_CARE,
-			0,
-			&unusedIds,
-			true);
+	if (NUM_SAMPLES > 1) {
+		glEnable(GL_MULTISAMPLE);
+		glEnable(GL_SAMPLE_SHADING);
+		glMinSampleShading(1.0f);
 	}
-	else
-		cout << "glDebugMessageCallback not available" << endl;
-#endif
+	texture_target = NUM_SAMPLES > 1 ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
-	cout << "Hardware specification: " << endl;
-	cout << "Vendor: " << glGetString(GL_VENDOR) << endl;
-	cout << "Renderer: " << glGetString(GL_RENDERER) << endl;
-	cout << "Software specification: " << endl;
-	cout << "Using GLEW " << glewGetString(GLEW_VERSION) << endl;
-	cout << "Using OpenGL " << glGetString(GL_VERSION) << endl;
-	cout << "Using GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
-	int ver = glutGet(GLUT_VERSION);
-	cout << "Using freeglut version: " << ver / 10000 << "." << (ver / 100) % 100 << "." << ver % 100 << endl;
-
-	/************************************************************************/
-	/*                   OpenGL program creation                            */
-	/************************************************************************/
-	using std::string;
-
-	/* In a normal program the shader should be in separate text files
-	I put them here to avoid another layer of complexity */
-	string vertex_shader_src =
-		"#version 130\n"
-		"in vec3 Position;\n"
-		"in vec3 Normal;\n"
-		"in vec2 TextCoord;\n"
-		"\n"
-		"uniform mat4 PVM;\n"
-		"\n"
-		"out vec3 fNormal;\n"
-		"out vec2 fTextCoord;\n"
-		"\n"
-		"void main(void) {\n"
-		"\tgl_Position = PVM * vec4(Position, 1.0f);\n"
-		"\tfNormal = Normal;\n"
-		"\tfTextCoord = TextCoord;\n"
-		"}\n";
-
-	string fragment_shader_src =
-		"#version 130\n"
-		"\n"
-		"in vec3 fNormal;\n"
-		"in vec2 fTextCoord;\n"
-		"\n"
-		"uniform sampler2D texture_image;\n"
-		"\n"
-		"out vec4 fragcolor;\n"
-		"\n"
-		"void main(void) {\n"
-		"\tfragcolor = vec4(texture(texture_image, fTextCoord).rgb, 1.0);\n"
-		"}\n";
-
-	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	const char* start = &vertex_shader_src[0];
-	glShaderSource(vertex_shader, 1, &start, nullptr);
-
-	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	start = &fragment_shader_src[0];
-	glShaderSource(fragment_shader, 1, &start, nullptr);
-
-	int status;
-	glCompileShader(vertex_shader);
-	glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE) {
-		cerr << "Vertex shader was not compiled!!" << endl;
-	}
-	glCompileShader(fragment_shader);
-	glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE) {
-		cerr << "Fragment shader was not compiled!!" << endl;
-	}
-	program = glCreateProgram();
-	glAttachShader(program, vertex_shader);
-	glAttachShader(program, fragment_shader);
-	glLinkProgram(program);
-	glGetProgramiv(program, GL_LINK_STATUS, &status);
-	if (status == GL_FALSE) {
-		cerr << "OpenGL program was not linked!!" << endl;
-	}
-
-	/************************************************************************/
-	/* Allocating variables for shaders                                     */
-	/************************************************************************/
-
-	u_PVM_location = glGetUniformLocation(program, "PVM");
-	u_texture_location = glGetUniformLocation(program, "texture_image");
-
-	a_position_loc = glGetAttribLocation(program, "Position");
-	a_normal_loc = glGetAttribLocation(program, "Normal");
-	a_texture_loc = glGetAttribLocation(program, "TextCoord");
-
-	//Activate anti-alias
-	glEnable(GL_MULTISAMPLE);
-
-	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
-	//Dark gray background color
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+	glEnable(GL_CULL_FACE);
 
+	create_fbo(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	create_cube();
+	reload_shaders();
 }
 
-void create_primitives() {
-	using std::cout;
-	using std::cerr;
-	using std::endl;
-	nTriangles = 0;
-	//For loading the obj
-	std::vector<Vertex> vertices;
-	std::vector<unsigned int> indices;
+void display() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::vec2;
+	using glm::mat4;
 
-	std::string filename = "../models/Amago.obj";
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	programPtr->use();
 
-	std::string err;
-	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename.c_str());
-	if (!err.empty()) {
-		cerr << "Error at loading obj file:" << filename << endl;
-		cerr << err.c_str();
+	mat4 I(1.0f);
+	//Cube
+	mat4 Q = glm::translate(I, cubeTranslation);
+	Q = glm::scale(Q, cubeScale * vec3(1.0f));
+	//Model
+	mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	//Draw pass 1. Back faces of the cube to texture
+	programPtr->use();
+	glEnable(GL_CULL_FACE);
+	//Set uniforms
+	if (loc.u_M != -1) {
+		glUniformMatrix4fv(loc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 	}
-
-	if (!ret) {
-		return;
+	if (loc.u_Q != -1) {
+		glUniformMatrix4fv(loc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
 	}
-
-	bool hasNormals = attrib.normals.size() > 0;
-	bool hasTexture = attrib.texcoords.size() > 0;
-	vertices.clear();
-	vertices = std::vector<Vertex>(attrib.vertices.size() / 3);
-	indices.clear();
-
-	// Loop over shapes
-	for (size_t s = 0; s < shapes.size(); s++) {
-		// Loop over faces (polygon, hopefully triangle =) )
-		size_t index_offset = 0;
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-			int fv = shapes[s].mesh.num_face_vertices[f];
-			// Loop over vertices in the face.
-			for (size_t v = 0; v < fv; v++) {
-				// access to vertex
-				tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-				vertices[idx.vertex_index].position.x = attrib.vertices[3 * idx.vertex_index + 0];
-				vertices[idx.vertex_index].position.y = attrib.vertices[3 * idx.vertex_index + 1];
-				vertices[idx.vertex_index].position.z = attrib.vertices[3 * idx.vertex_index + 2];
-
-				if (hasNormals) {
-					vertices[idx.vertex_index].normal.x = attrib.normals[3 * idx.normal_index + 0];
-					vertices[idx.vertex_index].normal.y = attrib.normals[3 * idx.normal_index + 1];
-					vertices[idx.vertex_index].normal.z = attrib.normals[3 * idx.normal_index + 2];
-				}
-
-				if (hasTexture) {
-					vertices[idx.vertex_index].textCoord.s = attrib.texcoords[2 * idx.texcoord_index + 0];
-					vertices[idx.vertex_index].textCoord.t = attrib.texcoords[2 * idx.texcoord_index + 1];
-				}
-
-				indices.push_back(idx.vertex_index);
-			}
-			index_offset += fv;
-		}
+	if (loc.u_PV != -1) {
+		glUniformMatrix4fv(loc.u_PV, 1, GL_FALSE, glm::value_ptr(P * V));
 	}
-	nTriangles = int(indices.size() / 3);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo.id);
+	glEnable(GL_DEPTH_TEST);
+	if (loc.u_Pass != -1) {
+		glUniform1i(loc.u_Pass, 1);
+	}
+	glActiveTexture(GL_TEXTURE0);
+	//Unbind texture so we can write to it (remember, no read-write access)	
+	glBindTexture(texture_target, 0);
+	
+	//Subsequent drawing should be captured by the framebuffer attached texture
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	//clear the color texture and depth texture
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//Draw back faces
+	glCullFace(GL_FRONT);
+	//Draw cube
+	drawCube();
 
+	//Pass 2: draw front faces to attachment 1
+	if (loc.u_Pass != -1) {
+		glUniform1i(loc.u_Pass, 2);
+	}
+	glCullFace(GL_BACK);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(texture_target, 0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//draw cube front faces to fbo
+	drawCube();
 
-	//Create the buffers
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &indexBuffer);
+	//Pass 3: Raycasting pass
+	if (loc.u_Pass != -1) {
+		glUniform1i(loc.u_Pass, 3);
+	}
+	//Draw front faces to color attachment (We are already culling backfaces)
+	glActiveTexture(GL_TEXTURE2);	
+	glBindTexture(texture_target, 0);
+	
+	glDrawBuffer(GL_COLOR_ATTACHMENT2);
 
-	//Send data to GPU
-	//First send the vertices
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(texture_target, fbo.backFacesTex);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(texture_target, fbo.frontFacesTex);
+	//draw cube front faces to fbo
+	drawCube();
+	//blit color attachment 2 to the screen
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo.id);
+	glReadBuffer(GL_COLOR_ATTACHMENT2);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBlitFramebuffer(0, 0, fbo.width, fbo.height, 0, 0, fbo.width, fbo.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+	//Unbind an clean
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//Now, the indices
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+
+	/* You need to call this to draw the GUI, After unbinding your program*/
+	drawGUI();
+	/* But, before flushing the drawinng commands*/
+
+	glutSwapBuffers();
+}
+
+void drawCube() {
+	glBindBuffer(GL_ARRAY_BUFFER, cube.vertex_id);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.index_id);
+
+	glEnableVertexAttribArray(loc.a_pos);
+	glEnableVertexAttribArray(loc.a_tex);
+
+	glVertexAttribPointer(loc.a_pos, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+	glVertexAttribPointer(loc.a_tex, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(cube.num_vertex * 3 * sizeof(float)));
+
+	glDrawElements(GL_TRIANGLES, cube.num_indices, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
+
+	glDisableVertexAttribArray(loc.a_pos);
+	glDisableVertexAttribArray(loc.a_tex);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-/* Load texture from image file usng the FreeImage library. I always load in the same format*/
+void create_fbo(int width, int height) {
+	delete_fbo();
+	fbo.width = width;
+	fbo.height = height;
+	//Create empty textures
+	GLuint textures[3];
+	glGenTextures(3, textures);
+	fbo.backFacesTex = textures[0];
+	fbo.frontFacesTex = textures[1];
+	fbo.renderTex = textures[2];
+	//See if we have multisample
+	if (NUM_SAMPLES > 1) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo.backFacesTex);
+		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, NUM_SAMPLES, GL_RGBA32F, fbo.width, fbo.height, true);
 
-bool load_texture(const std::string& file_name) {
-	unsigned char* data = nullptr; //Temporal CPU buffer to hold the image pixels
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo.frontFacesTex);
+		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, NUM_SAMPLES, GL_RGBA32F, fbo.width, fbo.height, true);
 
-	using std::cout;
-	using std::cerr;
-	using std::endl;
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo.renderTex);
+		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, NUM_SAMPLES, GL_RGBA32F, fbo.width, fbo.height, true);
 
-	FIBITMAP* tempImg = FreeImage_Load(FreeImage_GetFileType(file_name.c_str(), 0), file_name.c_str());
-	if (!tempImg) {
-		//Quick test if the image exist and I can read
-		cerr << "Could not load image: " << file_name << endl;
-		return false;
+		//Create the depth buffer for the framebuffer object
+		glGenRenderbuffers(1, &fbo.depthTex);
+		glBindRenderbuffer(GL_RENDERBUFFER, fbo.depthTex);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, NUM_SAMPLES, GL_DEPTH_COMPONENT, fbo.width, fbo.height);
 	}
-	FIBITMAP* img = FreeImage_ConvertTo32Bits(tempImg); //See if I can convert to my format
-	if (!img) {
-		cerr << "Image: " << file_name << " is damaged" << endl;
-		return false;
+	else {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, fbo.backFacesTex);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, fbo.frontFacesTex);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, fbo.renderTex);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
+
+		//Create the depth buffer for the framebuffer object
+		glGenRenderbuffers(1, &fbo.depthTex);
+		glBindRenderbuffer(GL_RENDERBUFFER, fbo.depthTex);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, fbo.width, fbo.height);
 	}
-	// I don't need original data, I work in my own format from here
-	FreeImage_Unload(tempImg);
-	//Get image metadata (size)
-	unsigned int width = FreeImage_GetWidth(img);
-	unsigned int height = FreeImage_GetHeight(img);
-	GLuint scanW = FreeImage_GetPitch(img);
-	//Allocate CPU memory to hold my pixels
-	data = new GLubyte[height * scanW];
-	//Load image in my own buffer.
-	FreeImage_ConvertToRawBits(data, img, scanW, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
-	FreeImage_Unload(img); //I don't need FreeImage (or his datastructures) anymore
 
 
-						   /*OpenGL texture creation */
-	texture_id = 0;
-	//Ask for a free texture id
-	glGenTextures(1, &texture_id);
-	//Pass my data to GPU
-	glBindTexture(GL_TEXTURE_2D, texture_id);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	//I don't need my CPU buffer anymore, texture is on GPU now
-	delete data;
-	//I reach here texture is loaded on GPU and ready to use
-	return true;
+	glGenFramebuffers(1, &fbo.id);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo.id);
+
+	if (NUM_SAMPLES > 1) {
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, fbo.backFacesTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, fbo.frontFacesTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, fbo.renderTex, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
+	}
+	else {
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo.backFacesTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fbo.frontFacesTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, fbo.renderTex, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void delete_fbo() {
+	if (fbo.width != 0 && fbo.height != 0) {
+		//Bind the default framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//Now, that you are sure it is not binded: delete it
+		glDeleteFramebuffers(1, &fbo.id);
+		//Delete depth texture
+		glDeleteRenderbuffers(1, &fbo.depthTex);
+		//Bind default texture
+		glBindTexture(GL_TEXTURE_2D, 0);
+		//Now, that you are sure they are not binded: delete them
+		GLuint textures[3] = { fbo.renderTex, fbo.frontFacesTex, fbo.backFacesTex };
+		glDeleteTextures(3, textures);
+	}
+}
+
+void create_cube() {
+	using namespace glm;
+	using namespace std;
+
+	cube.num_indices = 36;
+	cube.num_vertex = 8;
+
+	vector<vec3> positions(cube.num_vertex, vec3(0.0f));
+	vector<vec3> textureCoord(cube.num_vertex, vec3(0.0f));
+	vector<unsigned short> indices(cube.num_indices, 0);
+
+	textureCoord[0] = positions[0] = vec3(-1.0f, -1.0f, -1.0f);
+	textureCoord[1] = positions[1] = vec3(+1.0f, -1.0f, -1.0f);
+	textureCoord[2] = positions[2] = vec3(+1.0f, +1.0f, -1.0f);
+	textureCoord[3] = positions[3] = vec3(-1.0f, +1.0f, -1.0f);
+	textureCoord[4] = positions[4] = vec3(-1.0f, -1.0f, +1.0f);
+	textureCoord[5] = positions[5] = vec3(+1.0f, -1.0f, +1.0f);
+	textureCoord[6] = positions[6] = vec3(+1.0f, +1.0f, +1.0f);
+	textureCoord[7] = positions[7] = vec3(-1.0f, +1.0f, +1.0f);
+
+	//bottom
+	indices.push_back(0); indices.push_back(2); indices.push_back(1);
+	indices.push_back(2); indices.push_back(0); indices.push_back(3);
+	//front
+	indices.push_back(0); indices.push_back(5); indices.push_back(4);
+	indices.push_back(5); indices.push_back(0); indices.push_back(1);
+	//right
+	indices.push_back(1); indices.push_back(6); indices.push_back(5);
+	indices.push_back(6); indices.push_back(1); indices.push_back(2);
+	//back
+	indices.push_back(2); indices.push_back(7); indices.push_back(6);
+	indices.push_back(7); indices.push_back(2); indices.push_back(3);
+	//left
+	indices.push_back(3); indices.push_back(4); indices.push_back(7);
+	indices.push_back(4); indices.push_back(3); indices.push_back(0);
+	//top
+	indices.push_back(4); indices.push_back(5); indices.push_back(6);
+	indices.push_back(6); indices.push_back(7); indices.push_back(4);
+
+	int sizePositions = static_cast<int>(positions.size() * sizeof(vec3));
+	int sizeTextCoord = static_cast<int>(textureCoord.size() * sizeof(vec3));
+	//Sent to GPU the vertices
+	glGenBuffers(1, &cube.vertex_id);
+	glBindBuffer(GL_ARRAY_BUFFER, cube.vertex_id);
+	glBufferData(GL_ARRAY_BUFFER, sizePositions + sizeTextCoord, 0, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizePositions, positions.data());
+	glBufferSubData(GL_ARRAY_BUFFER, sizePositions, sizeTextCoord, textureCoord.data());
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//Send to GPU the indices
+	int sizeIndices = static_cast<int>(indices.size() * sizeof(unsigned short));
+	glGenBuffers(1, &cube.index_id);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.index_id);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeIndices, indices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void reload_shaders() {
+	using namespace std;
+	/************************************************************************/
+	/*                   OpenGL program creation                            */
+	/************************************************************************/
+	if (NUM_SAMPLES > 1) {
+		programPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader_ms.glsl");
+	}
+	else {
+		programPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader.glsl");
+	}
+
+	if (!programPtr || !programPtr->isOK()) {
+		cerr << "Something wrong in shader" << endl;
+	}
+	/************************************************************************/
+	/*                   Shader variables locations                         */
+	/************************************************************************/
+	programPtr->use();
+	//Atributes
+	loc.a_pos = programPtr->attribLoc("pos_attrib");
+	loc.a_tex = programPtr->attribLoc("tex_coord_attrib");
+	//Uniforms
+	loc.u_Q = programPtr->uniformLoc("Q");
+	loc.u_M = programPtr->uniformLoc("M");
+	loc.u_PV = programPtr->uniformLoc("PV");
+	loc.u_Time = programPtr->uniformLoc("time");
+	loc.u_Pass = programPtr->uniformLoc("pass");
+
+	loc.u_Tex = programPtr->uniformLoc("backfaces");
+	if (loc.u_Tex != -1) {
+		glUniform1i(loc.u_Tex, 0);
+	}
 }
 
 void create_glut_callbacks() {
@@ -441,89 +524,19 @@ void create_glut_callbacks() {
 	glutPassiveMotionFunc(mousePasiveMotion);
 }
 
-void reshape(int new_window_width, int new_window_height) {
-	glViewport(0, 0, new_window_width, new_window_height);
+void exit_glut() {
+	delete programPtr;
+	/* Shut down the gui */
+	ImGui_ImplGLUT_Shutdown();
+	/* Delete window (freeglut) */
+	glutDestroyWindow(window);
+	exit(EXIT_SUCCESS);
 }
 
-void display() {
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glUseProgram(program);
-
-	/************************************************************************/
-	/* Calculate  Model View Projection Matrices                            */
-	/************************************************************************/
-	//Identity matrix
-	glm::mat4 I(1.0f);
-	//Model
-	glm::mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, glm::vec3(0.0f, 1.0f, 0.0f)) : I;
-	//View
-	glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 1.5f);
-	glm::vec3 camera_center = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::mat4 V = glm::lookAt(camera_position, camera_center, camera_up);
-	//Projection
-	GLfloat aspect = float(glutGet(GLUT_WINDOW_WIDTH)) / float(glutGet(GLUT_WINDOW_HEIGHT));
-	GLfloat fovy = PI / 8.0f;
-	GLfloat zNear = 0.1f;
-	GLfloat zFar = 3.0f;
-	glm::mat4 P = glm::perspective(fovy, aspect, zNear, zFar);
-
-	/************************************************************************/
-	/* Send uniform values to shader                                        */
-	/************************************************************************/
-	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
-	}
-	//Set active texture and bind
-	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-	glBindTexture(GL_TEXTURE_2D, texture_id); //The next binded texture will be refered with the active texture unit
-	if (u_texture_location != -1) {
-		glUniform1i(u_texture_location, 0); // we bound our texture to texture unit 0
-	}
-
-	/************************************************************************/
-	/* Bind buffer object and their corresponding attributes                */
-	/************************************************************************/
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	if (a_position_loc != -1) {
-		glEnableVertexAttribArray(a_position_loc);
-		glVertexAttribPointer(a_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, position));
-	}
-	if (a_texture_loc != -1) {
-		glEnableVertexAttribArray(a_texture_loc);
-		glVertexAttribPointer(a_texture_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, textCoord));
-	}
-	if (a_normal_loc != -1) {
-		glEnableVertexAttribArray(a_normal_loc);
-		glVertexAttribPointer(a_normal_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), OFFSET_OF(Vertex, normal));
-	}
-	//Bind the index buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-
-	/* Draw */
-	glDrawElements(GL_TRIANGLES, 3 * nTriangles, GL_UNSIGNED_INT, BUFFER_OFFSET(0 * sizeof(unsigned int)));
-
-	/* Unbind and clean */
-	if (a_position_loc != -1) {
-		glDisableVertexAttribArray(a_position_loc);
-	}
-	if (a_texture_loc != -1) {
-		glDisableVertexAttribArray(a_texture_loc);
-	}
-	if (a_normal_loc != -1) {
-		glDisableVertexAttribArray(a_normal_loc);
-	}
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-
-	/* You need to call this to draw the GUI, After unbinding your program*/
-	drawGUI();
-	/* But, before flushing the drawinng commands*/
-
-	glutSwapBuffers();
+void reshape(int new_window_width, int new_window_height) {
+	glViewport(0, 0, new_window_width, new_window_height);
+	cam.setAspectRatio(new_window_width, new_window_height);
+	ball.setWindowSize(new_window_width, new_window_height);
 }
 
 void idle() {
@@ -555,6 +568,12 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		exit_glut();
 		break;
 
+	case 'c':
+	case 'C':
+		cam.setFovY(PI / 8.0f);
+		ball.resetRotation();
+		break;
+
 	default:
 		break;
 	}
@@ -577,9 +596,15 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 	else
 		io.MouseDown[1] = false;
 
-	/* Now, the app */
-
-
+	/* Camera trackball*/
+	if (button == GLUT_RIGHT_BUTTON) {
+		if (state == GLUT_DOWN) {
+			ball.startDrag(glm::vec2(mouse_x, mouse_y));
+		}
+		else {
+			ball.endDrag(glm::vec2(mouse_x, mouse_y));
+		}
+	}
 
 	glutPostRedisplay();
 }
@@ -590,7 +615,6 @@ void special(int key, int mouse_x, int mouse_y) {
 	io.AddInputCharacter(key);
 
 	/* Now, the app*/
-
 	glutPostRedisplay();
 }
 
@@ -606,8 +630,11 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 		io.MouseWheel = -1.0;
 	}
 
-	/* Now, the app*/
-
+	/* Camera zoom in-out*/
+	const float DELTA_ANGLE = PI / 30.0f;
+	if (button == 0) {
+		cam.addFovY(dir > 0 ? DELTA_ANGLE : -DELTA_ANGLE);
+	}
 
 	glutPostRedisplay();
 }
@@ -617,7 +644,8 @@ void mouseDrag(int mouse_x, int mouse_y) {
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 
-	/*Now, the app*/
+	/*Trackball camera*/
+	ball.drag(glm::ivec2(mouse_x, mouse_y));
 
 	glutPostRedisplay();
 }
@@ -628,57 +656,6 @@ void mousePasiveMotion(int mouse_x, int mouse_y) {
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 
 	/*Now, the app*/
-
 	glutPostRedisplay();
 }
 
-void APIENTRY openglCallbackFunction(GLenum source,
-	GLenum type,
-	GLuint id,
-	GLenum severity,
-	GLsizei length,
-	const GLchar* message,
-	const void* userParam) {
-	using namespace std;
-
-	cout << "---------------------opengl-callback-start------------" << endl;
-	cout << "message: " << message << endl;
-	cout << "type: ";
-	switch (type) {
-	case GL_DEBUG_TYPE_ERROR:
-		cout << "ERROR";
-		break;
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-		cout << "DEPRECATED_BEHAVIOR";
-		break;
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-		cout << "UNDEFINED_BEHAVIOR";
-		break;
-	case GL_DEBUG_TYPE_PORTABILITY:
-		cout << "PORTABILITY";
-		break;
-	case GL_DEBUG_TYPE_PERFORMANCE:
-		cout << "PERFORMANCE";
-		break;
-	case GL_DEBUG_TYPE_OTHER:
-		cout << "OTHER";
-		break;
-	}
-	cout << endl;
-
-	cout << "id: " << id << endl;
-	cout << "severity: ";
-	switch (severity) {
-	case GL_DEBUG_SEVERITY_LOW:
-		cout << "LOW";
-		break;
-	case GL_DEBUG_SEVERITY_MEDIUM:
-		cout << "MEDIUM";
-		break;
-	case GL_DEBUG_SEVERITY_HIGH:
-		cout << "HIGH";
-		break;
-	}
-	cout << endl;
-	cout << "---------------------opengl-callback-end--------------" << endl;
-}
