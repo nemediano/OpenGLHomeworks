@@ -79,7 +79,7 @@ GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 8;
+const int NUM_SAMPLES = 1;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;

@@ -1,4 +1,4 @@
-#version 400            
+#version 440            
 uniform mat4 M; 
 uniform mat4 PV;
 uniform mat4 Q;
