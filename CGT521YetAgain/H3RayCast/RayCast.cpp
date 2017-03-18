@@ -181,10 +181,10 @@ void init_program() {
 	cubeScale = 1.0f;
 	backgroundColor = vec3(0.8f, 0.8f, 0.9f);
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 3.0f);
+	cam.setFovY(PI / 8.0f);
+	cam.setDepthView(0.1f, 5.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 }
@@ -234,8 +234,10 @@ void display() {
 	mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//mat4 V = glm::lookAt(vec3(3.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
+	//mat4 P = glm::perspective(70.0f * TO_RADIANS, 1.0f, 0.1f, 100.0f);
 
 	//Draw pass 1. Back faces of the cube to texture
 	programPtr->use();
@@ -365,8 +367,7 @@ void create_fbo(int width, int height) {
 		glGenRenderbuffers(1, &fbo.depthTex);
 		glBindRenderbuffer(GL_RENDERBUFFER, fbo.depthTex);
 		glRenderbufferStorageMultisample(GL_RENDERBUFFER, NUM_SAMPLES, GL_DEPTH_COMPONENT, fbo.width, fbo.height);
-	}
-	else {
+	} else {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, fbo.backFacesTex);
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
@@ -430,7 +431,7 @@ void create_cube() {
 
 	vector<vec3> positions(cube.num_vertex, vec3(0.0f));
 	vector<vec3> textureCoord(cube.num_vertex, vec3(0.0f));
-	vector<unsigned short> indices(cube.num_indices, 0);
+	vector<unsigned short> indices;
 
 	textureCoord[0] = positions[0] = vec3(-1.0f, -1.0f, -1.0f);
 	textureCoord[1] = positions[1] = vec3(+1.0f, -1.0f, -1.0f);
@@ -537,6 +538,9 @@ void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
 	cam.setAspectRatio(new_window_width, new_window_height);
 	ball.setWindowSize(new_window_width, new_window_height);
+	if (fbo.width != new_window_width || fbo.height != new_window_height) {
+		create_fbo(new_window_width, new_window_height);
+	}
 }
 
 void idle() {
