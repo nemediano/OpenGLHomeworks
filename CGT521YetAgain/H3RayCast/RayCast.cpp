@@ -150,8 +150,7 @@ void drawGUI() {
 	ImGui::Checkbox("Wireframe", &wireframe);
 	if (wireframe == true) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
-	else {
+	} else {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 	ImGui::End();
@@ -234,11 +233,9 @@ void display() {
 	mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
-	//mat4 V = glm::lookAt(vec3(3.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
-	//mat4 P = glm::perspective(70.0f * TO_RADIANS, 1.0f, 0.1f, 100.0f);
-
+	
 	//Draw pass 1. Back faces of the cube to texture
 	programPtr->use();
 	glEnable(GL_CULL_FACE);
@@ -395,8 +392,7 @@ void create_fbo(int width, int height) {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, fbo.frontFacesTex, 0);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, fbo.renderTex, 0);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
-	}
-	else {
+	} else {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo.backFacesTex, 0);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fbo.frontFacesTex, 0);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, fbo.renderTex, 0);
@@ -485,8 +481,7 @@ void reload_shaders() {
 	/************************************************************************/
 	if (NUM_SAMPLES > 1) {
 		programPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader_ms.glsl");
-	}
-	else {
+	} else {
 		programPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader.glsl");
 	}
 
@@ -562,23 +557,22 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 
 	/* Now, the app */
 	switch (key) {
-
-	case 'R':
-	case 'r':
-		rotate = !rotate;
+		case 'R':
+		case 'r':
+			rotate = !rotate;
 		break;
 
-	case 27:
-		exit_glut();
+		case 27:
+			exit_glut();
 		break;
 
-	case 'c':
-	case 'C':
-		cam.setFovY(PI / 8.0f);
-		ball.resetRotation();
+		case 'c':
+		case 'C':
+			cam.setFovY(PI / 8.0f);
+			ball.resetRotation();
 		break;
 
-	default:
+		default:
 		break;
 	}
 
@@ -604,8 +598,7 @@ void mouse(int button, int state, int mouse_x, int mouse_y) {
 	if (button == GLUT_RIGHT_BUTTON) {
 		if (state == GLUT_DOWN) {
 			ball.startDrag(glm::vec2(mouse_x, mouse_y));
-		}
-		else {
+		} else {
 			ball.endDrag(glm::vec2(mouse_x, mouse_y));
 		}
 	}
@@ -629,8 +622,7 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 	if (dir > 0) {
 		io.MouseWheel = 1.0;
-	}
-	else if (dir < 0) {
+	} else if (dir < 0) {
 		io.MouseWheel = -1.0;
 	}
 
