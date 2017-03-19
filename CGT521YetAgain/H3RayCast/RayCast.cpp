@@ -31,7 +31,9 @@ using namespace ogl;
 /* CGT Library related*/
 Camera cam;
 Trackball ball;
-OGLProgram* programPtr = nullptr;
+OGLProgram* programFacesPtr = nullptr;
+OGLProgram* programRayTracePtr = nullptr;
+
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 struct FBO {
@@ -65,7 +67,8 @@ struct Locations {
 };
 
 FBO fbo;
-Locations loc;
+Locations facesLoc;
+Locations rayTracerLoc;
 Mesh cube;
 
 GLint window = 0;
@@ -479,14 +482,19 @@ void reload_shaders() {
 	/************************************************************************/
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
+	programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces.glsl");
 	if (NUM_SAMPLES > 1) {
-		programPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader_ms.glsl");
+		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader_ms.glsl");
 	} else {
-		programPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader.glsl");
+		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader.glsl");
 	}
 
-	if (!programPtr || !programPtr->isOK()) {
-		cerr << "Something wrong in shader" << endl;
+	if (!programRayTracePtr || !programRayTracePtr->isOK()) {
+		cerr << "Something wrong in ray tracer shaders" << endl;
+	}
+
+	if (!programFacesPtr || !programFacesPtr->isOK()) {
+		cerr << "Something wrong in render faces shaders" << endl;
 	}
 	/************************************************************************/
 	/*                   Shader variables locations                         */
