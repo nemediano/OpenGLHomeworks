@@ -96,6 +96,7 @@ void init_OpenGL();
 void create_fbo(int width, int height);
 void delete_fbo();
 void reload_shaders();
+void reset_camera();
 void create_cube();
 void drawCube(int pass);
 void create_glut_callbacks();
@@ -145,6 +146,9 @@ void drawGUI() {
 	if (ImGui::Button("Reload shader")) {
 		reload_shaders();
 	}
+	if (ImGui::Button("Reset camera")) {
+		reset_camera();
+	}
 	ImGui::Checkbox("Pause rotate", &rotate);
 	ImGui::SliderFloat3("Translation", glm::value_ptr(cubeTranslation), -10.0f, 10.0f);
 	ImGui::SliderFloat("Scale", &cubeScale, 0.001f, 10.0f);
@@ -180,8 +184,8 @@ void init_program() {
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-	cam.setFovY(PI / 8.0f);
 	cam.setDepthView(0.1f, 5.0f);
+	reset_camera();
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 }
@@ -548,6 +552,11 @@ void exit_glut() {
 	exit(EXIT_SUCCESS);
 }
 
+void reset_camera() {
+	cam.setFovY(PI / 8.0f);
+	ball.resetRotation();
+}
+
 void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
 	cam.setAspectRatio(new_window_width, new_window_height);
@@ -581,14 +590,18 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 			rotate = !rotate;
 		break;
 
+		case 'W':
+		case 'w':
+			wireframe = !wireframe;
+		break;
+
 		case 27:
 			exit_glut();
 		break;
 
 		case 'c':
 		case 'C':
-			cam.setFovY(PI / 8.0f);
-			ball.resetRotation();
+			reset_camera();
 		break;
 
 		default:
@@ -629,6 +642,32 @@ void special(int key, int mouse_x, int mouse_y) {
 	/* See if ImGui handles it*/
 	ImGuiIO& io = ImGui::GetIO();
 	io.AddInputCharacter(key);
+
+	switch (key) {
+		case GLUT_KEY_UP:
+			cubeTranslation.y -= 0.1f * cubeScale;
+		break;
+
+		case GLUT_KEY_DOWN:
+			cubeTranslation.y += 0.1f * cubeScale;
+		break;
+
+		case GLUT_KEY_LEFT:
+			cubeTranslation.x += 0.1f * cubeScale;
+		break;
+
+		case GLUT_KEY_RIGHT:
+			cubeTranslation.x -= 0.1f * cubeScale;
+		break;
+
+		case GLUT_KEY_PAGE_UP:
+			cubeScale += 0.1f;
+		break;
+
+		case GLUT_KEY_PAGE_DOWN:
+			cubeScale -= 0.1f;
+		break;
+	}
 
 	/* Now, the app*/
 	glutPostRedisplay();
