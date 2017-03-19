@@ -81,10 +81,11 @@ GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 8;
+const int NUM_SAMPLES = 1;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;
+bool wireframe;
 glm::vec3 cubeTranslation;
 float cubeScale;
 glm::vec3 backgroundColor;
@@ -148,13 +149,7 @@ void drawGUI() {
 	ImGui::SliderFloat3("Translation", glm::value_ptr(cubeTranslation), -10.0f, 10.0f);
 	ImGui::SliderFloat("Scale", &cubeScale, 0.001f, 10.0f);
 
-	static bool wireframe = false;
 	ImGui::Checkbox("Wireframe", &wireframe);
-	if (wireframe == true) {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	} else {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
 	ImGui::End();
 
 	/* End with this when you want to render GUI */
@@ -177,6 +172,7 @@ void init_program() {
 	using glm::vec3;
 	/* Initialize global variables for program control */
 	rotate = false;
+	wireframe = false;
 	seconds_elapsed = 0.0f;
 	cubeTranslation = vec3(0.0f);
 	cubeScale = 1.0f;
@@ -235,6 +231,10 @@ void display() {
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 	
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+
 	//Draw pass 1. Back faces of the cube to texture
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programFacesPtr->use();
@@ -302,6 +302,7 @@ void display() {
 	glBlitFramebuffer(0, 0, fbo.width, fbo.height, 0, 0, fbo.width, fbo.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 	//Unbind an clean
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -480,11 +481,13 @@ void reload_shaders() {
 	/************************************************************************/
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
-	programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces.glsl");
+	
 	if (NUM_SAMPLES > 1) {
 		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader_ms.glsl");
+		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces_ms.glsl");
 	} else {
 		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader.glsl");
+		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces.glsl");
 	}
 
 	if (!programRayTracePtr || !programRayTracePtr->isOK()) {

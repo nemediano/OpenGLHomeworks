@@ -1,8 +1,8 @@
 #version 440
 
-uniform mat4 Q;
-uniform sampler2D backfaces;
-//uniform sampler2D frontfaces;
+layout(location = 1) uniform mat4 Q;
+layout(location = 2, binding = 0) uniform sampler2D backfaces;
+//layout(location = 2, binding = 0) uniform sampler2D frontfaces;
 
 in vec3 vpos;
 
