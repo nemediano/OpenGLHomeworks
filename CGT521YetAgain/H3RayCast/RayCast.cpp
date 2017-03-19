@@ -181,8 +181,7 @@ void drawGUI() {
 	if (ImGui::Button("Reset camera")) {
 		reset_camera();
 	}
-	
-	
+		
 	ImGui::Text("Select scene:");
 	ImGui::RadioButton("Sphere", &current_scene, 0); ImGui::SameLine();
 	ImGui::RadioButton("Figure", &current_scene, 1); ImGui::SameLine();
@@ -220,15 +219,6 @@ void drawGUI() {
 		}
 		ImGui::TreePop();
 	}
-
-	/*ImGui::BeginChild("Light properties");
-	ImGui::ColorEdit3("Ambient:", glm::value_ptr(light.K_a));
-	ImGui::ColorEdit3("Diffuse:", glm::value_ptr(light.K_d));
-	ImGui::ColorEdit3("Specular", glm::value_ptr(light.K_s));
-	ImGui::SliderFloat3("Position:", glm::value_ptr(light.pos), -5.0f, 5.0f);
-	ImGui::SliderFloat3("Target:", glm::value_ptr(light.target), -3.0f, 3.0f);
-	ImGui::SliderFloat("Aperture:", &light.aperture, 0.0f, 90.0f);
-	ImGui::EndChild();*/
 
 	ImGui::Checkbox("Pause rotate", &rotate); ImGui::SameLine();
 	ImGui::Checkbox("Wireframe", &wireframe);
