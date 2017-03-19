@@ -59,10 +59,9 @@ struct Locations {
 	GLint a_tex = -1;
 	//Uniforms
 	GLint u_Q = -1;
-	GLint u_M = -1;
-	GLint u_PV = -1;
-	GLint u_Time = -1;
-	GLint u_Pass = -1;
+	GLint u_PVM = -1;
+	//GLint u_Time = -1;
+	//GLint u_Pass = -1;
 	GLint u_Tex = -1;
 };
 
@@ -82,7 +81,7 @@ GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 1;
+const int NUM_SAMPLES = 8;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;
@@ -97,7 +96,7 @@ void create_fbo(int width, int height);
 void delete_fbo();
 void reload_shaders();
 void create_cube();
-void drawCube();
+void drawCube(int pass);
 void create_glut_callbacks();
 void exit_glut();
 
@@ -225,9 +224,6 @@ void display() {
 	using glm::vec2;
 	using glm::mat4;
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	programPtr->use();
-
 	mat4 I(1.0f);
 	//Cube
 	mat4 Q = glm::translate(I, cubeTranslation);
@@ -240,23 +236,20 @@ void display() {
 	mat4 P = cam.getProjectionMatrix();
 	
 	//Draw pass 1. Back faces of the cube to texture
-	programPtr->use();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	programFacesPtr->use();
+
 	glEnable(GL_CULL_FACE);
 	//Set uniforms
-	if (loc.u_M != -1) {
-		glUniformMatrix4fv(loc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+	if (facesLoc.u_Q != -1) {
+		glUniformMatrix4fv(facesLoc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
 	}
-	if (loc.u_Q != -1) {
-		glUniformMatrix4fv(loc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
-	}
-	if (loc.u_PV != -1) {
-		glUniformMatrix4fv(loc.u_PV, 1, GL_FALSE, glm::value_ptr(P * V));
+	if (facesLoc.u_PVM != -1) {
+		glUniformMatrix4fv(facesLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo.id);
 	glEnable(GL_DEPTH_TEST);
-	if (loc.u_Pass != -1) {
-		glUniform1i(loc.u_Pass, 1);
-	}
+	
 	glActiveTexture(GL_TEXTURE0);
 	//Unbind texture so we can write to it (remember, no read-write access)	
 	glBindTexture(texture_target, 0);
@@ -269,23 +262,24 @@ void display() {
 	//Draw back faces
 	glCullFace(GL_FRONT);
 	//Draw cube
-	drawCube();
+	drawCube(1);
 
 	//Pass 2: draw front faces to attachment 1
-	if (loc.u_Pass != -1) {
-		glUniform1i(loc.u_Pass, 2);
-	}
 	glCullFace(GL_BACK);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(texture_target, 0);
 	glDrawBuffer(GL_COLOR_ATTACHMENT1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	//draw cube front faces to fbo
-	drawCube();
+	drawCube(2);
 
 	//Pass 3: Raycasting pass
-	if (loc.u_Pass != -1) {
-		glUniform1i(loc.u_Pass, 3);
+	programRayTracePtr->use();
+	if (rayTracerLoc.u_Q != -1) {
+		glUniformMatrix4fv(rayTracerLoc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
+	}
+	if (rayTracerLoc.u_PVM != -1) {
+		glUniformMatrix4fv(rayTracerLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 	}
 	//Draw front faces to color attachment (We are already culling backfaces)
 	glActiveTexture(GL_TEXTURE2);	
@@ -300,7 +294,7 @@ void display() {
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(texture_target, fbo.frontFacesTex);
 	//draw cube front faces to fbo
-	drawCube();
+	drawCube(3);
 	//blit color attachment 2 to the screen
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo.id);
 	glReadBuffer(GL_COLOR_ATTACHMENT2);
@@ -321,20 +315,23 @@ void display() {
 	glutSwapBuffers();
 }
 
-void drawCube() {
+void drawCube(int pass) {
 	glBindBuffer(GL_ARRAY_BUFFER, cube.vertex_id);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.index_id);
 
-	glEnableVertexAttribArray(loc.a_pos);
-	glEnableVertexAttribArray(loc.a_tex);
+	int a_pos = pass == 3 ? rayTracerLoc.a_pos : facesLoc.a_pos;
+	int a_tex = pass == 3 ? rayTracerLoc.a_tex : facesLoc.a_tex;
 
-	glVertexAttribPointer(loc.a_pos, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
-	glVertexAttribPointer(loc.a_tex, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(cube.num_vertex * 3 * sizeof(float)));
+	glEnableVertexAttribArray(a_pos);
+	glEnableVertexAttribArray(a_tex);
+
+	glVertexAttribPointer(a_pos, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+	glVertexAttribPointer(a_tex, 3, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(cube.num_vertex * 3 * sizeof(float)));
 
 	glDrawElements(GL_TRIANGLES, cube.num_indices, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
 
-	glDisableVertexAttribArray(loc.a_pos);
-	glDisableVertexAttribArray(loc.a_tex);
+	glDisableVertexAttribArray(a_pos);
+	glDisableVertexAttribArray(a_tex);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
@@ -425,7 +422,6 @@ void create_cube() {
 	using namespace glm;
 	using namespace std;
 
-	cube.num_indices = 36;
 	cube.num_vertex = 8;
 
 	vector<vec3> positions(cube.num_vertex, vec3(0.0f));
@@ -460,6 +456,8 @@ void create_cube() {
 	indices.push_back(4); indices.push_back(5); indices.push_back(6);
 	indices.push_back(6); indices.push_back(7); indices.push_back(4);
 
+	cube.num_indices = static_cast<int>(indices.size());
+
 	int sizePositions = static_cast<int>(positions.size() * sizeof(vec3));
 	int sizeTextCoord = static_cast<int>(textureCoord.size() * sizeof(vec3));
 	//Sent to GPU the vertices
@@ -491,29 +489,38 @@ void reload_shaders() {
 
 	if (!programRayTracePtr || !programRayTracePtr->isOK()) {
 		cerr << "Something wrong in ray tracer shaders" << endl;
+		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
 	}
 
 	if (!programFacesPtr || !programFacesPtr->isOK()) {
 		cerr << "Something wrong in render faces shaders" << endl;
+		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
 	}
 	/************************************************************************/
 	/*                   Shader variables locations                         */
 	/************************************************************************/
-	programPtr->use();
+	programFacesPtr->use();
 	//Atributes
-	loc.a_pos = programPtr->attribLoc("pos_attrib");
-	loc.a_tex = programPtr->attribLoc("tex_coord_attrib");
+	facesLoc.a_pos = programFacesPtr->attribLoc("pos_attrib");
+	facesLoc.a_tex = programFacesPtr->attribLoc("tex_coord_attrib");
 	//Uniforms
-	loc.u_Q = programPtr->uniformLoc("Q");
-	loc.u_M = programPtr->uniformLoc("M");
-	loc.u_PV = programPtr->uniformLoc("PV");
-	loc.u_Time = programPtr->uniformLoc("time");
-	loc.u_Pass = programPtr->uniformLoc("pass");
+	facesLoc.u_Q = programFacesPtr->uniformLoc("Q");
+	facesLoc.u_PVM = programFacesPtr->uniformLoc("PVM");
 
-	loc.u_Tex = programPtr->uniformLoc("backfaces");
-	if (loc.u_Tex != -1) {
-		glUniform1i(loc.u_Tex, 0);
+	glUseProgram(0);
+	programRayTracePtr->use();
+	//Atributes
+	rayTracerLoc.a_pos = programRayTracePtr->attribLoc("pos_attrib");
+	rayTracerLoc.a_tex = programRayTracePtr->attribLoc("tex_coord_attrib");
+	//Uniforms
+	rayTracerLoc.u_Q = programRayTracePtr->uniformLoc("Q");
+	rayTracerLoc.u_PVM = programRayTracePtr->uniformLoc("PVM");
+
+	rayTracerLoc.u_Tex = programRayTracePtr->uniformLoc("backfaces");
+	if (rayTracerLoc.u_Tex != -1) {
+		glUniform1i(rayTracerLoc.u_Tex, 0);
 	}
+	glUseProgram(0);
 }
 
 void create_glut_callbacks() {
@@ -529,7 +536,8 @@ void create_glut_callbacks() {
 }
 
 void exit_glut() {
-	delete programPtr;
+	delete programFacesPtr;
+	delete programRayTracePtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
