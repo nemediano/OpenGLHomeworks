@@ -63,6 +63,7 @@ struct Locations {
 	//GLint u_Time = -1;
 	//GLint u_Pass = -1;
 	GLint u_Tex = -1;
+	GLint u_scene = -1;
 };
 
 struct LightPhong {
@@ -358,6 +359,9 @@ void display() {
 	if (rayTracerLoc.u_PVM != -1) {
 		glUniformMatrix4fv(rayTracerLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 	}
+	if (rayTracerLoc.u_scene != -1) {
+		glUniform1i(rayTracerLoc.u_scene, current_scene);
+	}
 	//Draw front faces to color attachment (We are already culling backfaces)
 	glActiveTexture(GL_TEXTURE2);	
 	glBindTexture(texture_target, 0);
@@ -567,6 +571,7 @@ void reload_shaders() {
 		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces.glsl");
 	}
 
+	//Use background color as a hint to the user that something is wrong in the shader
 	if (!programRayTracePtr || !programRayTracePtr->isOK()) {
 		cerr << "Something wrong in ray tracer shaders" << endl;
 		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
@@ -575,6 +580,11 @@ void reload_shaders() {
 	if (!programFacesPtr || !programFacesPtr->isOK()) {
 		cerr << "Something wrong in render faces shaders" << endl;
 		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
+	}
+
+	if (programRayTracePtr->isOK() && programFacesPtr->isOK()) {
+		cout << "Shaders compiled correctlly!" << endl;
+		backgroundColor = glm::vec3(0.8f, 0.8f, 0.9f);
 	}
 	/************************************************************************/
 	/*                   Shader variables locations                         */
@@ -595,6 +605,7 @@ void reload_shaders() {
 	//Uniforms
 	rayTracerLoc.u_Q = programRayTracePtr->uniformLoc("Q");
 	rayTracerLoc.u_PVM = programRayTracePtr->uniformLoc("PVM");
+	rayTracerLoc.u_scene = programRayTracePtr->uniformLoc("scene");
 
 	rayTracerLoc.u_Tex = programRayTracePtr->uniformLoc("backfaces");
 	if (rayTracerLoc.u_Tex != -1) {

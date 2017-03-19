@@ -2,6 +2,7 @@
 
 layout(location = 1) uniform mat4 Q;
 layout(location = 2, binding = 0) uniform sampler2D backfaces;
+layout(location = 3) uniform int scene;
 //layout(location = 2, binding = 0) uniform sampler2D frontfaces;
 
 in vec3 vpos;
@@ -73,7 +74,28 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 }
 
 //shape function declarations
-float sdSphere(vec3 p, float s);
+float sdSphere(vec3 position, float radius);
+float sdBox(vec3 position, vec3 boxSize);
+float udRoundBox(vec3 position, vec3 boxSize, float radius);
+float sdRoundBox(vec3 position, vec3 boxSize, float radius);
+
+float sdTorus(vec3 position, vec2 radius);
+float sdTorus22(vec3 position, vec2 radius);
+float sdTorus88(vec3 position, vec2 radius);
+float sdTorus82(vec3 position, vec2 radius);
+float figure3(vec3 position);
+
+//Norms different than the Euclidean
+float length2(vec3 v);
+float length2(vec2 v);
+float length8(vec3 v);
+float length8(vec2 v);
+
+//CGS Operations
+float operationUnion(float shape1, float shape2);
+//Substract shaphe2 from shape1, so the operation is shape1 minus shape2
+float operationSubstraction(float shape1, float shape2);
+float operationIntersection(float shape1, float shape2);
 
 // For more distance functions see
 // http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
@@ -87,9 +109,86 @@ float sdSphere(vec3 p, float s);
 
 //distance to the shape we are drawing
 float distToShape(vec3 pos) {
-	float radius = 0.4;
-	return sdSphere(pos, radius);
+	float dis = 0.0;
+	if (scene == 0) {
+		float r = 0.4;
+		dis = sdSphere(pos, r);
+	} else if (scene == 1) {
+		//vec2 r = vec2(0.3, 0.15);
+		//dis = sdTorus(pos, r);
+		vec2 r = vec2(0.2, 0.1);
+		dis = sdTorus82(pos, r);
+	} else {
+		dis = figure3(pos);
+	}
+	
+	return dis;
+}
+//Radius are the inner and outter radious
+//radius.x is the outer radius (the donut)
+//radius.y is the inner radius (the tube)
+float sdTorus(vec3 position, vec2 radius) {
+  vec2 q = vec2(length(position.xz) - radius.x, position.y);
+  return length(q) - radius.y;
+}
 
+//box size is the size of the box
+float sdBox(vec3 position, vec3 boxSize) {
+  vec3 d = abs(position) - boxSize;
+  return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+}
+//box size are the sizes of the box
+//Radius is the radious of the spehere that round the edges
+float udRoundBox(vec3 position, vec3 boxSize, float radius) {
+	return length(max(abs(position) - boxSize, 0.0)) - radius;
+}
+
+//box size are the sizes of the box
+//Radius is the radious of the spehere that round the edges
+float sdRoundBox(vec3 position, vec3 boxSize, float radius) {
+	vec3 q = abs(position) - boxSize;
+    vec2 m = vec2( min(q.x,q.y), max(q.x,q.y) );
+    float d = (m.x > 0.0) ? length(q) : m.y; 
+    return d - radius;
+}
+
+//Since 88 is squared both direction
+//Radius are the inner and outter radious
+//radius.x is the outer radius (the donut)
+//radius.y is the inner radius (the tube)
+float sdTorus88(vec3 position, vec2 radius) {
+  vec2 q = vec2(length8(position.xz) - radius.x, position.y);
+  return length8(q) - radius.y;
+}
+
+//Since 2, is rounded the donut
+//Since 8, the tube is squared (round edges)
+//Radius are the inner and outter radious
+//radius.x is the outer radius (the donut)
+//radius.y is the inner radius (the tube)
+float sdTorus82(vec3 position, vec2 radius) {
+  vec2 q = vec2(length2(position.xz) - radius.x, position.y);
+  return length8(q) - radius.y;
+}
+
+//Since 22 it has a squared shape
+//Radius are the inner and outter radious
+//radius.x is the outer radius (the donut)
+//radius.y is the inner radius (the tube)
+float sdTorus22(vec3 position, vec2 radius) {
+  vec2 q = vec2(length2(position.xz) - radius.x, position.y);
+  return length2(q) - radius.y;
+}
+
+float figure3(vec3 position) {
+	vec3 sizes = vec3(0.3, 0.3, 0.3);
+	float radius = 0.35;
+	float box = sdBox(position, sizes);
+	//float box = udRoundBox(position, sizes, 0.05);
+	float sphere = sdSphere(position, radius);
+	//return operationUnion(box, sphere);
+	//return operationIntersection(box, sphere);
+	return operationSubstraction(box, sphere);
 }
 
 //normal vector of the shape we are drawing
@@ -107,6 +206,41 @@ vec3 normal(vec3 pos) {
 }
 
 // shape function definitions
-float sdSphere( vec3 p, float s ) {
-	return length(p) - s;
+float sdSphere(vec3 position, float radius) {
+	return length(position) - radius;
+}
+
+float length2(vec3 v) {
+	return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+float length2(vec2 v) {
+	return v.x * v.x + v.y * v.y;
+}
+
+float length8(vec3 v) {
+	v = v * v;
+	v = v * v;
+	v = v * v;
+	return pow(v.x + v.y + v.z, 1.0 / 8.0);
+}
+
+float length8(vec2 v) {
+	v = v * v;
+	v = v * v;
+	v = v * v;
+	return pow(v.x + v.y, 1.0 / 8.0);
+}
+
+float operationUnion(float shape1, float shape2) {
+	return min(shape1, shape2);
+}
+
+//Substract shaphe2 from shape1, so the operation is shape1 minus shape2
+float operationSubstraction(float shape1, float shape2) {
+	return max(shape1, -shape2);
+}
+
+float operationIntersection(float shape1, float shape2) {
+	return max(shape1, shape2);
 }
