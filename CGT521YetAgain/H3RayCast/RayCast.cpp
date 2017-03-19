@@ -65,6 +65,35 @@ struct Locations {
 	GLint u_Tex = -1;
 };
 
+struct LightPhong {
+	glm::vec3 La = glm::vec3(1.0f);
+	glm::vec3 Ld = glm::vec3(1.0f);
+	glm::vec3 Ls = glm::vec3(1.0f);
+	glm::vec3 pos = glm::vec3(0.0f);
+	glm::vec3 target = glm::vec3(0.0f);
+	float aperture = 0;
+};
+
+struct MaterialPhong {
+	glm::vec3 Ka = glm::vec3(0.25f);
+	glm::vec3 Kd = glm::vec3(0.5f);
+	glm::vec3 Ks = glm::vec3(1.0f);
+	float alpha = 1.0f;
+};
+
+struct MaterialCookTorrance {
+	glm::vec3 Ka = glm::vec3(0.25f);
+	glm::vec3 Kd = glm::vec3(0.5f);
+	glm::vec3 Ks = glm::vec3(1.0f);
+	float m = 1.0f;
+	float D = 1.0f;
+	float etha = 1.0f;
+};
+
+LightPhong light;
+MaterialPhong matPhong;
+MaterialCookTorrance matCT;
+
 FBO fbo;
 Locations facesLoc;
 Locations rayTracerLoc;
@@ -89,6 +118,8 @@ bool wireframe;
 glm::vec3 cubeTranslation;
 float cubeScale;
 glm::vec3 backgroundColor;
+int current_scene;
+int current_light_model;
 
 void create_glut_window();
 void init_program();
@@ -146,14 +177,64 @@ void drawGUI() {
 	if (ImGui::Button("Reload shader")) {
 		reload_shaders();
 	}
+	ImGui::SameLine();
 	if (ImGui::Button("Reset camera")) {
 		reset_camera();
 	}
-	ImGui::Checkbox("Pause rotate", &rotate);
+	
+	
+	ImGui::Text("Select scene:");
+	ImGui::RadioButton("Sphere", &current_scene, 0); ImGui::SameLine();
+	ImGui::RadioButton("Figure", &current_scene, 1); ImGui::SameLine();
+	ImGui::RadioButton("CSG operation", &current_scene, 2);
+
+	ImGui::Text("Select Lighting Model:");
+	ImGui::RadioButton("Phong", &current_light_model, 0); ImGui::SameLine();
+	ImGui::RadioButton("Cook Torrence", &current_light_model, 1); ImGui::SameLine();
+	ImGui::RadioButton("Disney", &current_light_model, 2);
+
+	if (ImGui::TreeNode("Light properties")) {
+		ImGui::ColorEdit3("Ambient:", glm::value_ptr(light.La));
+		ImGui::ColorEdit3("Diffuse:", glm::value_ptr(light.Ld));
+		ImGui::ColorEdit3("Specular", glm::value_ptr(light.Ls));
+		ImGui::SliderFloat3("Position:", glm::value_ptr(light.pos), -5.0f, 5.0f);
+		ImGui::SliderFloat3("Target:", glm::value_ptr(light.target), -3.0f, 3.0f);
+		ImGui::SliderFloat("Aperture:", &light.aperture, 0.0f, 90.0f);
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNode("Material properties")) {
+		if (current_light_model == 0) {
+			ImGui::ColorEdit3("Ambient:", glm::value_ptr(matPhong.Ka));
+			ImGui::ColorEdit3("Diffuse:", glm::value_ptr(matPhong.Kd));
+			ImGui::ColorEdit3("Specular", glm::value_ptr(matPhong.Ks));
+			ImGui::SliderFloat("Shininess:", &matPhong.alpha, 0.0f, 256.0f);
+		} else if (current_light_model == 1) {
+			ImGui::ColorEdit3("Ambient:", glm::value_ptr(matCT.Ka));
+			ImGui::ColorEdit3("Diffuse:", glm::value_ptr(matCT.Kd));
+			ImGui::ColorEdit3("Specular", glm::value_ptr(matCT.Ks));
+			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 256.0f);
+			ImGui::SliderFloat("D:", &matCT.D, 0.0f, 256.0f);
+			ImGui::SliderFloat("etha:", &matCT.etha, 0.0f, 256.0f);
+		} else {
+		}
+		ImGui::TreePop();
+	}
+
+	/*ImGui::BeginChild("Light properties");
+	ImGui::ColorEdit3("Ambient:", glm::value_ptr(light.K_a));
+	ImGui::ColorEdit3("Diffuse:", glm::value_ptr(light.K_d));
+	ImGui::ColorEdit3("Specular", glm::value_ptr(light.K_s));
+	ImGui::SliderFloat3("Position:", glm::value_ptr(light.pos), -5.0f, 5.0f);
+	ImGui::SliderFloat3("Target:", glm::value_ptr(light.target), -3.0f, 3.0f);
+	ImGui::SliderFloat("Aperture:", &light.aperture, 0.0f, 90.0f);
+	ImGui::EndChild();*/
+
+	ImGui::Checkbox("Pause rotate", &rotate); ImGui::SameLine();
+	ImGui::Checkbox("Wireframe", &wireframe);
 	ImGui::SliderFloat3("Translation", glm::value_ptr(cubeTranslation), -10.0f, 10.0f);
 	ImGui::SliderFloat("Scale", &cubeScale, 0.001f, 10.0f);
 
-	ImGui::Checkbox("Wireframe", &wireframe);
 	ImGui::End();
 
 	/* End with this when you want to render GUI */
@@ -181,6 +262,8 @@ void init_program() {
 	cubeTranslation = vec3(0.0f);
 	cubeScale = 1.0f;
 	backgroundColor = vec3(0.8f, 0.8f, 0.9f);
+	current_light_model = 0;
+	current_scene = 0;
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -585,6 +668,18 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 
 	/* Now, the app */
 	switch (key) {
+		case '1':
+			current_scene = 0;
+		break;
+
+		case '2':
+			current_scene = 1;
+		break;
+
+		case '3':
+			current_scene = 2;
+		break;
+
 		case 'R':
 		case 'r':
 			rotate = !rotate;
@@ -602,6 +697,10 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 		case 'c':
 		case 'C':
 			reset_camera();
+		break;
+
+		case ' ':
+			reload_shaders();
 		break;
 
 		default:
@@ -666,6 +765,18 @@ void special(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_PAGE_DOWN:
 			cubeScale -= 0.1f;
+		break;
+
+		case GLUT_KEY_F1:
+			current_light_model = 0;
+		break;
+
+		case GLUT_KEY_F2:
+			current_light_model = 1;
+		break;
+
+		case GLUT_KEY_F3:
+			current_light_model = 2;
 		break;
 	}
 
