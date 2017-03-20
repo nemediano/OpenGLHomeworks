@@ -73,16 +73,33 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 	return ambient_color + diffuse_color * max(0.0, dot(n, light)) + spec_color * pow(max(0.0, dot(r, v)), 50.0);
 }
 
+//normal vector of the shape we are drawing
+vec3 normal(vec3 pos) {
+	const float h = 0.001;
+	const vec3 Xh = vec3(h, 0.0, 0.0);	
+	const vec3 Yh = vec3(0.0, h, 0.0);	
+	const vec3 Zh = vec3(0.0, 0.0, h);	
+
+	return normalize(vec3(
+		distToShape(pos + Xh) - distToShape(pos - Xh),
+		distToShape(pos + Yh) - distToShape(pos - Yh),
+		distToShape(pos + Zh) - distToShape(pos - Zh)
+	));
+}
+
+const float TAU = 6.28318;
+
 //shape function declarations
 float sdSphere(vec3 position, float radius);
 float sdBox(vec3 position, vec3 boxSize);
+float sdEllipsoid(vec3 position, vec3 axys);
 float udRoundBox(vec3 position, vec3 boxSize, float radius);
-float sdRoundBox(vec3 position, vec3 boxSize, float radius);
 
 float sdTorus(vec3 position, vec2 radius);
 float sdTorus22(vec3 position, vec2 radius);
 float sdTorus88(vec3 position, vec2 radius);
 float sdTorus82(vec3 position, vec2 radius);
+float figure2(vec3 position);
 float figure3(vec3 position);
 
 //Norms different than the Euclidean
@@ -111,13 +128,11 @@ float operationIntersection(float shape1, float shape2);
 float distToShape(vec3 pos) {
 	float dis = 0.0;
 	if (scene == 0) {
-		float r = 0.4;
-		dis = sdSphere(pos, r);
+		//float r = 0.4;
+		//dis = sdSphere(pos, r);
+		dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
 	} else if (scene == 1) {
-		//vec2 r = vec2(0.3, 0.15);
-		//dis = sdTorus(pos, r);
-		vec2 r = vec2(0.2, 0.1);
-		dis = sdTorus82(pos, r);
+		dis = figure2(pos);
 	} else {
 		dis = figure3(pos);
 	}
@@ -137,20 +152,18 @@ float sdBox(vec3 position, vec3 boxSize) {
   vec3 d = abs(position) - boxSize;
   return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
 }
+
 //box size are the sizes of the box
 //Radius is the radious of the spehere that round the edges
 float udRoundBox(vec3 position, vec3 boxSize, float radius) {
 	return length(max(abs(position) - boxSize, 0.0)) - radius;
 }
 
-//box size are the sizes of the box
-//Radius is the radious of the spehere that round the edges
-float sdRoundBox(vec3 position, vec3 boxSize, float radius) {
-	vec3 q = abs(position) - boxSize;
-    vec2 m = vec2( min(q.x,q.y), max(q.x,q.y) );
-    float d = (m.x > 0.0) ? length(q) : m.y; 
-    return d - radius;
+//Axys are the lenght of the principal axys of the elipsoid
+float sdEllipsoid(vec3 position, vec3 axys) {
+    return (length(position / axys) - 1.0) * min(min(axys.x, axys.y), axys.z);
 }
+
 
 //Since 88 is squared both direction
 //Radius are the inner and outter radious
@@ -191,23 +204,33 @@ float figure3(vec3 position) {
 	return operationSubstraction(box, sphere);
 }
 
-//normal vector of the shape we are drawing
-vec3 normal(vec3 pos) {
-	const float h = 0.001;
-	const vec3 Xh = vec3(h, 0.0, 0.0);	
-	const vec3 Yh = vec3(0.0, h, 0.0);	
-	const vec3 Zh = vec3(0.0, 0.0, h);	
-
-	return normalize(vec3(
-		distToShape(pos + Xh) - distToShape(pos - Xh),
-		distToShape(pos + Yh) - distToShape(pos - Yh),
-		distToShape(pos + Zh) - distToShape(pos - Zh)
-	));
+float figure2(vec3 position) {
+	//Apply optional twist
+	float c = cos(4.0 * position.y);
+    float s = sin(5.0 * position.y);
+    mat2  m = mat2(c, -s, s, c);
+    vec3  q = vec3(m * position.xz, position.y);
+	float scaleFactor = 0.6;
+	vec2 r = vec2(0.2, 0.1);
+	return sdTorus82(q / scaleFactor, r) * scaleFactor;
 }
 
 // shape function definitions
 float sdSphere(vec3 position, float radius) {
 	return length(position) - radius;
+}
+
+float operationUnion(float shape1, float shape2) {
+	return min(shape1, shape2);
+}
+
+//Substract shaphe2 from shape1, so the operation is shape1 minus shape2
+float operationSubstraction(float shape1, float shape2) {
+	return max(shape1, -shape2);
+}
+
+float operationIntersection(float shape1, float shape2) {
+	return max(shape1, shape2);
 }
 
 float length2(vec3 v) {
@@ -230,17 +253,4 @@ float length8(vec2 v) {
 	v = v * v;
 	v = v * v;
 	return pow(v.x + v.y, 1.0 / 8.0);
-}
-
-float operationUnion(float shape1, float shape2) {
-	return min(shape1, shape2);
-}
-
-//Substract shaphe2 from shape1, so the operation is shape1 minus shape2
-float operationSubstraction(float shape1, float shape2) {
-	return max(shape1, -shape2);
-}
-
-float operationIntersection(float shape1, float shape2) {
-	return max(shape1, shape2);
 }
