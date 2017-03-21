@@ -5,6 +5,22 @@ layout(location = 2, binding = 0) uniform sampler2D backfaces;
 layout(location = 3) uniform int scene;
 //layout(location = 2, binding = 0) uniform sampler2D frontfaces;
 
+struct Material {
+	vec3 Ka;
+	vec3 Ks;
+	vec3 Kd;
+	float alpha;
+};
+
+struct Light {
+	vec3 La;
+	vec3 Ls;
+	vec3 Ld;
+};
+
+uniform Material mat;
+uniform Light light;
+
 in vec3 vpos;
 
 out vec4 fragcolor;   
@@ -62,15 +78,17 @@ vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
 
 //compute lighting on the intersected surface
 vec4 lighting(vec3 pos, vec3 rayDir) {
-	const vec3 light = vec3(1.0 / 1.7, 1.0 / 1.7, 1.0 / 1.7);
-	const vec4 ambient_color = vec4(0.1, 0.2, 0.1, 1.0);
-	const vec4 diffuse_color = vec4(0.5, 0.7, 0.5, 1.0);
-	const vec4 spec_color = vec4(0.6, 0.6, 0.6, 1.0);
+	const vec3 lightPosition = vec3(1.0 / 1.7, 1.0 / 1.7, 1.0 / 1.7);
+		
 	vec3 n = normal(pos);
 	vec3 v = -rayDir;
-	vec3 r = reflect(-light, n);
+	vec3 r = reflect(-lightPosition, n);
+	
+	vec3 ambient_color = mat.Ka * light.La;
+	vec3 diffuse_color = mat.Kd * light.Ld * max(0.0, dot(n, lightPosition));
+	vec3 speculr_color = mat.Ks * light.Ls * pow(max(0.0, dot(r, v)), mat.alpha);
 
-	return ambient_color + diffuse_color * max(0.0, dot(n, light)) + spec_color * pow(max(0.0, dot(r, v)), 50.0);
+	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
 }
 
 //normal vector of the shape we are drawing

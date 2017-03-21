@@ -62,8 +62,15 @@ struct Locations {
 	GLint u_PVM = -1;
 	//GLint u_Time = -1;
 	//GLint u_Pass = -1;
-	GLint u_Tex = -1;
 	GLint u_scene = -1;
+	GLint u_Tex = -1;
+	GLint u_Ka = -1;
+	GLint u_Ks = -1;
+	GLint u_Kd = -1;
+	GLint u_La = -1;
+	GLint u_Ls = -1;
+	GLint u_Ld = -1;
+	GLint u_alpha = -1;
 };
 
 struct LightPhong {
@@ -111,7 +118,7 @@ GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 1;
+const int NUM_SAMPLES = 8;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;
@@ -128,6 +135,7 @@ void init_OpenGL();
 void create_fbo(int width, int height);
 void delete_fbo();
 void reload_shaders();
+void pass_light_material();
 void reset_camera();
 void create_cube();
 void drawCube(int pass);
@@ -255,6 +263,15 @@ void init_program() {
 	backgroundColor = vec3(0.8f, 0.8f, 0.9f);
 	current_light_model = 0;
 	current_scene = 0;
+	//Set the material and light properties
+	matPhong.Ka = vec3(0.1f, 0.2f, 0.1f);
+	matPhong.Kd = vec3(0.5f, 0.7f, 0.5f);
+	matPhong.Ks = vec3(0.6f, 0.6f, 0.6f);
+	matPhong.alpha = 64.0f;
+	//Light
+	light.La = vec3(1.0f, 1.0f, 1.0f);
+	light.Ld = vec3(1.0f, 1.0f, 1.0f);
+	light.Ls = vec3(1.0f, 1.0f, 1.0f);
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -366,6 +383,8 @@ void display() {
 	glActiveTexture(GL_TEXTURE2);	
 	glBindTexture(texture_target, 0);
 	
+	pass_light_material();
+
 	glDrawBuffer(GL_COLOR_ATTACHMENT2);
 
 	glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 0.0f);
@@ -564,10 +583,10 @@ void reload_shaders() {
 	/************************************************************************/
 	
 	if (NUM_SAMPLES > 1) {
-		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader_ms.glsl");
+		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fPhong_ms.glsl");
 		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces_ms.glsl");
 	} else {
-		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshader.glsl");
+		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fPhong.glsl");
 		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces.glsl");
 	}
 
@@ -606,12 +625,50 @@ void reload_shaders() {
 	rayTracerLoc.u_Q = programRayTracePtr->uniformLoc("Q");
 	rayTracerLoc.u_PVM = programRayTracePtr->uniformLoc("PVM");
 	rayTracerLoc.u_scene = programRayTracePtr->uniformLoc("scene");
+	//Material
+	rayTracerLoc.u_Ka = programRayTracePtr->uniformLoc("mat.Ka");
+	rayTracerLoc.u_Kd = programRayTracePtr->uniformLoc("mat.Kd");
+	rayTracerLoc.u_Ks = programRayTracePtr->uniformLoc("mat.Ks");
+	rayTracerLoc.u_alpha = programRayTracePtr->uniformLoc("mat.alpha");
+	//Light
+	rayTracerLoc.u_La = programRayTracePtr->uniformLoc("light.La");
+	rayTracerLoc.u_Ld = programRayTracePtr->uniformLoc("light.Ld");
+	rayTracerLoc.u_Ls = programRayTracePtr->uniformLoc("light.Ls");
 
 	rayTracerLoc.u_Tex = programRayTracePtr->uniformLoc("backfaces");
 	if (rayTracerLoc.u_Tex != -1) {
 		glUniform1i(rayTracerLoc.u_Tex, 0);
 	}
 	glUseProgram(0);
+}
+void pass_light_material() {
+	if (rayTracerLoc.u_Ka != -1) {
+		glUniform3fv(rayTracerLoc.u_Ka, 1, glm::value_ptr(matPhong.Ka));
+	}
+
+	if (rayTracerLoc.u_Ks != -1) {
+		glUniform3fv(rayTracerLoc.u_Ks, 1, glm::value_ptr(matPhong.Ks));
+	}
+
+	if (rayTracerLoc.u_Ka != -1) {
+		glUniform3fv(rayTracerLoc.u_Kd, 1, glm::value_ptr(matPhong.Kd));
+	}
+
+	if (rayTracerLoc.u_alpha != -1) {
+		glUniform1f(rayTracerLoc.u_alpha, matPhong.alpha);
+	}
+
+	if (rayTracerLoc.u_La != -1) {
+		glUniform3fv(rayTracerLoc.u_La, 1, glm::value_ptr(light.La));
+	}
+
+	if (rayTracerLoc.u_Ld != -1) {
+		glUniform3fv(rayTracerLoc.u_Ld, 1, glm::value_ptr(light.Ld));
+	}
+
+	if (rayTracerLoc.u_Ls != -1) {
+		glUniform3fv(rayTracerLoc.u_Ls, 1, glm::value_ptr(light.Ls));
+	}
 }
 
 void create_glut_callbacks() {

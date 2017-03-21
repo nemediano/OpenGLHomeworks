@@ -1,9 +1,9 @@
 #version 440
 
 layout(location = 1) uniform mat4 Q;
-layout(location = 2, binding = 0) uniform sampler2DMS backfaces;
+layout(location = 2, binding = 0) uniform sampler2D backfaces;
 layout(location = 3) uniform int scene;
-//uniform sampler2DMS frontfaces;
+//layout(location = 2, binding = 0) uniform sampler2D frontfaces;
 
 struct Material {
 	vec3 Ka;
@@ -21,7 +21,7 @@ struct Light {
 uniform Material mat;
 uniform Light light;
 
-sample in vec3 vpos;
+in vec3 vpos;
 
 out vec4 fragcolor;   
 
@@ -38,18 +38,19 @@ void main(void) {
 
 	vec3 rayStart = vpos;
 
-	vec3 rayStop = texelFetch(backfaces, ivec2(gl_FragCoord.xy), gl_SampleID).xyz;
+	vec3 rayStop = texelFetch(backfaces, ivec2(gl_FragCoord.xy), 0).xyz;
 	fragcolor = raytracedcolor(rayStart, rayStop);
 
-	if(fragcolor.a == 0.0) {
+	if (fragcolor.a == 0.0) {
 		discard;
 	}
-   
+	//Gamma corrected output
 	fragcolor = pow(fragcolor, vec4(0.45, 0.45, 0.45, 1.0));
 }
 
 // trace rays until they intersect the surface
 vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
+	
 	vec4 color = vec4(0.0, 0.0, 0.0, 0.0);
 	float scale = 1.0 / Q[0].x;
 	int MaxSamples = 1000;
@@ -60,7 +61,7 @@ vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
 	vec3 pos = rayStart;
 	vec3 rayStep = rayDir * stepSize;
 	
-	for (int i = 0; i < MaxSamples && travel > 0.0; ++i, pos += rayStep, travel -= stepSize) {
+	for (int i=0; i < MaxSamples && travel > 0.0; ++i, pos += rayStep, travel -= stepSize)	{
 		float dist = distToShape(pos);
 
 		stepSize = dist;
@@ -71,6 +72,7 @@ vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
 			return color;
 		}	
 	}
+	
 	return color;
 }
 
@@ -84,6 +86,18 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 	
 	vec3 ambient_color = mat.Ka * light.La;
 	vec3 diffuse_color = mat.Kd * light.Ld * max(0.0, dot(n, lightPosition));
+	
+	float m = mat.m;
+	float eta = mat.eta;
+	//float F = fresnel_term(h, v, eta);
+	//float F = fresnel_term_fast(n, v, eta);
+	float F = fresnel_term_2(n, v, eta);
+	//float F = 1.0f;
+	float D = roughness_term(n, h, m);
+	//float D = 1.0f;
+	float G = geometric_attenuation(n, h, v, l);
+	//float G = 1.0f;
+	
 	vec3 speculr_color = mat.Ks * light.Ls * pow(max(0.0, dot(r, v)), mat.alpha);
 
 	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
@@ -100,8 +114,10 @@ vec3 normal(vec3 pos) {
 		distToShape(pos + Xh) - distToShape(pos - Xh),
 		distToShape(pos + Yh) - distToShape(pos - Yh),
 		distToShape(pos + Zh) - distToShape(pos - Zh)
-		));
+	));
 }
+
+const float TAU = 6.28318;
 
 //shape function declarations
 float sdSphere(vec3 position, float radius);
@@ -137,6 +153,7 @@ float operationIntersection(float shape1, float shape2);
 // WebGL example and a simple ambient occlusion approximation
 // https://www.shadertoy.com/view/Xds3zN
 
+
 //distance to the shape we are drawing
 float distToShape(vec3 pos) {
 	float dis = 0.0;
@@ -152,7 +169,6 @@ float distToShape(vec3 pos) {
 	
 	return dis;
 }
- 
 //Radius are the inner and outter radious
 //radius.x is the outer radius (the donut)
 //radius.y is the inner radius (the tube)
@@ -268,20 +284,3 @@ float length8(vec2 v) {
 	v = v * v;
 	return pow(v.x + v.y, 1.0 / 8.0);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
