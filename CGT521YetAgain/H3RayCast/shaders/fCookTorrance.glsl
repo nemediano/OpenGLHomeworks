@@ -9,7 +9,8 @@ struct Material {
 	vec3 Ka;
 	vec3 Ks;
 	vec3 Kd;
-	float alpha;
+	float m;
+	float eta;
 };
 
 struct Light {
@@ -29,7 +30,15 @@ out vec4 fragcolor;
 vec4 raytracedcolor(vec3 rayStart, vec3 rayStop);
 vec4 lighting(vec3 pos, vec3 rayDir);
 float distToShape(vec3 pos);
-vec3 normal(vec3 pos);
+vec3 calculateNormal(vec3 pos);
+
+//Helpers for Cook Torrance
+float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l);
+float roughness_term(vec3 n, vec3 h, float m);
+float fresnel_term(vec3 h, vec3 v, float eta);
+float fresnel_term_fast(vec3 n, vec3 v, float eta);
+float fresnel_term_2(vec3 n, vec3 v, float eta);
+
 
 void main(void) {
 	//uncomment to show backface texture
@@ -80,7 +89,7 @@ vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
 vec4 lighting(vec3 pos, vec3 rayDir) {
 	const vec3 lightPosition = vec3(1.0 / 1.7, 1.0 / 1.7, 1.0 / 1.7);
 		
-	vec3 n = normal(pos);
+	vec3 n = calculateNormal(pos);
 	vec3 v = -rayDir;
 	vec3 r = reflect(-lightPosition, n);
 	
@@ -97,14 +106,57 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 	//float D = 1.0f;
 	float G = geometric_attenuation(n, h, v, l);
 	//float G = 1.0f;
-	
-	vec3 speculr_color = mat.Ks * light.Ls * pow(max(0.0, dot(r, v)), mat.alpha);
+	consf float EPSILON = 0.0000001;
+	vec3 speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * dot(n, l) * dot(n, v) + EPSILON));
 
 	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
 }
 
+float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
+	
+	float n_dot_h = dot(n, h);
+	float v_dot_h = dot(v, h);
+	
+	float masking = 2.0f * n_dot_h * dot(n, v) / v_dot_h;
+	float shadowing = 2.0f * n_dot_h * dot(n, l) / v_dot_h;
+	
+	return min(1.0f, min(masking, shadowing));
+}
+
+float roughness_term(vec3 n, vec3 h, float m) {
+	float n_dot_h_sq = dot(n, h) * dot(n, h);
+	float tan_sq = (1.0f - n_dot_h_sq) / (n_dot_h_sq);
+	float m_sq = m * m;
+	
+	return exp(-1.0f * tan_sq / (m_sq))/(3.1416f * m_sq * n_dot_h_sq * n_dot_h_sq);
+}
+
+float fresnel_term_fast(vec3 n, vec3 v, float eta) {
+	float one_minus_n_dot_v_5th = pow(1.0f - max(0.0, dot(n, v)), 5.0);
+	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
+	
+	return f_lambda + (1.0f - f_lambda) * one_minus_n_dot_v_5th;
+}
+
+float fresnel_term(vec3 h, vec3 v, float eta) {
+	float c = dot(v, h);
+	float g = sqrt(eta * eta + c * c - 1.0);
+	
+	float g_plus_c = g + c;
+	float g_minus_c = g - c;
+	
+	float left_factor  =  (g_minus_c * g_minus_c) / (2.0 * g_plus_c * g_plus_c);
+	float right_factor = (1.0 + pow(c * g_plus_c - 1.0, 2.0) / pow(c * g_minus_c - 1.0, 2.0));
+	
+	return left_factor * right_factor;
+}
+
+float fresnel_term_2(vec3 n, vec3 v, float eta) {
+	return pow(1.0 + dot(n, v), eta);
+}
+
 //normal vector of the shape we are drawing
-vec3 normal(vec3 pos) {
+vec3 calculateNormal(vec3 pos) {
 	const float h = 0.001;
 	const vec3 Xh = vec3(h, 0.0, 0.0);	
 	const vec3 Yh = vec3(0.0, h, 0.0);	

@@ -71,6 +71,8 @@ struct Locations {
 	GLint u_Ls = -1;
 	GLint u_Ld = -1;
 	GLint u_alpha = -1;
+	GLint u_m = -1;
+	GLint u_eta = -1;
 };
 
 struct LightPhong {
@@ -95,7 +97,7 @@ struct MaterialCookTorrance {
 	glm::vec3 Ks = glm::vec3(1.0f);
 	float m = 1.0f;
 	float D = 1.0f;
-	float etha = 1.0f;
+	float eta = 1.0f;
 };
 
 LightPhong light;
@@ -223,7 +225,7 @@ void drawGUI() {
 			ImGui::ColorEdit3("Specular", glm::value_ptr(matCT.Ks));
 			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 256.0f);
 			ImGui::SliderFloat("D:", &matCT.D, 0.0f, 256.0f);
-			ImGui::SliderFloat("etha:", &matCT.etha, 0.0f, 256.0f);
+			ImGui::SliderFloat("etha:", &matCT.eta, 0.0f, 256.0f);
 		} else {
 		}
 		ImGui::TreePop();
@@ -630,6 +632,8 @@ void reload_shaders() {
 	rayTracerLoc.u_Kd = programRayTracePtr->uniformLoc("mat.Kd");
 	rayTracerLoc.u_Ks = programRayTracePtr->uniformLoc("mat.Ks");
 	rayTracerLoc.u_alpha = programRayTracePtr->uniformLoc("mat.alpha");
+	rayTracerLoc.u_eta = programRayTracePtr->uniformLoc("mat.eta");
+	rayTracerLoc.u_m = programRayTracePtr->uniformLoc("mat.m");
 	//Light
 	rayTracerLoc.u_La = programRayTracePtr->uniformLoc("light.La");
 	rayTracerLoc.u_Ld = programRayTracePtr->uniformLoc("light.Ld");
@@ -656,6 +660,14 @@ void pass_light_material() {
 
 	if (rayTracerLoc.u_alpha != -1) {
 		glUniform1f(rayTracerLoc.u_alpha, matPhong.alpha);
+	}
+
+	if (rayTracerLoc.u_eta != -1) {
+		glUniform1f(rayTracerLoc.u_eta, matCT.eta);
+	}
+
+	if (rayTracerLoc.u_m != -1) {
+		glUniform1f(rayTracerLoc.u_m, matCT.m);
 	}
 
 	if (rayTracerLoc.u_La != -1) {
