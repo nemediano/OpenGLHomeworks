@@ -233,9 +233,9 @@ float operationIntersection(float shape1, float shape2);
 float distToShape(vec3 pos) {
 	float dis = 0.0;
 	if (scene == 0) {
-		float r = 0.4;
-		dis = sdSphere(pos, r);
-		//dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
+		//float r = 0.4;
+		//dis = sdSphere(pos, r);
+		dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
 	} else if (scene == 1) {
 		dis = figure2(pos);
 	} else {

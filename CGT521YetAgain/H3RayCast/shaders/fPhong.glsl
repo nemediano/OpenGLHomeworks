@@ -29,7 +29,7 @@ out vec4 fragcolor;
 vec4 raytracedcolor(vec3 rayStart, vec3 rayStop);
 vec4 lighting(vec3 pos, vec3 rayDir);
 float distToShape(vec3 pos);
-vec3 normal(vec3 pos);
+vec3 getNormal(vec3 pos);
 
 void main(void) {
 	//uncomment to show backface texture
@@ -80,19 +80,20 @@ vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
 vec4 lighting(vec3 pos, vec3 rayDir) {
 	const vec3 lightPosition = vec3(1.0 / 1.7, 1.0 / 1.7, 1.0 / 1.7);
 		
-	vec3 n = normal(pos);
+	vec3 n = getNormal(pos);
 	vec3 v = -rayDir;
-	vec3 r = reflect(-lightPosition, n);
+	vec3 l = normalize(lightPosition);
+	vec3 r = reflect(-l, n);
 	
 	vec3 ambient_color = mat.Ka * light.La;
-	vec3 diffuse_color = mat.Kd * light.Ld * max(0.0, dot(n, lightPosition));
+	vec3 diffuse_color = mat.Kd * light.Ld * max(0.0, dot(n, l));
 	vec3 speculr_color = mat.Ks * light.Ls * pow(max(0.0, dot(r, v)), mat.alpha);
 
 	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
 }
 
 //normal vector of the shape we are drawing
-vec3 normal(vec3 pos) {
+vec3 getNormal(vec3 pos) {
 	const float h = 0.001;
 	const vec3 Xh = vec3(h, 0.0, 0.0);	
 	const vec3 Yh = vec3(0.0, h, 0.0);	
