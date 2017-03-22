@@ -39,6 +39,7 @@ float fresnel_term(vec3 h, vec3 v, float eta);
 float fresnel_term_fast(vec3 n, vec3 v, float eta);
 float fresnel_term_2(vec3 n, vec3 v, float eta);
 
+const float EPSILON = 0.0000001;
 
 void main(void) {
 	//uncomment to show backface texture
@@ -91,7 +92,9 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 		
 	vec3 n = calculateNormal(pos);
 	vec3 v = -rayDir;
-	vec3 r = reflect(-lightPosition, n);
+	vec3 l = normalize(-lightPosition);
+	vec3 r = normalize(reflect(l, n));
+	vec3 h = normalize(l + v);
 	
 	vec3 ambient_color = mat.Ka * light.La;
 	vec3 diffuse_color = mat.Kd * light.Ld * max(0.0, dot(n, lightPosition));
@@ -106,29 +109,32 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 	//float D = 1.0f;
 	float G = geometric_attenuation(n, h, v, l);
 	//float G = 1.0f;
-	consf float EPSILON = 0.0000001;
-	vec3 speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * dot(n, l) * dot(n, v) + EPSILON));
+	float n_dot_l = max(0.0, dot(n, l));
+	float n_dot_v = max(0.0, dot(n, v));
+	vec3 speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * n_dot_l * n_dot_v));
 
 	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
 }
 
 float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
 	
-	float n_dot_h = dot(n, h);
-	float v_dot_h = dot(v, h);
+	float n_dot_h = max(0.0, dot(n, h));
+	float v_dot_h = max(EPSILON, dot(v, h));
+	float n_dot_v = max(0.0, dot(n, v));
+	float n_dot_l = max(0.0, dot(n, l));
 	
-	float masking = 2.0f * n_dot_h * dot(n, v) / v_dot_h;
-	float shadowing = 2.0f * n_dot_h * dot(n, l) / v_dot_h;
+	float masking = 2.0f * n_dot_h * n_dot_v / v_dot_h;
+	float shadowing = 2.0f * n_dot_h * n_dot_l / v_dot_h;
 	
 	return min(1.0f, min(masking, shadowing));
 }
 
 float roughness_term(vec3 n, vec3 h, float m) {
-	float n_dot_h_sq = dot(n, h) * dot(n, h);
+	float n_dot_h_sq = max(EPSILON, dot(n, h) * dot(n, h));
 	float tan_sq = (1.0f - n_dot_h_sq) / (n_dot_h_sq);
 	float m_sq = m * m;
 	
-	return exp(-1.0f * tan_sq / (m_sq))/(3.1416f * m_sq * n_dot_h_sq * n_dot_h_sq);
+	return exp(-1.0f * tan_sq / (m_sq)) / (3.1416f * m_sq * n_dot_h_sq * n_dot_h_sq);
 }
 
 float fresnel_term_fast(vec3 n, vec3 v, float eta) {
@@ -139,7 +145,7 @@ float fresnel_term_fast(vec3 n, vec3 v, float eta) {
 }
 
 float fresnel_term(vec3 h, vec3 v, float eta) {
-	float c = dot(v, h);
+	float c = max(0.0, dot(v, h));
 	float g = sqrt(eta * eta + c * c - 1.0);
 	
 	float g_plus_c = g + c;
@@ -152,7 +158,7 @@ float fresnel_term(vec3 h, vec3 v, float eta) {
 }
 
 float fresnel_term_2(vec3 n, vec3 v, float eta) {
-	return pow(1.0 + dot(n, v), eta);
+	return pow(1.0 + max(0.0, dot(n, v)), eta);
 }
 
 //normal vector of the shape we are drawing
@@ -210,9 +216,9 @@ float operationIntersection(float shape1, float shape2);
 float distToShape(vec3 pos) {
 	float dis = 0.0;
 	if (scene == 0) {
-		//float r = 0.4;
-		//dis = sdSphere(pos, r);
-		dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
+		float r = 0.4;
+		dis = sdSphere(pos, r);
+		//dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
 	} else if (scene == 1) {
 		dis = figure2(pos);
 	} else {

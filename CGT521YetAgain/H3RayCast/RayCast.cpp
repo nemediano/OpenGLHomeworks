@@ -32,7 +32,8 @@ using namespace ogl;
 Camera cam;
 Trackball ball;
 OGLProgram* programFacesPtr = nullptr;
-OGLProgram* programRayTracePtr = nullptr;
+OGLProgram* programRayTracePhongPtr = nullptr;
+OGLProgram* programRayTraceCkTrrncPtr = nullptr;
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
@@ -96,7 +97,6 @@ struct MaterialCookTorrance {
 	glm::vec3 Kd = glm::vec3(0.5f);
 	glm::vec3 Ks = glm::vec3(1.0f);
 	float m = 1.0f;
-	float D = 1.0f;
 	float eta = 1.0f;
 };
 
@@ -106,7 +106,8 @@ MaterialCookTorrance matCT;
 
 FBO fbo;
 Locations facesLoc;
-Locations rayTracerLoc;
+Locations rayTracerPhongLoc;
+Locations rayTracerCkTrrncLoc;
 Mesh cube;
 
 GLint window = 0;
@@ -120,7 +121,7 @@ GLint a_normal_loc = -1;
 GLint a_texture_loc = -1;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 8;
+const int NUM_SAMPLES = 1;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;
@@ -200,8 +201,8 @@ void drawGUI() {
 
 	ImGui::Text("Select Lighting Model:");
 	ImGui::RadioButton("Phong", &current_light_model, 0); ImGui::SameLine();
-	ImGui::RadioButton("Cook Torrence", &current_light_model, 1); ImGui::SameLine();
-	ImGui::RadioButton("Disney", &current_light_model, 2);
+	ImGui::RadioButton("Cook Torrence", &current_light_model, 1); //ImGui::SameLine();
+	//ImGui::RadioButton("Disney", &current_light_model, 2);
 
 	if (ImGui::TreeNode("Light properties")) {
 		ImGui::ColorEdit3("Ambient:", glm::value_ptr(light.La));
@@ -224,8 +225,7 @@ void drawGUI() {
 			ImGui::ColorEdit3("Diffuse:", glm::value_ptr(matCT.Kd));
 			ImGui::ColorEdit3("Specular", glm::value_ptr(matCT.Ks));
 			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 256.0f);
-			ImGui::SliderFloat("D:", &matCT.D, 0.0f, 256.0f);
-			ImGui::SliderFloat("etha:", &matCT.eta, 0.0f, 256.0f);
+			ImGui::SliderFloat("etha:", &matCT.eta, 0.0f, 50.0f);
 		} else {
 		}
 		ImGui::TreePop();
@@ -266,10 +266,12 @@ void init_program() {
 	current_light_model = 0;
 	current_scene = 0;
 	//Set the material and light properties
-	matPhong.Ka = vec3(0.1f, 0.2f, 0.1f);
-	matPhong.Kd = vec3(0.5f, 0.7f, 0.5f);
-	matPhong.Ks = vec3(0.6f, 0.6f, 0.6f);
+	matCT.Ka = matPhong.Ka = vec3(0.1f, 0.2f, 0.1f);
+	matCT.Kd = matPhong.Kd = vec3(0.5f, 0.7f, 0.5f);
+	matCT.Ks = matPhong.Ks = vec3(0.6f, 0.6f, 0.6f);
 	matPhong.alpha = 64.0f;
+	matCT.eta = 10.0f;
+	matCT.m = 20.0f;
 	//Light
 	light.La = vec3(1.0f, 1.0f, 1.0f);
 	light.Ld = vec3(1.0f, 1.0f, 1.0f);
@@ -371,16 +373,30 @@ void display() {
 	drawCube(2);
 
 	//Pass 3: Raycasting pass
-	programRayTracePtr->use();
-	if (rayTracerLoc.u_Q != -1) {
-		glUniformMatrix4fv(rayTracerLoc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
+	if (current_light_model == 0) {
+		programRayTracePhongPtr->use();
+		if (rayTracerPhongLoc.u_Q != -1) {
+			glUniformMatrix4fv(rayTracerPhongLoc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
+		}
+		if (rayTracerPhongLoc.u_PVM != -1) {
+			glUniformMatrix4fv(rayTracerPhongLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		}
+		if (rayTracerPhongLoc.u_scene != -1) {
+			glUniform1i(rayTracerPhongLoc.u_scene, current_scene);
+		}
+	} else if (current_light_model == 1) {
+		programRayTraceCkTrrncPtr->use();
+		if (rayTracerCkTrrncLoc.u_Q != -1) {
+			glUniformMatrix4fv(rayTracerCkTrrncLoc.u_Q, 1, GL_FALSE, glm::value_ptr(Q));
+		}
+		if (rayTracerCkTrrncLoc.u_PVM != -1) {
+			glUniformMatrix4fv(rayTracerCkTrrncLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		}
+		if (rayTracerCkTrrncLoc.u_scene != -1) {
+			glUniform1i(rayTracerCkTrrncLoc.u_scene, current_scene);
+		}
 	}
-	if (rayTracerLoc.u_PVM != -1) {
-		glUniformMatrix4fv(rayTracerLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
-	}
-	if (rayTracerLoc.u_scene != -1) {
-		glUniform1i(rayTracerLoc.u_scene, current_scene);
-	}
+	
 	//Draw front faces to color attachment (We are already culling backfaces)
 	glActiveTexture(GL_TEXTURE2);	
 	glBindTexture(texture_target, 0);
@@ -422,8 +438,16 @@ void drawCube(int pass) {
 	glBindBuffer(GL_ARRAY_BUFFER, cube.vertex_id);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube.index_id);
 
-	int a_pos = pass == 3 ? rayTracerLoc.a_pos : facesLoc.a_pos;
-	int a_tex = pass == 3 ? rayTracerLoc.a_tex : facesLoc.a_tex;
+	int a_pos;
+	int a_tex;
+
+	if (current_light_model == 0) {
+		a_pos = (pass == 3) ? rayTracerPhongLoc.a_pos : facesLoc.a_pos;
+		a_tex = (pass == 3) ? rayTracerPhongLoc.a_tex : facesLoc.a_tex;
+	} else if (current_light_model == 1) {
+		a_pos = (pass == 3) ? rayTracerCkTrrncLoc.a_pos : facesLoc.a_pos;
+		a_tex = (pass == 3) ? rayTracerCkTrrncLoc.a_tex : facesLoc.a_tex;
+	}
 
 	glEnableVertexAttribArray(a_pos);
 	glEnableVertexAttribArray(a_tex);
@@ -585,25 +609,30 @@ void reload_shaders() {
 	/************************************************************************/
 	
 	if (NUM_SAMPLES > 1) {
-		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fPhong_ms.glsl");
+		programRayTracePhongPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fPhong_ms.glsl");
+		programRayTraceCkTrrncPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fCookTorrance_ms.glsl");
 		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces_ms.glsl");
 	} else {
-		programRayTracePtr = new OGLProgram("shaders/vshader.glsl", "shaders/fPhong.glsl");
+		programRayTracePhongPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fPhong.glsl");
+		programRayTraceCkTrrncPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fCookTorrance.glsl");
 		programFacesPtr = new OGLProgram("shaders/vshader.glsl", "shaders/fshaderFaces.glsl");
 	}
 
 	//Use background color as a hint to the user that something is wrong in the shader
-	if (!programRayTracePtr || !programRayTracePtr->isOK()) {
-		cerr << "Something wrong in ray tracer shaders" << endl;
+	if (!programRayTracePhongPtr || !programRayTracePhongPtr->isOK()) {
+		cerr << "Something wrong in ray tracer Phong shaders" << endl;
 		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
 	}
-
+	if (!programRayTraceCkTrrncPtr || !programRayTraceCkTrrncPtr->isOK()) {
+		cerr << "Something wrong in ray tracer Cook-Torrance shaders" << endl;
+		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
+	}
 	if (!programFacesPtr || !programFacesPtr->isOK()) {
 		cerr << "Something wrong in render faces shaders" << endl;
 		backgroundColor = glm::vec3(1.0f, 1.0f, 0.0f);
 	}
 
-	if (programRayTracePtr->isOK() && programFacesPtr->isOK()) {
+	if (programRayTracePhongPtr->isOK() && programFacesPtr->isOK() && programRayTraceCkTrrncPtr->isOK()) {
 		cout << "Shaders compiled correctlly!" << endl;
 		backgroundColor = glm::vec3(0.8f, 0.8f, 0.9f);
 	}
@@ -619,68 +648,125 @@ void reload_shaders() {
 	facesLoc.u_PVM = programFacesPtr->uniformLoc("PVM");
 
 	glUseProgram(0);
-	programRayTracePtr->use();
+	programRayTracePhongPtr->use();
 	//Atributes
-	rayTracerLoc.a_pos = programRayTracePtr->attribLoc("pos_attrib");
-	rayTracerLoc.a_tex = programRayTracePtr->attribLoc("tex_coord_attrib");
+	rayTracerPhongLoc.a_pos = programRayTracePhongPtr->attribLoc("pos_attrib");
+	rayTracerPhongLoc.a_tex = programRayTracePhongPtr->attribLoc("tex_coord_attrib");
 	//Uniforms
-	rayTracerLoc.u_Q = programRayTracePtr->uniformLoc("Q");
-	rayTracerLoc.u_PVM = programRayTracePtr->uniformLoc("PVM");
-	rayTracerLoc.u_scene = programRayTracePtr->uniformLoc("scene");
+	rayTracerPhongLoc.u_Q = programRayTracePhongPtr->uniformLoc("Q");
+	rayTracerPhongLoc.u_PVM = programRayTracePhongPtr->uniformLoc("PVM");
+	rayTracerPhongLoc.u_scene = programRayTracePhongPtr->uniformLoc("scene");
 	//Material
-	rayTracerLoc.u_Ka = programRayTracePtr->uniformLoc("mat.Ka");
-	rayTracerLoc.u_Kd = programRayTracePtr->uniformLoc("mat.Kd");
-	rayTracerLoc.u_Ks = programRayTracePtr->uniformLoc("mat.Ks");
-	rayTracerLoc.u_alpha = programRayTracePtr->uniformLoc("mat.alpha");
-	rayTracerLoc.u_eta = programRayTracePtr->uniformLoc("mat.eta");
-	rayTracerLoc.u_m = programRayTracePtr->uniformLoc("mat.m");
+	rayTracerPhongLoc.u_Ka = programRayTracePhongPtr->uniformLoc("mat.Ka");
+	rayTracerPhongLoc.u_Kd = programRayTracePhongPtr->uniformLoc("mat.Kd");
+	rayTracerPhongLoc.u_Ks = programRayTracePhongPtr->uniformLoc("mat.Ks");
+	rayTracerPhongLoc.u_alpha = programRayTracePhongPtr->uniformLoc("mat.alpha");
+	rayTracerPhongLoc.u_eta = programRayTracePhongPtr->uniformLoc("mat.eta");
+	rayTracerPhongLoc.u_m = programRayTracePhongPtr->uniformLoc("mat.m");
 	//Light
-	rayTracerLoc.u_La = programRayTracePtr->uniformLoc("light.La");
-	rayTracerLoc.u_Ld = programRayTracePtr->uniformLoc("light.Ld");
-	rayTracerLoc.u_Ls = programRayTracePtr->uniformLoc("light.Ls");
+	rayTracerPhongLoc.u_La = programRayTracePhongPtr->uniformLoc("light.La");
+	rayTracerPhongLoc.u_Ld = programRayTracePhongPtr->uniformLoc("light.Ld");
+	rayTracerPhongLoc.u_Ls = programRayTracePhongPtr->uniformLoc("light.Ls");
 
-	rayTracerLoc.u_Tex = programRayTracePtr->uniformLoc("backfaces");
-	if (rayTracerLoc.u_Tex != -1) {
-		glUniform1i(rayTracerLoc.u_Tex, 0);
+	rayTracerPhongLoc.u_Tex = programRayTracePhongPtr->uniformLoc("backfaces");
+	if (rayTracerPhongLoc.u_Tex != -1) {
+		glUniform1i(rayTracerPhongLoc.u_Tex, 0);
+	}
+
+	glUseProgram(0);
+	programRayTraceCkTrrncPtr->use();
+	//Atributes
+	rayTracerCkTrrncLoc.a_pos = programRayTraceCkTrrncPtr->attribLoc("pos_attrib");
+	rayTracerCkTrrncLoc.a_tex = programRayTraceCkTrrncPtr->attribLoc("tex_coord_attrib");
+	//Uniforms
+	rayTracerCkTrrncLoc.u_Q = programRayTraceCkTrrncPtr->uniformLoc("Q");
+	rayTracerCkTrrncLoc.u_PVM = programRayTraceCkTrrncPtr->uniformLoc("PVM");
+	rayTracerCkTrrncLoc.u_scene = programRayTraceCkTrrncPtr->uniformLoc("scene");
+	//Material
+	rayTracerCkTrrncLoc.u_Ka = programRayTraceCkTrrncPtr->uniformLoc("mat.Ka");
+	rayTracerCkTrrncLoc.u_Kd = programRayTraceCkTrrncPtr->uniformLoc("mat.Kd");
+	rayTracerCkTrrncLoc.u_Ks = programRayTraceCkTrrncPtr->uniformLoc("mat.Ks");
+	rayTracerCkTrrncLoc.u_alpha = programRayTraceCkTrrncPtr->uniformLoc("mat.alpha");
+	rayTracerCkTrrncLoc.u_eta = programRayTraceCkTrrncPtr->uniformLoc("mat.eta");
+	rayTracerCkTrrncLoc.u_m = programRayTraceCkTrrncPtr->uniformLoc("mat.m");
+	//Light
+	rayTracerCkTrrncLoc.u_La = programRayTraceCkTrrncPtr->uniformLoc("light.La");
+	rayTracerCkTrrncLoc.u_Ld = programRayTraceCkTrrncPtr->uniformLoc("light.Ld");
+	rayTracerCkTrrncLoc.u_Ls = programRayTraceCkTrrncPtr->uniformLoc("light.Ls");
+
+	rayTracerCkTrrncLoc.u_Tex = programRayTraceCkTrrncPtr->uniformLoc("backfaces");
+	if (rayTracerCkTrrncLoc.u_Tex != -1) {
+		glUniform1i(rayTracerCkTrrncLoc.u_Tex, 0);
 	}
 	glUseProgram(0);
 }
 void pass_light_material() {
-	if (rayTracerLoc.u_Ka != -1) {
-		glUniform3fv(rayTracerLoc.u_Ka, 1, glm::value_ptr(matPhong.Ka));
-	}
+	/*Material*/
+	if (current_light_model == 0) {
+		if (rayTracerPhongLoc.u_Ka != -1) {
+			glUniform3fv(rayTracerPhongLoc.u_Ka, 1, glm::value_ptr(matPhong.Ka));
+		}
 
-	if (rayTracerLoc.u_Ks != -1) {
-		glUniform3fv(rayTracerLoc.u_Ks, 1, glm::value_ptr(matPhong.Ks));
-	}
+		if (rayTracerPhongLoc.u_Ks != -1) {
+			glUniform3fv(rayTracerPhongLoc.u_Ks, 1, glm::value_ptr(matPhong.Ks));
+		}
 
-	if (rayTracerLoc.u_Ka != -1) {
-		glUniform3fv(rayTracerLoc.u_Kd, 1, glm::value_ptr(matPhong.Kd));
-	}
+		if (rayTracerPhongLoc.u_Kd != -1) {
+			glUniform3fv(rayTracerPhongLoc.u_Kd, 1, glm::value_ptr(matPhong.Kd));
+		}
 
-	if (rayTracerLoc.u_alpha != -1) {
-		glUniform1f(rayTracerLoc.u_alpha, matPhong.alpha);
-	}
+		if (rayTracerPhongLoc.u_alpha != -1) {
+			glUniform1f(rayTracerPhongLoc.u_alpha, matPhong.alpha);
+		}
 
-	if (rayTracerLoc.u_eta != -1) {
-		glUniform1f(rayTracerLoc.u_eta, matCT.eta);
-	}
+		/*Light*/
+		if (rayTracerPhongLoc.u_La != -1) {
+			glUniform3fv(rayTracerPhongLoc.u_La, 1, glm::value_ptr(light.La));
+		}
 
-	if (rayTracerLoc.u_m != -1) {
-		glUniform1f(rayTracerLoc.u_m, matCT.m);
-	}
+		if (rayTracerPhongLoc.u_Ld != -1) {
+			glUniform3fv(rayTracerPhongLoc.u_Ld, 1, glm::value_ptr(light.Ld));
+		}
 
-	if (rayTracerLoc.u_La != -1) {
-		glUniform3fv(rayTracerLoc.u_La, 1, glm::value_ptr(light.La));
-	}
+		if (rayTracerPhongLoc.u_Ls != -1) {
+			glUniform3fv(rayTracerPhongLoc.u_Ls, 1, glm::value_ptr(light.Ls));
+		}
 
-	if (rayTracerLoc.u_Ld != -1) {
-		glUniform3fv(rayTracerLoc.u_Ld, 1, glm::value_ptr(light.Ld));
-	}
+	} else if (current_light_model == 1) {
+		if (rayTracerCkTrrncLoc.u_Ka != -1) {
+			glUniform3fv(rayTracerCkTrrncLoc.u_Ka, 1, glm::value_ptr(matCT.Ka));
+		}
 
-	if (rayTracerLoc.u_Ls != -1) {
-		glUniform3fv(rayTracerLoc.u_Ls, 1, glm::value_ptr(light.Ls));
+		if (rayTracerCkTrrncLoc.u_Ks != -1) {
+			glUniform3fv(rayTracerCkTrrncLoc.u_Ks, 1, glm::value_ptr(matCT.Ks));
+		}
+
+		if (rayTracerCkTrrncLoc.u_Kd != -1) {
+			glUniform3fv(rayTracerCkTrrncLoc.u_Kd, 1, glm::value_ptr(matCT.Kd));
+		}
+
+		if (rayTracerCkTrrncLoc.u_eta != -1) {
+			glUniform1f(rayTracerCkTrrncLoc.u_eta, matCT.eta);
+		}
+
+		if (rayTracerCkTrrncLoc.u_m != -1) {
+			glUniform1f(rayTracerCkTrrncLoc.u_m, matCT.m);
+		}
+
+		/*Light*/
+		if (rayTracerCkTrrncLoc.u_La != -1) {
+			glUniform3fv(rayTracerCkTrrncLoc.u_La, 1, glm::value_ptr(light.La));
+		}
+
+		if (rayTracerCkTrrncLoc.u_Ld != -1) {
+			glUniform3fv(rayTracerCkTrrncLoc.u_Ld, 1, glm::value_ptr(light.Ld));
+		}
+
+		if (rayTracerCkTrrncLoc.u_Ls != -1) {
+			glUniform3fv(rayTracerCkTrrncLoc.u_Ls, 1, glm::value_ptr(light.Ls));
+		}
 	}
+	
 }
 
 void create_glut_callbacks() {
@@ -697,7 +783,8 @@ void create_glut_callbacks() {
 
 void exit_glut() {
 	delete programFacesPtr;
-	delete programRayTracePtr;
+	delete programRayTracePhongPtr;
+	delete programRayTraceCkTrrncPtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
