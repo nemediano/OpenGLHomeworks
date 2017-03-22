@@ -21,6 +21,7 @@ struct Light {
 
 uniform Material mat;
 uniform Light light;
+uniform int option;
 
 in vec3 vpos;
 
@@ -101,27 +102,43 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 	
 	float m = mat.m;
 	float eta = mat.eta;
-	//float F = fresnel_term(h, v, eta);
+	
+	float F = fresnel_term(h, v, eta);
 	//float F = fresnel_term_fast(n, v, eta);
-	float F = fresnel_term_2(n, v, eta);
-	//float F = 1.0f;
+	//float F = fresnel_term_2(n, v, eta);
 	float D = roughness_term(n, h, m);
-	//float D = 1.0f;
 	float G = geometric_attenuation(n, h, v, l);
-	//float G = 1.0f;
-	float n_dot_l = max(0.0, dot(n, l));
+	
+	float n_dot_l = dot(n, l);
 	float n_dot_v = max(0.0, dot(n, v));
-	vec3 speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * n_dot_l * n_dot_v));
+	vec3 speculr_color;
 
+	if (option == 0) {
+		speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * n_dot_l * n_dot_v));
+	} else if (option == 1) {
+		speculr_color = vec3(1.0) * max(0.0, F / (4.0 * n_dot_l * n_dot_v));
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
+	} else if (option == 2) {
+		speculr_color = vec3(1.0) * max(0.0, D / (4.0 * n_dot_l * n_dot_v));
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
+	} else {
+		speculr_color = vec3(1.0) * max(0.0, G / (4.0 * n_dot_l * n_dot_v));
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
+	}
+	
+	
 	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
 }
 
 float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
 	
-	float n_dot_h = max(0.0, dot(n, h));
-	float v_dot_h = max(EPSILON, dot(v, h));
-	float n_dot_v = max(0.0, dot(n, v));
-	float n_dot_l = max(0.0, dot(n, l));
+	float n_dot_h = dot(n, h);
+	float v_dot_h = dot(v, h);
+	float n_dot_v = dot(n, v);
+	float n_dot_l = dot(n, l);
 	
 	float masking = 2.0f * n_dot_h * n_dot_v / v_dot_h;
 	float shadowing = 2.0f * n_dot_h * n_dot_l / v_dot_h;
@@ -130,7 +147,7 @@ float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
 }
 
 float roughness_term(vec3 n, vec3 h, float m) {
-	float n_dot_h_sq = max(EPSILON, dot(n, h) * dot(n, h));
+	float n_dot_h_sq = dot(n, h) * dot(n, h);
 	float tan_sq = (1.0f - n_dot_h_sq) / (n_dot_h_sq);
 	float m_sq = m * m;
 	
@@ -138,14 +155,14 @@ float roughness_term(vec3 n, vec3 h, float m) {
 }
 
 float fresnel_term_fast(vec3 n, vec3 v, float eta) {
-	float one_minus_n_dot_v_5th = pow(1.0f - max(0.0, dot(n, v)), 5.0);
+	float one_minus_n_dot_v_5th = pow(1.0f - dot(n, v), 5.0);
 	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
 	
 	return f_lambda + (1.0f - f_lambda) * one_minus_n_dot_v_5th;
 }
 
 float fresnel_term(vec3 h, vec3 v, float eta) {
-	float c = max(0.0, dot(v, h));
+	float c = dot(v, h);
 	float g = sqrt(eta * eta + c * c - 1.0);
 	
 	float g_plus_c = g + c;
@@ -158,7 +175,7 @@ float fresnel_term(vec3 h, vec3 v, float eta) {
 }
 
 float fresnel_term_2(vec3 n, vec3 v, float eta) {
-	return pow(1.0 + max(0.0, dot(n, v)), eta);
+	return pow(1.0 + dot(n, v), eta);
 }
 
 //normal vector of the shape we are drawing

@@ -74,6 +74,7 @@ struct Locations {
 	GLint u_alpha = -1;
 	GLint u_m = -1;
 	GLint u_eta = -1;
+	GLint u_option = -1;
 };
 
 struct LightPhong {
@@ -111,14 +112,6 @@ Locations rayTracerCkTrrncLoc;
 Mesh cube;
 
 GLint window = 0;
-// Location for shader variables
-GLint u_PVM_location = -1;
-GLint u_M_location = -1;
-GLint u_NormalMat_location = -1;
-GLint u_texture_location = -1;
-GLint a_position_loc = -1;
-GLint a_normal_loc = -1;
-GLint a_texture_loc = -1;
 
 //Global variables for the program logic
 const int NUM_SAMPLES = 1;
@@ -131,6 +124,7 @@ float cubeScale;
 glm::vec3 backgroundColor;
 int current_scene;
 int current_light_model;
+int current_option;
 
 void create_glut_window();
 void init_program();
@@ -204,6 +198,13 @@ void drawGUI() {
 	ImGui::RadioButton("Cook Torrence", &current_light_model, 1); //ImGui::SameLine();
 	//ImGui::RadioButton("Disney", &current_light_model, 2);
 
+	if (current_light_model == 1) {
+		ImGui::RadioButton("Full", &current_option, 0); ImGui::SameLine();
+		ImGui::RadioButton("F", &current_option, 1); ImGui::SameLine();
+		ImGui::RadioButton("D", &current_option, 2); ImGui::SameLine();
+		ImGui::RadioButton("G", &current_option, 3);
+	}
+
 	if (ImGui::TreeNode("Light properties")) {
 		ImGui::ColorEdit3("Ambient:", glm::value_ptr(light.La));
 		ImGui::ColorEdit3("Diffuse:", glm::value_ptr(light.Ld));
@@ -225,7 +226,7 @@ void drawGUI() {
 			ImGui::ColorEdit3("Diffuse:", glm::value_ptr(matCT.Kd));
 			ImGui::ColorEdit3("Specular", glm::value_ptr(matCT.Ks));
 			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 256.0f);
-			ImGui::SliderFloat("etha:", &matCT.eta, 0.0f, 50.0f);
+			ImGui::SliderFloat("etha:", &matCT.eta, 0.0f, 5.0f);
 		} else {
 		}
 		ImGui::TreePop();
@@ -265,12 +266,13 @@ void init_program() {
 	backgroundColor = vec3(0.8f, 0.8f, 0.9f);
 	current_light_model = 0;
 	current_scene = 0;
+	current_option = 0;
 	//Set the material and light properties
 	matCT.Ka = matPhong.Ka = vec3(0.1f, 0.2f, 0.1f);
 	matCT.Kd = matPhong.Kd = vec3(0.5f, 0.7f, 0.5f);
 	matCT.Ks = matPhong.Ks = vec3(0.6f, 0.6f, 0.6f);
 	matPhong.alpha = 64.0f;
-	matCT.eta = 10.0f;
+	matCT.eta = 2.5f;
 	matCT.m = 20.0f;
 	//Light
 	light.La = vec3(1.0f, 1.0f, 1.0f);
@@ -682,6 +684,7 @@ void reload_shaders() {
 	rayTracerCkTrrncLoc.u_Q = programRayTraceCkTrrncPtr->uniformLoc("Q");
 	rayTracerCkTrrncLoc.u_PVM = programRayTraceCkTrrncPtr->uniformLoc("PVM");
 	rayTracerCkTrrncLoc.u_scene = programRayTraceCkTrrncPtr->uniformLoc("scene");
+	rayTracerCkTrrncLoc.u_option = programRayTraceCkTrrncPtr->uniformLoc("option");
 	//Material
 	rayTracerCkTrrncLoc.u_Ka = programRayTraceCkTrrncPtr->uniformLoc("mat.Ka");
 	rayTracerCkTrrncLoc.u_Kd = programRayTraceCkTrrncPtr->uniformLoc("mat.Kd");
@@ -751,6 +754,10 @@ void pass_light_material() {
 
 		if (rayTracerCkTrrncLoc.u_m != -1) {
 			glUniform1f(rayTracerCkTrrncLoc.u_m, matCT.m);
+		}
+
+		if (rayTracerCkTrrncLoc.u_option != -1) {
+			glUniform1i(rayTracerCkTrrncLoc.u_option, current_option);
 		}
 
 		/*Light*/
