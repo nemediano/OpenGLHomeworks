@@ -114,7 +114,7 @@ Mesh cube;
 GLint window = 0;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 1;
+const int NUM_SAMPLES = 8;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;
@@ -264,7 +264,7 @@ void init_program() {
 	cubeTranslation = vec3(0.0f);
 	cubeScale = 1.0f;
 	backgroundColor = vec3(0.8f, 0.8f, 0.9f);
-	current_light_model = 0;
+	current_light_model = 1;
 	current_scene = 0;
 	current_option = 0;
 	//Set the material and light properties

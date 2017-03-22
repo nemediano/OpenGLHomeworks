@@ -9,7 +9,8 @@ struct Material {
 	vec3 Ka;
 	vec3 Ks;
 	vec3 Kd;
-	float alpha;
+	float m;
+	float eta;
 };
 
 struct Light {
@@ -20,6 +21,7 @@ struct Light {
 
 uniform Material mat;
 uniform Light light;
+uniform int option;
 
 sample in vec3 vpos;
 
@@ -29,7 +31,15 @@ out vec4 fragcolor;
 vec4 raytracedcolor(vec3 rayStart, vec3 rayStop);
 vec4 lighting(vec3 pos, vec3 rayDir);
 float distToShape(vec3 pos);
-vec3 normal(vec3 pos);
+vec3 calculateNormal(vec3 pos);
+//Helpers for Cook Torrance
+float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l);
+float roughness_term(vec3 n, vec3 h, float m);
+float fresnel_term(vec3 h, vec3 v, float eta);
+float fresnel_term_fast(vec3 n, vec3 v, float eta);
+float fresnel_term_2(vec3 n, vec3 v, float eta);
+
+const float EPSILON = 0.0000001;
 
 void main(void) {
 	//uncomment to show backface texture
@@ -78,19 +88,96 @@ vec4 raytracedcolor(vec3 rayStart, vec3 rayStop) {
 vec4 lighting(vec3 pos, vec3 rayDir) {
 	const vec3 lightPosition = vec3(1.0 / 1.7, 1.0 / 1.7, 1.0 / 1.7);
 		
-	vec3 n = normal(pos);
+	vec3 n = calculateNormal(pos);
 	vec3 v = -rayDir;
-	vec3 r = reflect(-lightPosition, n);
+	vec3 l = normalize(-lightPosition);
+	vec3 r = normalize(reflect(l, n));
+	vec3 h = normalize(l + v);
 	
 	vec3 ambient_color = mat.Ka * light.La;
 	vec3 diffuse_color = mat.Kd * light.Ld * max(0.0, dot(n, lightPosition));
-	vec3 speculr_color = mat.Ks * light.Ls * pow(max(0.0, dot(r, v)), mat.alpha);
+	
+	float m = mat.m;
+	float eta = mat.eta;
+	
+	float F = fresnel_term(h, v, eta);
+	//float F = fresnel_term_fast(n, v, eta);
+	//float F = fresnel_term_2(n, v, eta);
+	float D = roughness_term(n, h, m);
+	float G = geometric_attenuation(n, h, v, l);
+	
+	float n_dot_l = dot(n, l);
+	float n_dot_v = max(0.0, dot(n, v));
+	vec3 speculr_color;
 
+	if (option == 0) {
+		speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * n_dot_l * n_dot_v));
+	} else if (option == 1) {
+		speculr_color = vec3(1.0) * max(0.0, F / (4.0 * n_dot_l * n_dot_v));
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
+	} else if (option == 2) {
+		speculr_color = vec3(1.0) * max(0.0, D / (4.0 * n_dot_l * n_dot_v));
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
+	} else {
+		speculr_color = vec3(1.0) * max(0.0, G / (4.0 * n_dot_l * n_dot_v));
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
+	}
+	
+	
 	return vec4(ambient_color + diffuse_color + speculr_color, 1.0);
 }
 
+float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
+	
+	float n_dot_h = dot(n, h);
+	float v_dot_h = dot(v, h);
+	float n_dot_v = dot(n, v);
+	float n_dot_l = dot(n, l);
+	
+	float masking = 2.0f * n_dot_h * n_dot_v / v_dot_h;
+	float shadowing = 2.0f * n_dot_h * n_dot_l / v_dot_h;
+	
+	return min(1.0f, min(masking, shadowing));
+}
+
+float roughness_term(vec3 n, vec3 h, float m) {
+	float n_dot_h_sq = dot(n, h) * dot(n, h);
+	float tan_sq = (1.0f - n_dot_h_sq) / (n_dot_h_sq);
+	float m_sq = m * m;
+	
+	return exp(-1.0f * tan_sq / (m_sq)) / (3.1416f * m_sq * n_dot_h_sq * n_dot_h_sq);
+}
+
+float fresnel_term_fast(vec3 n, vec3 v, float eta) {
+	float one_minus_n_dot_v_5th = pow(1.0f - dot(n, v), 5.0);
+	float f_lambda = ((1.0f - eta) / (1.0f + eta)) * ((1.0f - eta) / (1.0f + eta));
+	
+	return f_lambda + (1.0f - f_lambda) * one_minus_n_dot_v_5th;
+}
+
+float fresnel_term(vec3 h, vec3 v, float eta) {
+	float c = dot(v, h);
+	float g = sqrt(eta * eta + c * c - 1.0);
+	
+	float g_plus_c = g + c;
+	float g_minus_c = g - c;
+	
+	float left_factor  =  (g_minus_c * g_minus_c) / (2.0 * g_plus_c * g_plus_c);
+	float right_factor = (1.0 + pow(c * g_plus_c - 1.0, 2.0) / pow(c * g_minus_c - 1.0, 2.0));
+	
+	return left_factor * right_factor;
+}
+
+float fresnel_term_2(vec3 n, vec3 v, float eta) {
+	return pow(1.0 + dot(n, v), eta);
+}
+
+
 //normal vector of the shape we are drawing
-vec3 normal(vec3 pos) {
+vec3 calculateNormal(vec3 pos) {
 	const float h = 0.001;
 	const vec3 Xh = vec3(h, 0.0, 0.0);	
 	const vec3 Yh = vec3(0.0, h, 0.0);	
@@ -141,9 +228,9 @@ float operationIntersection(float shape1, float shape2);
 float distToShape(vec3 pos) {
 	float dis = 0.0;
 	if (scene == 0) {
-		//float r = 0.4;
-		//dis = sdSphere(pos, r);
-		dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
+		float r = 0.4;
+		dis = sdSphere(pos, r);
+		//dis = sdEllipsoid(pos, vec3(0.4, 0.2, 0.1));
 	} else if (scene == 1) {
 		dis = figure2(pos);
 	} else {
