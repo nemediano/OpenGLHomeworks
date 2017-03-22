@@ -225,8 +225,8 @@ void drawGUI() {
 			ImGui::ColorEdit3("Ambient:", glm::value_ptr(matCT.Ka));
 			ImGui::ColorEdit3("Diffuse:", glm::value_ptr(matCT.Kd));
 			ImGui::ColorEdit3("Specular", glm::value_ptr(matCT.Ks));
-			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 256.0f);
-			ImGui::SliderFloat("etha:", &matCT.eta, 0.0f, 5.0f);
+			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 2.0f);
+			ImGui::SliderFloat("etha:", &matCT.eta, 1.0f, 5.0f);
 		} else {
 		}
 		ImGui::TreePop();
@@ -272,8 +272,8 @@ void init_program() {
 	matCT.Kd = matPhong.Kd = vec3(0.5f, 0.7f, 0.5f);
 	matCT.Ks = matPhong.Ks = vec3(0.6f, 0.6f, 0.6f);
 	matPhong.alpha = 64.0f;
-	matCT.eta = 2.5f;
-	matCT.m = 20.0f;
+	matCT.eta = 3.2f;
+	matCT.m = 0.3f;
 	//Light
 	light.La = vec3(1.0f, 1.0f, 1.0f);
 	light.Ld = vec3(1.0f, 1.0f, 1.0f);

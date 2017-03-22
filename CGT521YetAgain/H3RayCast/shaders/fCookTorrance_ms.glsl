@@ -90,8 +90,8 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 		
 	vec3 n = calculateNormal(pos);
 	vec3 v = -rayDir;
-	vec3 l = normalize(-lightPosition);
-	vec3 r = normalize(reflect(l, n));
+	vec3 l = normalize(lightPosition);
+	vec3 r = normalize(reflect(-l, n));
 	vec3 h = normalize(l + v);
 	
 	vec3 ambient_color = mat.Ka * light.La;
@@ -132,9 +132,9 @@ vec4 lighting(vec3 pos, vec3 rayDir) {
 
 float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
 	
-	float n_dot_h = dot(n, h);
-	float v_dot_h = dot(v, h);
-	float n_dot_v = dot(n, v);
+	float n_dot_h = max(0.0, dot(n, h));
+	float v_dot_h = max(EPSILON, dot(v, h));
+	float n_dot_v = max(0.0, dot(n, v));
 	float n_dot_l = dot(n, l);
 	
 	float masking = 2.0f * n_dot_h * n_dot_v / v_dot_h;
