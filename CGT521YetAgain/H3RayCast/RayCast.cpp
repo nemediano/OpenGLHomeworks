@@ -41,7 +41,6 @@ struct FBO {
 	GLuint id = 0;
 	GLuint depthTex = 0;
 	GLuint backFacesTex = 0;
-	GLuint frontFacesTex = 0;
 	GLuint renderTex = 0;
 	int width = 0;
 	int height = 0;
@@ -365,16 +364,7 @@ void display() {
 	//Draw cube
 	drawCube(1);
 
-	//Pass 2: draw front faces to attachment 1
-	glCullFace(GL_BACK);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(texture_target, 0);
-	glDrawBuffer(GL_COLOR_ATTACHMENT1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//draw cube front faces to fbo
-	drawCube(2);
-
-	//Pass 3: Raycasting pass
+	//Pass 2: Raycasting pass
 	if (current_light_model == 0) {
 		programRayTracePhongPtr->use();
 		if (rayTracerPhongLoc.u_Q != -1) {
@@ -399,25 +389,24 @@ void display() {
 		}
 	}
 	
-	//Draw front faces to color attachment (We are already culling backfaces)
-	glActiveTexture(GL_TEXTURE2);	
+	//Draw front faces to color attachment
+	glCullFace(GL_BACK);
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(texture_target, 0);
 	
 	pass_light_material();
 
-	glDrawBuffer(GL_COLOR_ATTACHMENT2);
+	glDrawBuffer(GL_COLOR_ATTACHMENT1);
 
 	glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(texture_target, fbo.backFacesTex);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(texture_target, fbo.frontFacesTex);
 	//draw cube front faces to fbo
-	drawCube(3);
-	//blit color attachment 2 to the screen
+	drawCube(2);
+	//blit color attachment 1 to the screen
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo.id);
-	glReadBuffer(GL_COLOR_ATTACHMENT2);
+	glReadBuffer(GL_COLOR_ATTACHMENT1);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glBlitFramebuffer(0, 0, fbo.width, fbo.height, 0, 0, fbo.width, fbo.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
@@ -444,11 +433,11 @@ void drawCube(int pass) {
 	int a_tex;
 
 	if (current_light_model == 0) {
-		a_pos = (pass == 3) ? rayTracerPhongLoc.a_pos : facesLoc.a_pos;
-		a_tex = (pass == 3) ? rayTracerPhongLoc.a_tex : facesLoc.a_tex;
+		a_pos = (pass == 2) ? rayTracerPhongLoc.a_pos : facesLoc.a_pos;
+		a_tex = (pass == 2) ? rayTracerPhongLoc.a_tex : facesLoc.a_tex;
 	} else if (current_light_model == 1) {
-		a_pos = (pass == 3) ? rayTracerCkTrrncLoc.a_pos : facesLoc.a_pos;
-		a_tex = (pass == 3) ? rayTracerCkTrrncLoc.a_tex : facesLoc.a_tex;
+		a_pos = (pass == 2) ? rayTracerCkTrrncLoc.a_pos : facesLoc.a_pos;
+		a_tex = (pass == 2) ? rayTracerCkTrrncLoc.a_tex : facesLoc.a_tex;
 	}
 
 	glEnableVertexAttribArray(a_pos);
@@ -470,10 +459,9 @@ void create_fbo(int width, int height) {
 	fbo.width = width;
 	fbo.height = height;
 	//Create empty textures
-	GLuint textures[3];
-	glGenTextures(3, textures);
+	GLuint textures[2];
+	glGenTextures(2, textures);
 	fbo.backFacesTex = textures[0];
-	fbo.frontFacesTex = textures[1];
 	fbo.renderTex = textures[2];
 	//See if we have multisample
 	if (NUM_SAMPLES > 1) {
@@ -482,10 +470,6 @@ void create_fbo(int width, int height) {
 		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, NUM_SAMPLES, GL_RGBA32F, fbo.width, fbo.height, true);
 
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo.frontFacesTex);
-		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, NUM_SAMPLES, GL_RGBA32F, fbo.width, fbo.height, true);
-
-		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, fbo.renderTex);
 		glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, NUM_SAMPLES, GL_RGBA32F, fbo.width, fbo.height, true);
 
@@ -499,10 +483,6 @@ void create_fbo(int width, int height) {
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
 
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, fbo.frontFacesTex);
-		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
-
-		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, fbo.renderTex);
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, fbo.width, fbo.height);
 
@@ -518,13 +498,11 @@ void create_fbo(int width, int height) {
 
 	if (NUM_SAMPLES > 1) {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, fbo.backFacesTex, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, fbo.frontFacesTex, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, fbo.renderTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, fbo.renderTex, 0);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
 	} else {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo.backFacesTex, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fbo.frontFacesTex, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, fbo.renderTex, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fbo.renderTex, 0);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
 	}
 
@@ -542,8 +520,8 @@ void delete_fbo() {
 		//Bind default texture
 		glBindTexture(GL_TEXTURE_2D, 0);
 		//Now, that you are sure they are not binded: delete them
-		GLuint textures[3] = { fbo.renderTex, fbo.frontFacesTex, fbo.backFacesTex };
-		glDeleteTextures(3, textures);
+		GLuint textures[2] = { fbo.renderTex, fbo.backFacesTex };
+		glDeleteTextures(2, textures);
 	}
 }
 
