@@ -189,7 +189,7 @@ float sdEllipsoid(vec3 position, vec3 axys) {
 //radius.x is the outer radius (the donut)
 //radius.y is the inner radius (the tube)
 float sdTorus88(vec3 position, vec2 radius) {
-  vec2 q = vec2(length8(position.xz) - radius.x, position.y);
+  vec2 q = vec2(length8(position.xy) - radius.x, position.z);
   return length8(q) - radius.y;
 }
 
@@ -199,7 +199,7 @@ float sdTorus88(vec3 position, vec2 radius) {
 //radius.x is the outer radius (the donut)
 //radius.y is the inner radius (the tube)
 float sdTorus82(vec3 position, vec2 radius) {
-  vec2 q = vec2(length2(position.xz) - radius.x, position.y);
+  vec2 q = vec2(length2(position.xy) - radius.x, position.z);
   return length8(q) - radius.y;
 }
 
@@ -208,7 +208,7 @@ float sdTorus82(vec3 position, vec2 radius) {
 //radius.x is the outer radius (the donut)
 //radius.y is the inner radius (the tube)
 float sdTorus22(vec3 position, vec2 radius) {
-  vec2 q = vec2(length2(position.xz) - radius.x, position.y);
+  vec2 q = vec2(length2(position.xy) - radius.x, position.z);
   return length2(q) - radius.y;
 }
 
@@ -225,13 +225,14 @@ float figure3(vec3 position) {
 
 float figure2(vec3 position) {
 	//Apply optional twist
-	float c = cos(4.0 * position.y);
-    float s = sin(5.0 * position.y);
-    mat2  m = mat2(c, -s, s, c);
-    vec3  q = vec3(m * position.xz, position.y);
-	float scaleFactor = 0.6;
-	vec2 r = vec2(0.2, 0.1);
-	return sdTorus82(q / scaleFactor, r) * scaleFactor;
+	//float c = cos(4.0 * position.y);
+    //float s = sin(5.0 * position.y);
+    //mat2  m = mat2(c, -s, s, c);
+    //vec3  q = vec3(m * position.xz, position.y);
+	float scaleFactor = 0.75;
+	vec2 r = vec2(0.15, 0.075);
+	return sdTorus82(position / scaleFactor, r) * scaleFactor;
+//	return sdTorus82(position, r);
 }
 
 // shape function definitions

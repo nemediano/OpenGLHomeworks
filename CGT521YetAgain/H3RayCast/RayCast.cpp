@@ -35,7 +35,7 @@ OGLProgram* programFacesPtr = nullptr;
 OGLProgram* programRayTracePhongPtr = nullptr;
 OGLProgram* programRayTraceCkTrrncPtr = nullptr;
 
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+#define BUFFER_OFFSET(i) ((char*) nullptr + (i))
 
 struct FBO {
 	GLuint id = 0;
@@ -113,7 +113,7 @@ Mesh cube;
 GLint window = 0;
 
 //Global variables for the program logic
-const int NUM_SAMPLES = 8;
+const int NUM_SAMPLES = 1;
 GLenum texture_target;
 float seconds_elapsed;
 bool rotate;
@@ -330,12 +330,6 @@ void display() {
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
-	
-
-	glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-	if (wireframe) {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
 
 	//Draw pass 1. Back faces of the cube to texture
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -404,6 +398,10 @@ void display() {
 	//Draw front faces to color attachment
 	glCullFace(GL_BACK);
 	
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDisable(GL_CULL_FACE);
+	}
 	
 	pass_light_material();
 
