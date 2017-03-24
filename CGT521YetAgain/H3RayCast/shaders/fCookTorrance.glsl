@@ -1,7 +1,7 @@
 #version 440
 
 layout(location = 1) uniform mat4 Q;
-layout(location = 2, binding = 0) uniform sampler2D backfaces;
+layout(location = 2) uniform sampler2D backfaces;
 layout(location = 3) uniform int scene;
 //layout(location = 2, binding = 0) uniform sampler2D frontfaces;
 

@@ -331,6 +331,8 @@ void display() {
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 	
+
+	glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	if (wireframe) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
@@ -376,6 +378,11 @@ void display() {
 		if (rayTracerPhongLoc.u_scene != -1) {
 			glUniform1i(rayTracerPhongLoc.u_scene, current_scene);
 		}
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(texture_target, fbo.backFacesTex);
+		if (rayTracerPhongLoc.a_tex != -1) {
+			glUniform1i(rayTracerPhongLoc.a_tex, 0); // we bound our texture to texture unit 0
+		}
 	} else if (current_light_model == 1) {
 		programRayTraceCkTrrncPtr->use();
 		if (rayTracerCkTrrncLoc.u_Q != -1) {
@@ -387,12 +394,16 @@ void display() {
 		if (rayTracerCkTrrncLoc.u_scene != -1) {
 			glUniform1i(rayTracerCkTrrncLoc.u_scene, current_scene);
 		}
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(texture_target, fbo.backFacesTex);
+		if (rayTracerCkTrrncLoc.a_tex != -1) {
+			glUniform1i(rayTracerCkTrrncLoc.a_tex, 0); // we bound our texture to texture unit 0
+		}
 	}
 	
 	//Draw front faces to color attachment
 	glCullFace(GL_BACK);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(texture_target, 0);
+	
 	
 	pass_light_material();
 
@@ -456,13 +467,16 @@ void drawCube(int pass) {
 
 void create_fbo(int width, int height) {
 	delete_fbo();
+	if (!ogl::framebufferStatus()) {
+		std::cerr << "Something worng in frame buffer" << std::endl;
+	}
 	fbo.width = width;
 	fbo.height = height;
 	//Create empty textures
 	GLuint textures[2];
 	glGenTextures(2, textures);
 	fbo.backFacesTex = textures[0];
-	fbo.renderTex = textures[2];
+	fbo.renderTex = textures[1];
 	//See if we have multisample
 	if (NUM_SAMPLES > 1) {
 		glActiveTexture(GL_TEXTURE0);
@@ -505,7 +519,9 @@ void create_fbo(int width, int height) {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, fbo.renderTex, 0);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo.depthTex);
 	}
-
+	if (!ogl::framebufferStatus()) {
+		std::cerr << "Something worng in frame buffer" << std::endl;
+	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -513,15 +529,15 @@ void delete_fbo() {
 	if (fbo.width != 0 && fbo.height != 0) {
 		//Bind the default framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//Now, that you are sure it is not binded: delete it
-		glDeleteFramebuffers(1, &fbo.id);
-		//Delete depth texture
-		glDeleteRenderbuffers(1, &fbo.depthTex);
 		//Bind default texture
 		glBindTexture(GL_TEXTURE_2D, 0);
+		//Delete depth texture
+		glDeleteRenderbuffers(1, &fbo.depthTex);
 		//Now, that you are sure they are not binded: delete them
 		GLuint textures[2] = { fbo.renderTex, fbo.backFacesTex };
 		glDeleteTextures(2, textures);
+		//Now, that you are sure it is not binded: delete it
+		glDeleteFramebuffers(1, &fbo.id);
 	}
 }
 
@@ -649,9 +665,6 @@ void reload_shaders() {
 	rayTracerPhongLoc.u_Ls = programRayTracePhongPtr->uniformLoc("light.Ls");
 
 	rayTracerPhongLoc.u_Tex = programRayTracePhongPtr->uniformLoc("backfaces");
-	if (rayTracerPhongLoc.u_Tex != -1) {
-		glUniform1i(rayTracerPhongLoc.u_Tex, 0);
-	}
 
 	glUseProgram(0);
 	programRayTraceCkTrrncPtr->use();
@@ -676,9 +689,7 @@ void reload_shaders() {
 	rayTracerCkTrrncLoc.u_Ls = programRayTraceCkTrrncPtr->uniformLoc("light.Ls");
 
 	rayTracerCkTrrncLoc.u_Tex = programRayTraceCkTrrncPtr->uniformLoc("backfaces");
-	if (rayTracerCkTrrncLoc.u_Tex != -1) {
-		glUniform1i(rayTracerCkTrrncLoc.u_Tex, 0);
-	}
+	
 	glUseProgram(0);
 }
 void pass_light_material() {
