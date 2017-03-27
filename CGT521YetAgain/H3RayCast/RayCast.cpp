@@ -60,8 +60,6 @@ struct Locations {
 	//Uniforms
 	GLint u_Q = -1;
 	GLint u_PVM = -1;
-	//GLint u_Time = -1;
-	//GLint u_Pass = -1;
 	GLint u_scene = -1;
 	GLint u_Tex = -1;
 	GLint u_Ka = -1;

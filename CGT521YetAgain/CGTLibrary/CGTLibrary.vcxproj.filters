@@ -102,6 +102,18 @@
     <ClInclude Include="Directional.h">
       <Filter>Header Files\lighting</Filter>
     </ClInclude>
+    <ClInclude Include="MatPhong.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="LightPhong.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="MatCookTorrance.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="MathHelpers.h">
+      <Filter>Header Files\math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -142,6 +154,18 @@
     </ClCompile>
     <ClCompile Include="Directional.cpp">
       <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="MatPhong.cpp">
+      <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="LightPhong.cpp">
+      <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="MatCookTorrance.cpp">
+      <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="MathHelpers.cpp">
+      <Filter>Source Files\math</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
