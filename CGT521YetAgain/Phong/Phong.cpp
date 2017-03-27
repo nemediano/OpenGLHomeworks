@@ -24,13 +24,11 @@
 #include "Camera.h"
 #include "Trackball.h"
 #include "OGLProgram.h"
-#include "Spotlight.h"
+#include "LightPhong.h"
 #include "Directional.h"
-#include "Material.h"
+#include "MatPhong.h"
 #include "Geometries.h"
-using namespace ogl;
 using namespace math;
-using namespace image;
 using namespace mesh;
 using namespace camera;
 using namespace ogl;
@@ -38,51 +36,48 @@ using namespace lighting;
 /* CGT Library related*/
 Camera cam;
 Trackball ball;
-Texture* textureMapPtr = nullptr;
 Mesh* meshPtr = nullptr;
-OGLProgram* programPtr = nullptr;
-Material mat;
-Spotlight light;
-Directional dirLight;
+OGLProgram* phongWorldPtr = nullptr;
+OGLProgram* phongViewPtr = nullptr;
+MatPhong mat;
+LightPhong light;
 GLint window = 0;
 // Location for shader variables
-GLint u_PVM_location = -1;
-GLint u_M_location = -1;
-GLint u_NormalMat_location = -1;
-GLint u_texture_location = -1;
-GLint a_position_loc = -1;
-GLint a_normal_loc = -1;
-GLint a_texture_loc = -1;
+struct Locations {
+	GLint u_PVM = -1;
+	GLint u_PV = -1;
+	GLint u_P = -1;
+	GLint u_V = -1;
+	GLint u_M = -1;
 
-//Lighting related variables
-//Light
-GLint u_LightCol_loc = -1;
-GLint u_LightInt_loc = -1;
-GLint u_LightPos_loc = -1;
-GLint u_LightRatio_loc = -1;
-GLint u_LightPM_loc = -1;
-GLint u_LightM_loc = -1;
-GLint u_LightDir_loc = -1;
+	GLint u_La = -1;
+	GLint u_Ls = -1;
+	GLint u_Ld = -1;
 
-//Material
-GLint u_MatMetal_loc = -1;
-GLint u_MatRough_loc = -1;
-GLint u_F0_loc = -1;
-GLint u_MatBaseColor = -1;
-//Position of the eye
-GLint u_CamPos_loc = -1;
+	GLint u_LightPos = -1;
 
-void allocateLighting();
+	GLint u_Ka = -1;
+	GLint u_Ks = -1;
+	GLint u_Kd = -1;
+	GLint u_alpha = -1;
+
+	GLint a_position = -1;
+	GLint a_normal = -1;
+	GLint a_texture = -1;
+};
+
+Locations phongViewLoc;
+Locations phongWorldLoc;
+
 void passLightingState();
 
 //Global variables for the program logic
-bool rotate;
 glm::vec2 light_angles;
 float light_distance;
 float seconds_elapsed;
 float angle;
 float scaleFactor;
-glm::vec3 center;
+glm::vec3 meshCenter;
 
 void create_glut_window();
 void init_program();
@@ -212,7 +207,7 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(800, 600);
-	window = glutCreateWindow("Disney shading");
+	window = glutCreateWindow("Phong shading");
 }
 
 void init_program() {
@@ -221,8 +216,8 @@ void init_program() {
 	rotate = false;
 	/* Then, create primitives (load them from mesh) */
 	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
-	//meshPtr = new Mesh("../models/09-mujer_en_plataforma_repared.obj");
-	meshPtr = new Mesh(Geometries::icosphere(3));
+	meshPtr = new Mesh("../models/teapot.obj");
+	//meshPtr = new Mesh(Geometries::icosphere(3));
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
