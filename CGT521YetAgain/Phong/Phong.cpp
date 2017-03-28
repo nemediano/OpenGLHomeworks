@@ -43,16 +43,19 @@ GLint window = 0;
 // Location for shader variables
 struct Locations {
 	GLint u_PVM = -1;
-	GLint u_PV = -1;
+	GLint u_VM = -1;
 	GLint u_P = -1;
 	GLint u_V = -1;
 	GLint u_M = -1;
+	GLint u_NormMat = -1;
+	GLint u_gamma = -1;
 
 	GLint u_La = -1;
 	GLint u_Ls = -1;
 	GLint u_Ld = -1;
 
 	GLint u_LightPos = -1;
+	GLint u_CameraPos = -1;
 
 	GLint u_Ka = -1;
 	GLint u_Ks = -1;
@@ -154,12 +157,17 @@ void drawGUI() {
 		ImGui::ColorEdit3("Ambient", glm::value_ptr(Ka));
 		ImGui::ColorEdit3("Difusse", glm::value_ptr(Kd));
 		ImGui::ColorEdit3("Specular", glm::value_ptr(Ks));
-		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 1.0f, "%.2f", 2.0f);
+		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 256.0f, "%.2f", 2.0f);
 		mat.setKa(Ka);
 		mat.setKd(Kd);
 		mat.setKs(Ks);
 		mat.setAlpha(alpha);
 	}
+
+	ImGui::Text("Light position");
+	ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
+	ImGui::SliderAngle("Azimuth angle (Theta)", &light.angles.y, 0.0f, 180.0f);
+	ImGui::SliderAngle("Polar angle (Phi)", &light.angles.x, 0.0f, 360.0f);
 
 	if (ImGui::CollapsingHeader("Light physical properties")) {
 		vec3 La = light.properties.getLa();
@@ -209,7 +217,7 @@ void create_glut_window() {
 	//Set number of samples per pixel
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
-	glutInitWindowSize(800, 600);
+	glutInitWindowSize(1200, 800);
 	window = glutCreateWindow("Phong shading");
 }
 
@@ -238,8 +246,8 @@ void init_program() {
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Default position of the spotlight
-	light.angles = glm::vec2(0.0f);
-	light.distance = 2.0f;
+	light.angles = glm::vec2(TAU / 8.0f, PI / 4.0f);
+	light.distance = glm::sqrt(3.0f);
 	light.properties.setLa(vec3(1.0f));
 	light.properties.setLs(vec3(1.0f));
 	light.properties.setLd(vec3(1.0f));
@@ -308,23 +316,70 @@ void reload_shaders() {
 	/************************************************************************/
 	//Uniforms
 	phongViewLoc.u_PVM = phongViewPtr->uniformLoc("PVM");
-	phongViewLoc.u_M = phongViewPtr->uniformLoc("M");
+	phongViewLoc.u_VM = phongViewPtr->uniformLoc("VM");
+	phongViewLoc.u_NormMat = phongViewPtr->uniformLoc("NormalMat");
+	phongViewLoc.u_gamma = phongViewPtr->uniformLoc("gamma");
+	//Light
+	phongViewLoc.u_LightPos = phongViewPtr->uniformLoc("light.position");
+	phongViewLoc.u_La = phongViewPtr->uniformLoc("light.La");
+	phongViewLoc.u_Ld = phongViewPtr->uniformLoc("light.Ld");
+	phongViewLoc.u_Ls = phongViewPtr->uniformLoc("light.Ls");
+	//Material
+	phongViewLoc.u_alpha = phongViewPtr->uniformLoc("mat.alpha");
+	phongViewLoc.u_Ka = phongViewPtr->uniformLoc("mat.Ka");
+	phongViewLoc.u_Kd = phongViewPtr->uniformLoc("mat.Kd");
+	phongViewLoc.u_Ks = phongViewPtr->uniformLoc("mat.Ks");
+
 	//Atrributes
 	phongViewLoc.a_position = phongViewPtr->attribLoc("Position");
 	phongViewLoc.a_normal = phongViewPtr->attribLoc("Normal");
-	
+	phongViewLoc.a_texture = phongViewPtr->attribLoc("TextCoord");
+
+	/************************************************************/
+
+	//Uniforms
+	phongWorldLoc.u_PVM = phongWorldPtr->uniformLoc("PVM");
+	phongWorldLoc.u_M = phongWorldPtr->uniformLoc("M");
+	phongWorldLoc.u_NormMat = phongWorldPtr->uniformLoc("NormalMat");
+	phongWorldLoc.u_gamma = phongWorldPtr->uniformLoc("gamma");
+	phongWorldLoc.u_CameraPos = phongWorldPtr->uniformLoc("cameraPosition");
+	//Light
+	phongWorldLoc.u_LightPos = phongWorldPtr->uniformLoc("light.position");
+	phongWorldLoc.u_La = phongWorldPtr->uniformLoc("light.La");
+	phongWorldLoc.u_Ld = phongWorldPtr->uniformLoc("light.Ld");
+	phongWorldLoc.u_Ls = phongWorldPtr->uniformLoc("light.Ls");
+	//Material
+	phongWorldLoc.u_alpha = phongWorldPtr->uniformLoc("mat.alpha");
+	phongWorldLoc.u_Ka = phongWorldPtr->uniformLoc("mat.Ka");
+	phongWorldLoc.u_Kd = phongWorldPtr->uniformLoc("mat.Kd");
+	phongWorldLoc.u_Ks = phongWorldPtr->uniformLoc("mat.Ks");
+	//Atrributes
+	phongWorldLoc.a_position = phongWorldPtr->attribLoc("Position");
+	phongWorldLoc.a_normal = phongWorldPtr->attribLoc("Normal");
+	phongWorldLoc.a_texture = phongWorldPtr->attribLoc("TextCoord");
 	
 }
 
 void passLightingState() {
 	if (currentShader == 0) {
-		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(dirLight.getColor()));
-		glUniform1f(u_LightInt_loc, dirLight.getIntensity());
-		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
+		glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+		glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+		glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+		glUniform1f(phongWorldLoc.u_alpha, mat.getAlpha());
+
+		glUniform3fv(phongWorldLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
+		glUniform3fv(phongWorldLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+		glUniform3fv(phongWorldLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
+	
 	} else {
-		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(dirLight.getColor()));
-		glUniform1f(u_LightInt_loc, dirLight.getIntensity());
-		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
+		glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+		glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+		glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+		glUniform1f(phongViewLoc.u_alpha, mat.getAlpha());
+
+		glUniform3fv(phongViewLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
+		glUniform3fv(phongViewLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+		glUniform3fv(phongViewLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
 	}
 }
 
@@ -367,37 +422,46 @@ void display() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	if (currentShader == 0) {
+		phongWorldPtr->use();
+		/************************************************************************/
+		/* Send uniform values to shader                                        */
+		/************************************************************************/
+		glUniformMatrix4fv(phongWorldLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(phongWorldLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+		glUniformMatrix4fv(phongWorldLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
+		glUniform1f(phongWorldLoc.u_gamma, gamma);
+		vec3 light_pos = vec3(1.0f);
+		light_pos.x = light.distance * glm::sin(light.angles.x) * glm::sin(light.angles.y);
+		light_pos.y = light.distance * glm::sin(light.angles.x) * glm::cos(light.angles.y);
+		light_pos.z = light.distance * glm::cos(light.angles.x);
+
+		glUniform3fv(phongWorldLoc.u_LightPos, 1, glm::value_ptr(light_pos));
+		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+		glUniform3fv(phongWorldLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+		//Send light and material
+		passLightingState();
+		/* Draw */
+		meshPtr->drawTriangles(phongWorldLoc.a_position, phongWorldLoc.a_normal, phongWorldLoc.a_texture);
+	} else {
 		phongViewPtr->use();
 
 		/************************************************************************/
 		/* Send uniform values to shader                                        */
 		/************************************************************************/
 
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));	
-		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(cam.getPosition())));
-		
-
+		glUniformMatrix4fv(phongViewLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(phongViewLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
+		glUniformMatrix4fv(phongViewLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
+		glUniform1f(phongViewLoc.u_gamma, gamma);
+		vec4 light_pos = vec4(1.0f);
+		vec3 posInView = vec3(V * light_pos);
+		glUniform3fv(phongViewLoc.u_LightPos, 1, glm::value_ptr(posInView));
 		//Send light and material
 		passLightingState();
 
 		/* Draw */
 		meshPtr->drawTriangles(phongViewLoc.a_position, phongViewLoc.a_normal, phongViewLoc.a_texture);
-	} else {
-		phongWorldPtr->use();
-
-		/************************************************************************/
-		/* Send uniform values to shader                                        */
-		/************************************************************************/
-
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
-		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(cam.getPosition())));
-	
-
-		//Send light and material
-		passLightingState();
-
-		/* Draw */
-		meshPtr->drawTriangles(phongWorldLoc.a_position, phongWorldLoc.a_normal, phongWorldLoc.a_texture);
 	}
 	
 	//Unbind an clean
