@@ -25,7 +25,6 @@
 #include "Trackball.h"
 #include "OGLProgram.h"
 #include "LightPhong.h"
-#include "Directional.h"
 #include "MatPhong.h"
 #include "Geometries.h"
 using namespace math;
@@ -40,7 +39,6 @@ Mesh* meshPtr = nullptr;
 OGLProgram* phongWorldPtr = nullptr;
 OGLProgram* phongViewPtr = nullptr;
 MatPhong mat;
-LightPhong light;
 GLint window = 0;
 // Location for shader variables
 struct Locations {
@@ -69,16 +67,28 @@ struct Locations {
 Locations phongViewLoc;
 Locations phongWorldLoc;
 
-void passLightingState();
-
 //Global variables for the program logic
-glm::vec2 light_angles;
-float light_distance;
+struct Light {
+	glm::vec2 angles;
+	float distance;
+	LightPhong properties;
+};
+
+Light light;
+
 float seconds_elapsed;
-float angle;
+
 float scaleFactor;
 glm::vec3 meshCenter;
 
+bool gammaCorrection;
+float gamma;
+bool rotation;
+glm::vec3 backgroundColor;
+int currentShader;
+
+void passLightingState();
+void reload_shaders();
 void create_glut_window();
 void init_program();
 void init_OpenGL();
@@ -131,52 +141,45 @@ void drawGUI() {
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
 
+	ImGui::Text("Space for calculations");
+	ImGui::RadioButton("World", &currentShader, 0); ImGui::SameLine();
+	ImGui::RadioButton("View", &currentShader, 1);
+	
 	if (ImGui::CollapsingHeader("Material editor")) {
 		//Edit Material
-		float metal = mat.getMetalicity();
-		float roughness = mat.getRoughness();
-		vec3 color = mat.getBaseColor();
-		vec3 f0 = mat.getF0();
-		ImGui::SliderFloat("Metalicity", &metal, 0.0f, 1.0f);
-		ImGui::SliderFloat("Rougness", &roughness, 0.0f, 1.0f);
-		ImGui::ColorEdit3("Base Color", glm::value_ptr(color));
-		ImGui::ColorEdit3("Specular", glm::value_ptr(f0));
-		mat.setMetalicity(metal);
-		mat.setRoughness(roughness);
-		mat.setBaseColor(color);
-		mat.setF0(f0);
+		vec3 Ka = mat.getKa();
+		vec3 Kd = mat.getKd();
+		vec3 Ks = mat.getKs();
+		float alpha = mat.getAlpha();
+		ImGui::ColorEdit3("Ambient", glm::value_ptr(Ka));
+		ImGui::ColorEdit3("Difusse", glm::value_ptr(Kd));
+		ImGui::ColorEdit3("Specular", glm::value_ptr(Ks));
+		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 1.0f, "%.2f", 2.0f);
+		mat.setKa(Ka);
+		mat.setKd(Kd);
+		mat.setKs(Ks);
+		mat.setAlpha(alpha);
 	}
 
 	if (ImGui::CollapsingHeader("Light physical properties")) {
-		//Edit Light
-		/*float intensity = light.getIntensity();
-		float ratio = light.getRatio();
-		vec3 lightColor = light.getColor();
-		*/
-		float intensity = dirLight.getIntensity();
-		vec3 lightColor = dirLight.getColor();
-		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
-		//ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
-		ImGui::ColorEdit3("Color", glm::value_ptr(lightColor));
-		/*light.setIntensity(intensity);
-		light.setRatio(ratio);
-		light.setColor(lightColor);*/
-		dirLight.setIntensity(intensity);
-		dirLight.setColor(lightColor);
+		vec3 La = light.properties.getLa();
+		vec3 Ld = light.properties.getLd();
+		vec3 Ls = light.properties.getLs();
+		ImGui::ColorEdit3("Ambient", glm::value_ptr(La));
+		ImGui::ColorEdit3("Difusse", glm::value_ptr(Ld));
+		ImGui::ColorEdit3("Specular", glm::value_ptr(Ls));
+		light.properties.setLa(La);
+		light.properties.setLd(Ld);
+		light.properties.setLs(Ls);
 	}
-	bool spotLight = false;
-	if (spotLight && ImGui::CollapsingHeader("Light position")) {
-		ImGui::SliderAngle("Angle X", &light_angles.x, -180.0f, 180.0f);
-		ImGui::SliderAngle("Angle Y", &light_angles.y, -180.0f, 180.0f);
-		ImGui::SliderFloat("Radius", &light_distance, 0.0f, 10.0f, "%.2f", 3.0f);
-	}
-	bool directional = true;
-	if (directional && ImGui::CollapsingHeader("Light direction")) {
-		ImGui::SliderAngle("Angle X", &light_angles.x, -180.0f, 180.0f);
-		ImGui::SliderAngle("Angle Y", &light_angles.y, -180.0f, 180.0f);
-	}
+	
+	
 	if (ImGui::CollapsingHeader("General options")) {
-		ImGui::Checkbox("Rotation", &rotate);
+		ImGui::Checkbox("Rotation", &rotation);
+		ImGui::Checkbox("Gamma correction", &gammaCorrection);
+		if (gammaCorrection) {
+			ImGui::SliderFloat("Gamma", &gamma, 1.0f, 2.5f);
+		}
 		if (ImGui::Button("Quit")) {
 			exit_glut();
 		}
@@ -192,9 +195,9 @@ void drawGUI() {
 }
 
 void exit_glut() {
-	delete textureMapPtr;
 	delete meshPtr;
-	delete programPtr;
+	delete phongViewPtr;
+	delete phongWorldPtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
@@ -213,9 +216,8 @@ void create_glut_window() {
 void init_program() {
 	using glm::vec3;
 	/* Initialize global variables for program control */
-	rotate = false;
+	rotation = false;
 	/* Then, create primitives (load them from mesh) */
-	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
 	meshPtr = new Mesh("../models/teapot.obj");
 	//meshPtr = new Mesh(Geometries::icosphere(3));
 
@@ -224,11 +226,10 @@ void init_program() {
 	}
 	//Extract info form the mesh
 	scaleFactor = meshPtr->scaleFactor();
-	center = meshPtr->getBBCenter();
+	meshCenter = meshPtr->getBBCenter();
 
-	textureMapPtr = new Texture("../models/rham_diff.png");
 	seconds_elapsed = 0.0f;
-	angle = 0.0f;
+	
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
@@ -237,21 +238,22 @@ void init_program() {
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Default position of the spotlight
-	light_angles = glm::vec2(0.0f);
-	light_distance = 2.0f;
-	light.setPosition(vec3(0.0f, 0.0f, light_distance));
-	light.setTarget(vec3(0.0f));
-	light.setAperture(30.0f * TO_RADIANS);
-	light.setRatio(0.5f);
-	light.setIntensity(1.0f);
-	//Default direction of the directional light
-	dirLight.setIntensity(1.0f);
-	dirLight.setDirection(vec3(0.0f, 0.0f, -1.0f));
+	light.angles = glm::vec2(0.0f);
+	light.distance = 2.0f;
+	light.properties.setLa(vec3(1.0f));
+	light.properties.setLs(vec3(1.0f));
+	light.properties.setLd(vec3(1.0f));
 	//Default material
-	mat.setF0(vec3(0.04f, 0.78f, 0.06f));
-	mat.setMetalicity(0.45f);
-	mat.setRoughness(0.6f);
-	mat.setBaseColor(vec3(0.12f, 0.5f, 0.85f));
+	vec3 yellow = vec3(1.0f, 1.0f, 0.0f);
+	mat.setKa(0.25f * yellow);
+	mat.setKd(yellow);
+	mat.setKs(vec3(0.5f));
+
+	backgroundColor = vec3(0.15f);
+	
+	currentShader = 0;
+	gammaCorrection = false;
+	gamma = 1.0f;
 }
 
 void init_OpenGL() {
@@ -266,99 +268,63 @@ void init_OpenGL() {
 		cerr << "Error: " << glewGetErrorString(err) << endl;
 	}
 	cout << getOpenGLInfo() << endl;
-
-	/************************************************************************/
-	/*                   OpenGL program creation                            */
-	/************************************************************************/
-	//programPtr = new OGLProgram("shaders/simpleVertex.vert", "shaders/simpleFragment.frag");
-	//programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragment.frag");
-	programPtr = new OGLProgram("shaders/disneyVertex.vert", "shaders/disneyFragmentDirectional.frag");
-	//programPtr = new OGLProgram("shaders/disneyVertexTexture.vert", "shaders/disneyFragmentTexture.frag");
-	if (!programPtr || !programPtr->isOK()) {
-		cerr << "Something wrong in shader" << endl;
-	}
-
-	/************************************************************************/
-	/* Allocating variables for shaders                                     */
-	/************************************************************************/
-	u_PVM_location = programPtr->uniformLoc("PVM");
-	u_M_location = programPtr->uniformLoc("M");;
-	u_NormalMat_location = programPtr->uniformLoc("NormMat");
-	u_texture_location = programPtr->uniformLoc("colorTexture");
-	u_CamPos_loc = programPtr->uniformLoc("cameraPos");
-	allocateLighting();
-
-	a_position_loc = programPtr->attribLoc("Position");
-	a_normal_loc = programPtr->attribLoc("Normal");
-	a_texture_loc = programPtr->attribLoc("TextCoord");
-
+	//Load shaders
+	reload_shaders();
+	
 	//Activate antialliasing
 	glEnable(GL_MULTISAMPLE);
 
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
-	//Dark gray background color
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
-
+	
+	glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
 }
 
-void allocateLighting() {
-	//Light
-	//u_LightCol_loc = programPtr->uniformLoc("spotLight.color");
-	u_LightCol_loc = programPtr->uniformLoc("dir.color");
-	//u_LightInt_loc = programPtr->uniformLoc("spotLight.intensity");
-	u_LightInt_loc = programPtr->uniformLoc("dir.intensity");
-	//u_LightRatio_loc = programPtr->uniformLoc("spotLight.ratio");
-	u_LightRatio_loc = programPtr->uniformLoc("dir.ratio");
-	u_LightPos_loc = programPtr->uniformLoc("spotLight.position");
-	u_LightPM_loc = programPtr->uniformLoc("spotLight.PM");
-	u_LightM_loc = programPtr->uniformLoc("spotLight.M");
-	u_LightDir_loc = programPtr->uniformLoc("dir.direction");
-	//Material
-	u_MatMetal_loc = programPtr->uniformLoc("mat.metalicity");
-	u_MatRough_loc = programPtr->uniformLoc("mat.roughness");
-	u_F0_loc = programPtr->uniformLoc("mat.F0");
-	u_MatBaseColor = programPtr->uniformLoc("mat.base_color");
+void reload_shaders() {
+	using std::cout;
+	using std::cerr;
+	using std::endl;
+
+	phongViewPtr = new OGLProgram("shaders/phongView.vert", "shaders/phongView.frag");
+	phongWorldPtr = new OGLProgram("shaders/phongWorld.vert", "shaders/phongWorld.frag");
+
+	if (!phongViewPtr || !phongViewPtr->isOK()) {
+		cerr << "Something wrong in Phong view shader" << endl;
+		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+	}
+
+	if (!phongWorldPtr || !phongWorldPtr->isOK()) {
+		cerr << "Something wrong in Phong world shader" << endl;
+		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+	}
+
+	if (phongViewPtr->isOK() && phongWorldPtr->isOK()) {
+		cout << "Shaders compiled correctlly!" << endl;
+		backgroundColor = 0.15f * vec3(1.0f);
+	}
+
+	/************************************************************************/
+	/* Allocating variables for shaders                                     */
+	/************************************************************************/
+	//Uniforms
+	phongViewLoc.u_PVM = phongViewPtr->uniformLoc("PVM");
+	phongViewLoc.u_M = phongViewPtr->uniformLoc("M");
+	//Atrributes
+	phongViewLoc.a_position = phongViewPtr->attribLoc("Position");
+	phongViewLoc.a_normal = phongViewPtr->attribLoc("Normal");
+	
+	
 }
 
 void passLightingState() {
-	//Light
-	if (u_LightCol_loc != -1) {
-		//glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(light.getColor()));
+	if (currentShader == 0) {
 		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(dirLight.getColor()));
-	}
-	if (u_LightInt_loc != -1) {
-		//glUniform1f(u_LightInt_loc, light.getIntensity());
 		glUniform1f(u_LightInt_loc, dirLight.getIntensity());
-	}
-	if (u_LightPos_loc != -1) {
-		glUniform3fv(u_LightPos_loc, 1, glm::value_ptr(light.getPosition()));
-	}
-	if (u_LightRatio_loc != -1) {
-		//glUniform1f(u_LightRatio_loc, light.getRatio());
-		glUniform1f(u_LightRatio_loc, 0.0f);
-	}
-	if (u_LightM_loc != -1) {
 		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
-	}
-	if (u_LightPM_loc != -1) {
-		glUniformMatrix4fv(u_LightPM_loc, 1, GL_FALSE, glm::value_ptr(light.getPM()));
-	}
-	if (u_LightDir_loc != -1) {
-		glUniform3fv(u_LightDir_loc, 1, glm::value_ptr(dirLight.getDirection()));
-	}
-	//Material
-	if (u_MatMetal_loc != -1) {
-		glUniform1f(u_MatMetal_loc, mat.getMetalicity());
-	}
-	if (u_MatRough_loc != -1) {
-		glUniform1f(u_MatRough_loc, mat.getRoughness());
-	}
-	if (u_F0_loc != -1) {
-		glUniform3fv(u_F0_loc, 1, glm::value_ptr(mat.getF0()));
-	}
-	if (u_MatBaseColor != -1) {
-		glUniform3fv(u_MatBaseColor, 1, glm::value_ptr(mat.getBaseColor()));
+	} else {
+		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(dirLight.getColor()));
+		glUniform1f(u_LightInt_loc, dirLight.getIntensity());
+		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
 	}
 }
 
@@ -387,55 +353,53 @@ void display() {
 	using glm::vec2;
 	using glm::mat4;
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	programPtr->use();
-
 	mat4 I(1.0f);
 	//Model
-	mat4 M = rotate ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
+	mat4 M = rotation ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
 	//M = glm::rotate(M, TAU / 4.0f, vec3(1.0, 0.0f, 0.0f));
 	M = glm::scale(M, vec3(scaleFactor));
-	M = glm::translate(M, -center);
+	M = glm::translate(M, -meshCenter);
 
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 
-	//Move light to corresponding position
-	/*mat4 L_p = glm::rotate(I, light_angles.x, vec3(1.0f, 0.0f, 0.0f));
-	L_p = glm::rotate(L_p, light_angles.y, vec3(0.0f, 1.0f, 0.0f));
-	light.setPosition(vec3(L_p * vec4(vec3(0.0, 0.0, light_distance), 1.0)));*/
-	//Rotate directional light
-	dirLight.setDirection(vec3(0.0f, 0.0f, -1.0f));
-	dirLight.rotate(light_angles.x, light_angles.y, 0.0f);
-	/************************************************************************/
-	/* Send uniform values to shader                                        */
-	/************************************************************************/
-	if (u_PVM_location != -1) {
-		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
-	}
-	if (u_M_location != -1) {
-		glUniformMatrix4fv(u_M_location, 1, GL_FALSE, glm::value_ptr(M));
-	}
-	if (u_NormalMat_location != -1) {
-		glUniformMatrix4fv(u_NormalMat_location, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
-	}
-	if (u_CamPos_loc != -1) {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if (currentShader == 0) {
+		phongViewPtr->use();
+
+		/************************************************************************/
+		/* Send uniform values to shader                                        */
+		/************************************************************************/
+
+		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));	
 		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(cam.getPosition())));
-	}
-	//Set active texture and bind
-	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-	textureMapPtr->bind(); //The next binded texture will be refered with the active texture unit
-	if (u_texture_location != -1) {
-		glUniform1i(u_texture_location, 0); // we bound our texture to texture unit 0
-	}
-	//Send light and material
-	passLightingState();
+		
 
-	/* Draw */
-	meshPtr->drawTriangles(a_position_loc, a_normal_loc, a_texture_loc);
+		//Send light and material
+		passLightingState();
 
+		/* Draw */
+		meshPtr->drawTriangles(phongViewLoc.a_position, phongViewLoc.a_normal, phongViewLoc.a_texture);
+	} else {
+		phongWorldPtr->use();
+
+		/************************************************************************/
+		/* Send uniform values to shader                                        */
+		/************************************************************************/
+
+		glUniformMatrix4fv(u_PVM_location, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniform3fv(u_CamPos_loc, 1, glm::value_ptr(glm::vec3(cam.getPosition())));
+	
+
+		//Send light and material
+		passLightingState();
+
+		/* Draw */
+		meshPtr->drawTriangles(phongWorldLoc.a_position, phongWorldLoc.a_normal, phongWorldLoc.a_texture);
+	}
+	
 	//Unbind an clean
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
@@ -469,7 +433,7 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 
 	case 'R':
 	case 'r':
-		rotate = !rotate;
+		rotation = !rotation;
 		break;
 
 	case 27:
