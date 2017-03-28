@@ -36,6 +36,9 @@ using namespace lighting;
 Camera cam;
 Trackball ball;
 Mesh* meshPtr = nullptr;
+Mesh* cubePtr = nullptr;
+Mesh* spherePtr = nullptr;
+Mesh* currentMeshPtr = nullptr;
 OGLProgram* phongWorldPtr = nullptr;
 OGLProgram* phongViewPtr = nullptr;
 MatPhong mat;
@@ -89,9 +92,11 @@ float gamma;
 bool rotation;
 glm::vec3 backgroundColor;
 int currentShader;
+int currentMesh;
 
 void passLightingState();
 void reload_shaders();
+void change_mesh();
 void create_glut_window();
 void init_program();
 void init_OpenGL();
@@ -143,6 +148,11 @@ void drawGUI() {
 
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
+
+	ImGui::Text("Mesh");
+	ImGui::RadioButton("Custom", &currentMesh, 0); ImGui::SameLine();
+	ImGui::RadioButton("Sphere", &currentMesh, 1); ImGui::SameLine();
+	ImGui::RadioButton("Cube", &currentMesh, 2);
 
 	ImGui::Text("Space for calculations");
 	ImGui::RadioButton("World", &currentShader, 0); ImGui::SameLine();
@@ -204,6 +214,9 @@ void drawGUI() {
 
 void exit_glut() {
 	delete meshPtr;
+	delete cubePtr;
+	delete spherePtr;
+	
 	delete phongViewPtr;
 	delete phongWorldPtr;
 	/* Shut down the gui */
@@ -227,10 +240,19 @@ void init_program() {
 	rotation = false;
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh("../models/teapot.obj");
-	//meshPtr = new Mesh(Geometries::icosphere(3));
+	spherePtr = new Mesh(Geometries::icosphere(3));
+	cubePtr = new Mesh(Geometries::cube());
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
+	}
+
+	if (spherePtr) {
+		spherePtr->sendToGPU();
+	}
+
+	if (cubePtr) {
+		cubePtr->sendToGPU();
 	}
 	//Extract info form the mesh
 	scaleFactor = meshPtr->scaleFactor();
@@ -260,6 +282,7 @@ void init_program() {
 	backgroundColor = vec3(0.15f);
 	
 	currentShader = 0;
+	currentMesh = 1;
 	gammaCorrection = false;
 	gamma = 1.0f;
 }
@@ -383,6 +406,24 @@ void passLightingState() {
 	}
 }
 
+void change_mesh() {
+	switch(currentMesh) {
+		case 0:
+			currentMeshPtr = meshPtr;
+		break;
+
+		case 1:
+			currentMeshPtr = spherePtr;
+		break;
+
+		case 2:
+			currentMeshPtr = cubePtr;
+		break;
+	}
+
+	scaleFactor = currentMeshPtr->scaleFactor();
+	meshCenter = currentMeshPtr->getBBCenter();
+}
 
 void create_glut_callbacks() {
 	glutDisplayFunc(display);
@@ -420,6 +461,9 @@ void display() {
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 
+	//Select mesh to render
+	change_mesh();
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	if (currentShader == 0) {
 		phongWorldPtr->use();
@@ -442,7 +486,7 @@ void display() {
 		//Send light and material
 		passLightingState();
 		/* Draw */
-		meshPtr->drawTriangles(phongWorldLoc.a_position, phongWorldLoc.a_normal, phongWorldLoc.a_texture);
+		currentMeshPtr->drawTriangles(phongWorldLoc.a_position, phongWorldLoc.a_normal, phongWorldLoc.a_texture);
 	} else {
 		phongViewPtr->use();
 
@@ -461,7 +505,7 @@ void display() {
 		passLightingState();
 
 		/* Draw */
-		meshPtr->drawTriangles(phongViewLoc.a_position, phongViewLoc.a_normal, phongViewLoc.a_texture);
+		currentMeshPtr->drawTriangles(phongViewLoc.a_position, phongViewLoc.a_normal, phongViewLoc.a_texture);
 	}
 	
 	//Unbind an clean
