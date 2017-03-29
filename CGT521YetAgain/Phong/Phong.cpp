@@ -99,7 +99,6 @@ glm::vec3 backgroundColor;
 int currentShader;
 int currentMesh;
 int currentMode;
-int selectedMaterial;
 
 std::vector<MatPhong> materials;
 
@@ -212,7 +211,7 @@ void drawGUI() {
 								"Black rubber", "Cyan rubber", "Green rubber", "Red rubber", "White rubber", "Yellow rubber",
 							  };
 		static int selectedMaterial = -1;
-		ImGui::Combo("Predefined", &selectedMaterial, items, materials.size());
+		ImGui::Combo("Predefined", &selectedMaterial, items, static_cast<int>(materials.size()));
 		if (ImGui::Button("Load") && selectedMaterial != -1) {
 			mat = materials[selectedMaterial];
 			selectedMaterial = -1;
@@ -320,7 +319,7 @@ void init_program() {
 	currentMode = 0;
 	gammaCorrection = false;
 	gamma = 1.0f;
-	selectedMaterial = -1;
+
 	/*Load predefined materials*/
 
 	materials.push_back(EMERALD);

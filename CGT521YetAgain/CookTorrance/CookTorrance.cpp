@@ -26,7 +26,7 @@
 #include "Trackball.h"
 #include "OGLProgram.h"
 #include "LightPhong.h"
-#include "MatPhong.h"
+#include "MatCookTorrance.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
 
@@ -44,9 +44,9 @@ Mesh* meshPtr = nullptr;
 Mesh* cubePtr = nullptr;
 Mesh* spherePtr = nullptr;
 Mesh* currentMeshPtr = nullptr;
-OGLProgram* phongWorldPtr = nullptr;
-OGLProgram* phongViewPtr = nullptr;
-MatPhong mat;
+OGLProgram* cookTorranceWorldPtr = nullptr;
+OGLProgram* cookTorranceViewPtr = nullptr;
+MatCookTorrance mat;
 GLint window = 0;
 // Location for shader variables
 struct Locations {
@@ -57,6 +57,7 @@ struct Locations {
 	GLint u_M = -1;
 	GLint u_NormMat = -1;
 	GLint u_gamma = -1;
+	GLint u_option = -1;
 
 	GLint u_La = -1;
 	GLint u_Ls = -1;
@@ -68,15 +69,16 @@ struct Locations {
 	GLint u_Ka = -1;
 	GLint u_Ks = -1;
 	GLint u_Kd = -1;
-	GLint u_alpha = -1;
+	GLint u_eta = -1;
+	GLint u_m = -1;
 
 	GLint a_position = -1;
 	GLint a_normal = -1;
 	GLint a_texture = -1;
 };
 
-Locations phongViewLoc;
-Locations phongWorldLoc;
+Locations cookTorranceViewLoc;
+Locations cookTorranceWorldLoc;
 
 //Global variables for the program logic
 struct Light {
@@ -99,9 +101,8 @@ glm::vec3 backgroundColor;
 int currentShader;
 int currentMesh;
 int currentMode;
-int selectedMaterial;
 
-std::vector<MatPhong> materials;
+std::vector<MatCookTorrance> materials;
 
 void passLightingState();
 void reload_shaders();
@@ -169,9 +170,9 @@ void drawGUI() {
 
 	ImGui::Text("Reflections");
 	ImGui::RadioButton("Full", &currentMode, 0); ImGui::SameLine();
-	ImGui::RadioButton("Ambient", &currentMode, 1); ImGui::SameLine();
-	ImGui::RadioButton("Diffuse", &currentMode, 2); ImGui::SameLine();
-	ImGui::RadioButton("Specular", &currentMode, 3);
+	ImGui::RadioButton("F", &currentMode, 1); ImGui::SameLine();
+	ImGui::RadioButton("G", &currentMode, 2); ImGui::SameLine();
+	ImGui::RadioButton("D", &currentMode, 3);
 
 	ImGui::Text("Light position");
 	ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
@@ -195,15 +196,20 @@ void drawGUI() {
 		vec3 Ka = mat.getKa();
 		vec3 Kd = mat.getKd();
 		vec3 Ks = mat.getKs();
-		float alpha = mat.getAlpha();
+		float eta = mat.getRefractionIndex();
+		float m = mat.getMicrofacetSlope();
 		ImGui::ColorEdit3("Ambient", glm::value_ptr(Ka));
 		ImGui::ColorEdit3("Difusse", glm::value_ptr(Kd));
 		ImGui::ColorEdit3("Specular", glm::value_ptr(Ks));
-		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 128.0f, "%.2f", 3.0f);
+		ImGui::Text("Index of refraction");
+		ImGui::SliderFloat("Eta", &eta, 1.0f, 5.0f, "%.2f");
+		ImGui::Text("Microfacet orientation");
+		ImGui::SliderFloat("m", &m, 0.0f, PI, "%.3f");
 		mat.setKa(Ka);
 		mat.setKd(Kd);
 		mat.setKs(Ks);
-		mat.setAlpha(alpha);
+		mat.setRefractionIndex(eta);
+		mat.setMicrofacetSlope(m);
 
 		const char* items[] = {
 			"Emerald", "Jade", "Obsidian", "Pearl", "Ruby", "Turquoise",
@@ -248,8 +254,8 @@ void exit_glut() {
 	delete meshPtr;
 	delete cubePtr;
 	delete spherePtr;
-	delete phongViewPtr;
-	delete phongWorldPtr;
+	delete cookTorranceViewPtr;
+	delete cookTorranceWorldPtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
@@ -262,7 +268,7 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(1200, 800);
-	window = glutCreateWindow("Phong shading");
+	window = glutCreateWindow("Cook-Torrance shading");
 }
 
 void init_program() {
@@ -311,7 +317,8 @@ void init_program() {
 	mat.setKa(vec3(0.122f, 0.216f, 0.145f));
 	mat.setKd(vec3(0.4f, 0.742f, 0.7f));
 	mat.setKs(vec3(0.48f, 0.188f, 0.447f));
-	mat.setAlpha(3.36f);
+	mat.setMicrofacetSlope(0.3f);
+	mat.setRefractionIndex(3.2f);
 
 	backgroundColor = vec3(0.15f);
 
@@ -320,36 +327,8 @@ void init_program() {
 	currentMode = 0;
 	gammaCorrection = false;
 	gamma = 1.0f;
-	selectedMaterial = -1;
 	/*Load predefined materials*/
 
-	materials.push_back(EMERALD);
-	materials.push_back(JADE);
-	materials.push_back(OBSIDIAN);
-	materials.push_back(PEARL);
-	materials.push_back(RUBY);
-	materials.push_back(TURQUOISE);
-
-	materials.push_back(BRASS);
-	materials.push_back(BRONZE);
-	materials.push_back(CHROME);
-	materials.push_back(COPPER);
-	materials.push_back(GOLD);
-	materials.push_back(SILVER);
-
-	materials.push_back(BLACK_PLASTIC);
-	materials.push_back(CYAN_PLASTIC);
-	materials.push_back(GREEN_PLASTIC);
-	materials.push_back(RED_PLASTIC);
-	materials.push_back(WHITE_PLASTIC);
-	materials.push_back(YELLOW_PLASTIC);
-
-	materials.push_back(BLACK_RUBBER);
-	materials.push_back(CYAN_RUBBER);
-	materials.push_back(GREEN_RUBBER);
-	materials.push_back(RED_RUBBER);
-	materials.push_back(WHITE_RUBBER);
-	materials.push_back(YELLOW_RUBBER);
 }
 
 void init_OpenGL() {
@@ -381,140 +360,129 @@ void reload_shaders() {
 	using std::cerr;
 	using std::endl;
 
-	phongViewPtr = new OGLProgram("shaders/cookTorranceView.vert", "shaders/cookTorranceView.frag");
-	phongWorldPtr = new OGLProgram("shaders/cookTorranceWorld.vert", "shaders/cookTorranceWorld.frag");
+	cookTorranceViewPtr = new OGLProgram("shaders/cookTorranceView.vert", "shaders/cookTorranceView.frag");
+	cookTorranceWorldPtr = new OGLProgram("shaders/cookTorranceWorld.vert", "shaders/cookTorranceWorld.frag");
 
-	if (!phongViewPtr || !phongViewPtr->isOK()) {
+	if (!cookTorranceViewPtr || !cookTorranceViewPtr->isOK()) {
 		cerr << "Something wrong in Phong view shader" << endl;
-		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+		backgroundColor = glm::vec3(1.0f, 0.0f, 1.0f);
 	}
 
-	if (!phongWorldPtr || !phongWorldPtr->isOK()) {
+	if (!cookTorranceWorldPtr || !cookTorranceWorldPtr->isOK()) {
 		cerr << "Something wrong in Phong world shader" << endl;
-		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+		backgroundColor = glm::vec3(1.0f, 0.0f, 1.0f);
 	}
 
-	if (phongViewPtr->isOK() && phongWorldPtr->isOK()) {
+	if (cookTorranceViewPtr->isOK() && cookTorranceWorldPtr->isOK()) {
 		cout << "Shaders compiled correctlly!" << endl;
-		backgroundColor = 0.15f * vec3(1.0f);
+		backgroundColor = 0.15f * glm::vec3(1.0f);
 	}
 
 	/************************************************************************/
 	/* Allocating variables for shaders                                     */
 	/************************************************************************/
 	//Uniforms
-	phongViewLoc.u_PVM = phongViewPtr->uniformLoc("PVM");
-	phongViewLoc.u_VM = phongViewPtr->uniformLoc("VM");
-	phongViewLoc.u_NormMat = phongViewPtr->uniformLoc("NormalMat");
-	phongViewLoc.u_gamma = phongViewPtr->uniformLoc("gamma");
+	cookTorranceViewLoc.u_PVM = cookTorranceViewPtr->uniformLoc("PVM");
+	cookTorranceViewLoc.u_VM = cookTorranceViewPtr->uniformLoc("VM");
+	cookTorranceViewLoc.u_NormMat = cookTorranceViewPtr->uniformLoc("NormalMat");
+	cookTorranceViewLoc.u_gamma = cookTorranceViewPtr->uniformLoc("gamma");
+	cookTorranceViewLoc.u_option = cookTorranceViewPtr->uniformLoc("option");
 	//Light
-	phongViewLoc.u_LightPos = phongViewPtr->uniformLoc("light.position");
-	phongViewLoc.u_La = phongViewPtr->uniformLoc("light.La");
-	phongViewLoc.u_Ld = phongViewPtr->uniformLoc("light.Ld");
-	phongViewLoc.u_Ls = phongViewPtr->uniformLoc("light.Ls");
+	cookTorranceViewLoc.u_LightPos = cookTorranceViewPtr->uniformLoc("light.position");
+	cookTorranceViewLoc.u_La = cookTorranceViewPtr->uniformLoc("light.La");
+	cookTorranceViewLoc.u_Ld = cookTorranceViewPtr->uniformLoc("light.Ld");
+	cookTorranceViewLoc.u_Ls = cookTorranceViewPtr->uniformLoc("light.Ls");
 	//Material
-	phongViewLoc.u_alpha = phongViewPtr->uniformLoc("mat.alpha");
-	phongViewLoc.u_Ka = phongViewPtr->uniformLoc("mat.Ka");
-	phongViewLoc.u_Kd = phongViewPtr->uniformLoc("mat.Kd");
-	phongViewLoc.u_Ks = phongViewPtr->uniformLoc("mat.Ks");
+	cookTorranceViewLoc.u_eta = cookTorranceViewPtr->uniformLoc("mat.eta");
+	cookTorranceViewLoc.u_m = cookTorranceViewPtr->uniformLoc("mat.m");
+	cookTorranceViewLoc.u_Ka = cookTorranceViewPtr->uniformLoc("mat.Ka");
+	cookTorranceViewLoc.u_Kd = cookTorranceViewPtr->uniformLoc("mat.Kd");
+	cookTorranceViewLoc.u_Ks = cookTorranceViewPtr->uniformLoc("mat.Ks");
 
 	//Atrributes
-	phongViewLoc.a_position = phongViewPtr->attribLoc("Position");
-	phongViewLoc.a_normal = phongViewPtr->attribLoc("Normal");
-	phongViewLoc.a_texture = phongViewPtr->attribLoc("TextCoord");
+	cookTorranceViewLoc.a_position = cookTorranceViewPtr->attribLoc("Position");
+	cookTorranceViewLoc.a_normal = cookTorranceViewPtr->attribLoc("Normal");
+	cookTorranceViewLoc.a_texture = cookTorranceViewPtr->attribLoc("TextCoord");
 
 	/************************************************************/
 
 	//Uniforms
-	phongWorldLoc.u_PVM = phongWorldPtr->uniformLoc("PVM");
-	phongWorldLoc.u_M = phongWorldPtr->uniformLoc("M");
-	phongWorldLoc.u_NormMat = phongWorldPtr->uniformLoc("NormalMat");
-	phongWorldLoc.u_gamma = phongWorldPtr->uniformLoc("gamma");
-	phongWorldLoc.u_CameraPos = phongWorldPtr->uniformLoc("cameraPosition");
+	cookTorranceWorldLoc.u_PVM = cookTorranceWorldPtr->uniformLoc("PVM");
+	cookTorranceWorldLoc.u_M = cookTorranceWorldPtr->uniformLoc("M");
+	cookTorranceWorldLoc.u_NormMat = cookTorranceWorldPtr->uniformLoc("NormalMat");
+	cookTorranceWorldLoc.u_gamma = cookTorranceWorldPtr->uniformLoc("gamma");
+	cookTorranceWorldLoc.u_option = cookTorranceWorldPtr->uniformLoc("option");
+	cookTorranceWorldLoc.u_CameraPos = cookTorranceWorldPtr->uniformLoc("cameraPosition");
 	//Light
-	phongWorldLoc.u_LightPos = phongWorldPtr->uniformLoc("light.position");
-	phongWorldLoc.u_La = phongWorldPtr->uniformLoc("light.La");
-	phongWorldLoc.u_Ld = phongWorldPtr->uniformLoc("light.Ld");
-	phongWorldLoc.u_Ls = phongWorldPtr->uniformLoc("light.Ls");
+	cookTorranceWorldLoc.u_LightPos = cookTorranceWorldPtr->uniformLoc("light.position");
+	cookTorranceWorldLoc.u_La = cookTorranceWorldPtr->uniformLoc("light.La");
+	cookTorranceWorldLoc.u_Ld = cookTorranceWorldPtr->uniformLoc("light.Ld");
+	cookTorranceWorldLoc.u_Ls = cookTorranceWorldPtr->uniformLoc("light.Ls");
 	//Material
-	phongWorldLoc.u_alpha = phongWorldPtr->uniformLoc("mat.alpha");
-	phongWorldLoc.u_Ka = phongWorldPtr->uniformLoc("mat.Ka");
-	phongWorldLoc.u_Kd = phongWorldPtr->uniformLoc("mat.Kd");
-	phongWorldLoc.u_Ks = phongWorldPtr->uniformLoc("mat.Ks");
+	cookTorranceWorldLoc.u_eta = cookTorranceWorldPtr->uniformLoc("mat.eta");
+	cookTorranceWorldLoc.u_m = cookTorranceWorldPtr->uniformLoc("mat.m");
+	cookTorranceWorldLoc.u_Ka = cookTorranceWorldPtr->uniformLoc("mat.Ka");
+	cookTorranceWorldLoc.u_Kd = cookTorranceWorldPtr->uniformLoc("mat.Kd");
+	cookTorranceWorldLoc.u_Ks = cookTorranceWorldPtr->uniformLoc("mat.Ks");
 	//Atrributes
-	phongWorldLoc.a_position = phongWorldPtr->attribLoc("Position");
-	phongWorldLoc.a_normal = phongWorldPtr->attribLoc("Normal");
-	phongWorldLoc.a_texture = phongWorldPtr->attribLoc("TextCoord");
+	cookTorranceWorldLoc.a_position = cookTorranceWorldPtr->attribLoc("Position");
+	cookTorranceWorldLoc.a_normal = cookTorranceWorldPtr->attribLoc("Normal");
+	cookTorranceWorldLoc.a_texture = cookTorranceWorldPtr->attribLoc("TextCoord");
 
 }
 
 void passLightingState() {
+	using glm::vec3;
+
 	if (currentShader == 0) {
 		switch (currentMode) {
 			//Full model
-		case 0:
-			glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
-			glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
-			glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+			case 0:
+				glUniform3fv(cookTorranceWorldLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+				glUniform3fv(cookTorranceWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+				glUniform3fv(cookTorranceWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+				glUniform3fv(cookTorranceWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
 			break;
-			//Just ambient
-		case 1:
-			glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
-			glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
-			break;
-			//Just difusee
-		case 2:
-			glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
-			break;
-			//Just specular
-		case 3:
-			glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
-			glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
+			//Just one component of the model
+			case 1:
+			case 2:
+			case 3:
+				glUniform3fv(cookTorranceWorldLoc.u_Ls, 1, glm::value_ptr(vec3(1.0f)));
+				glUniform3fv(cookTorranceWorldLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
+				glUniform3fv(cookTorranceWorldLoc.u_Ks, 1, glm::value_ptr(vec3(1.0f)));
+				glUniform3fv(cookTorranceWorldLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
 			break;
 		}
-		glUniform1f(phongWorldLoc.u_alpha, mat.getAlpha());
+		glUniform1f(cookTorranceWorldLoc.u_eta, mat.getRefractionIndex());
+		glUniform1f(cookTorranceWorldLoc.u_m, mat.getMicrofacetSlope());
 
-		glUniform3fv(phongWorldLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
-		glUniform3fv(phongWorldLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
-		glUniform3fv(phongWorldLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
+		glUniform3fv(cookTorranceWorldLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
+		glUniform3fv(cookTorranceWorldLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
 
-	}
-	else {
+	} else {
 		switch (currentMode) {
 			//Full model
-		case 0:
-			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
-			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
-			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+			case 0:
+				glUniform3fv(cookTorranceWorldLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+				glUniform3fv(cookTorranceViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+				glUniform3fv(cookTorranceViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+				glUniform3fv(cookTorranceViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
 			break;
-			//Just ambient
-		case 1:
-			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
-			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
-			break;
-			//Just difusee
-		case 2:
-			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
-			break;
-			//Just specular
-		case 3:
-			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
-			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
-			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
+			//Just one component of the model
+			case 1:
+			case 2:
+			case 3:
+				glUniform3fv(cookTorranceWorldLoc.u_Ls, 1, glm::value_ptr(vec3(1.0f)));
+				glUniform3fv(cookTorranceViewLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
+				glUniform3fv(cookTorranceViewLoc.u_Ks, 1, glm::value_ptr(vec3(1.0f)));
+				glUniform3fv(cookTorranceViewLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
 			break;
 		}
-		glUniform1f(phongViewLoc.u_alpha, mat.getAlpha());
+		glUniform1f(cookTorranceViewLoc.u_eta, mat.getRefractionIndex());
+		glUniform1f(cookTorranceViewLoc.u_m, mat.getMicrofacetSlope());
 
-		glUniform3fv(phongViewLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
-		glUniform3fv(phongViewLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
-		glUniform3fv(phongViewLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
+		glUniform3fv(cookTorranceViewLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
+		glUniform3fv(cookTorranceViewLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
 	}
 }
 
@@ -582,42 +550,42 @@ void display() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	if (currentShader == 0) {
-		phongWorldPtr->use();
+		cookTorranceWorldPtr->use();
 		/************************************************************************/
 		/* Send uniform values to shader                                        */
 		/************************************************************************/
-		glUniformMatrix4fv(phongWorldLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
-		glUniformMatrix4fv(phongWorldLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
-		glUniformMatrix4fv(phongWorldLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
-		glUniform1f(phongWorldLoc.u_gamma, gamma);
-		glUniform3fv(phongWorldLoc.u_LightPos, 1, glm::value_ptr(light_position));
+		glUniformMatrix4fv(cookTorranceWorldLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(cookTorranceWorldLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+		glUniformMatrix4fv(cookTorranceWorldLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
+		glUniform1f(cookTorranceWorldLoc.u_gamma, gamma);
+		glUniform3fv(cookTorranceWorldLoc.u_LightPos, 1, glm::value_ptr(light_position));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
-		glUniform3fv(phongWorldLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+		glUniform3fv(cookTorranceWorldLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 
 		//Send light and material
 		passLightingState();
 		/* Draw */
-		currentMeshPtr->drawTriangles(phongWorldLoc.a_position, phongWorldLoc.a_normal, phongWorldLoc.a_texture);
+		currentMeshPtr->drawTriangles(cookTorranceWorldLoc.a_position, cookTorranceWorldLoc.a_normal, cookTorranceWorldLoc.a_texture);
 	}
 	else {
-		phongViewPtr->use();
+		cookTorranceViewPtr->use();
 
 		/************************************************************************/
 		/* Send uniform values to shader                                        */
 		/************************************************************************/
 
-		glUniformMatrix4fv(phongViewLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
-		glUniformMatrix4fv(phongViewLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
-		glUniformMatrix4fv(phongViewLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
-		glUniform1f(phongViewLoc.u_gamma, gamma);
+		glUniformMatrix4fv(cookTorranceViewLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(cookTorranceViewLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
+		glUniformMatrix4fv(cookTorranceViewLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
+		glUniform1f(cookTorranceViewLoc.u_gamma, gamma);
 		vec3 posInView = vec3(V * vec4(light_position, 1.0f));
-		glUniform3fv(phongViewLoc.u_LightPos, 1, glm::value_ptr(posInView));
+		glUniform3fv(cookTorranceViewLoc.u_LightPos, 1, glm::value_ptr(posInView));
 		//Send light and material
 		passLightingState();
 
 		/* Draw */
-		currentMeshPtr->drawTriangles(phongViewLoc.a_position, phongViewLoc.a_normal, phongViewLoc.a_texture);
+		currentMeshPtr->drawTriangles(cookTorranceViewLoc.a_position, cookTorranceViewLoc.a_normal, cookTorranceViewLoc.a_texture);
 	}
 
 	//Unbind an clean

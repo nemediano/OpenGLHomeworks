@@ -223,7 +223,7 @@ void drawGUI() {
 			ImGui::ColorEdit3("Diffuse:", glm::value_ptr(matCT.Kd));
 			ImGui::ColorEdit3("Specular", glm::value_ptr(matCT.Ks));
 			ImGui::SliderFloat("m:", &matCT.m, 0.0f, 2.0f);
-			ImGui::SliderFloat("etha:", &matCT.eta, 1.0f, 5.0f);
+			ImGui::SliderFloat("eta:", &matCT.eta, 1.0f, 5.0f);
 		} else {
 		}
 		ImGui::TreePop();
