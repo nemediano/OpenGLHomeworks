@@ -173,7 +173,22 @@ void drawGUI() {
 	ImGui::RadioButton("Diffuse", &currentMode, 2); ImGui::SameLine();
 	ImGui::RadioButton("Specular", &currentMode, 3);
 
-	
+	ImGui::Text("Light position");
+	ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
+	ImGui::SliderAngle("Angle X", &light.eulerAngles.x, -180.0f, 180.0f);
+	ImGui::SliderAngle("Angle Y", &light.eulerAngles.y, -180.0f, 180.0f);
+
+	if (ImGui::CollapsingHeader("Light physical properties")) {
+		vec3 La = light.properties.getLa();
+		vec3 Ld = light.properties.getLd();
+		vec3 Ls = light.properties.getLs();
+		ImGui::ColorEdit3("Ambient", glm::value_ptr(La));
+		ImGui::ColorEdit3("Difusse", glm::value_ptr(Ld));
+		ImGui::ColorEdit3("Specular", glm::value_ptr(Ls));
+		light.properties.setLa(La);
+		light.properties.setLd(Ld);
+		light.properties.setLs(Ls);
+	}
 
 	if (ImGui::CollapsingHeader("Material editor")) {
 		//Edit Material
@@ -204,24 +219,6 @@ void drawGUI() {
 		}
 	}
 
-	ImGui::Text("Light position");
-	ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
-	ImGui::SliderAngle("Angle X", &light.eulerAngles.x, -180.0f, 180.0f);
-	ImGui::SliderAngle("Angle Y", &light.eulerAngles.y, -180.0f, 180.0f);
-
-	if (ImGui::CollapsingHeader("Light physical properties")) {
-		vec3 La = light.properties.getLa();
-		vec3 Ld = light.properties.getLd();
-		vec3 Ls = light.properties.getLs();
-		ImGui::ColorEdit3("Ambient", glm::value_ptr(La));
-		ImGui::ColorEdit3("Difusse", glm::value_ptr(Ld));
-		ImGui::ColorEdit3("Specular", glm::value_ptr(Ls));
-		light.properties.setLa(La);
-		light.properties.setLd(Ld);
-		light.properties.setLs(Ls);
-	}
-	
-	
 	if (ImGui::CollapsingHeader("General options")) {
 		ImGui::Checkbox("Rotation", &rotation);
 		ImGui::Checkbox("Gamma correction", &gammaCorrection);
@@ -230,10 +227,15 @@ void drawGUI() {
 		}
 		if (ImGui::Button("Quit")) {
 			exit_glut();
-		}
+		} 
+		ImGui::SameLine();
 		if (ImGui::Button("Reset camera")) {
-			cam.setFovY(PI / 8.0f);
+			cam.setFovY(PI / 4.0f);
 			ball.resetRotation();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Screenshot")) {
+			grabber.grab();
 		}
 	}
 	ImGui::End();
@@ -246,7 +248,6 @@ void exit_glut() {
 	delete meshPtr;
 	delete cubePtr;
 	delete spherePtr;
-	
 	delete phongViewPtr;
 	delete phongWorldPtr;
 	/* Shut down the gui */
@@ -315,7 +316,7 @@ void init_program() {
 	backgroundColor = vec3(0.15f);
 	
 	currentShader = 0;
-	currentMesh = 2;
+	currentMesh = 0;
 	currentMode = 0;
 	gammaCorrection = false;
 	gamma = 1.0f;
@@ -647,6 +648,27 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 
 	/* Now, the app */
 	switch (key) {
+		case '1':
+			currentMesh = 0;
+		break;
+
+		case '2':
+			currentMesh = 1;
+		break;
+
+		case '3':
+			currentMesh = 2;
+		break;
+
+		case 'W':
+		case 'w':
+			currentShader = 0;
+		break;
+
+		case 'V':
+		case 'v':
+			currentShader = 1;
+		break;
 
 		case 'R':
 		case 'r':
@@ -663,7 +685,7 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 
 		case 'c':
 		case 'C':
-			cam.setFovY(PI / 8.0f);
+			cam.setFovY(PI / 4.0f);
 			ball.resetRotation();
 		break;
 
@@ -706,7 +728,23 @@ void special(int key, int mouse_x, int mouse_y) {
 	/* See if ImGui handles it*/
 	ImGuiIO& io = ImGui::GetIO();
 	io.AddInputCharacter(key);
+	switch (key) {
+		case GLUT_KEY_F1:
+			currentMode = 0;
+		break;
 
+		case GLUT_KEY_F2:
+			currentMode = 1;
+		break;
+
+		case GLUT_KEY_F3:
+			currentMode = 2;
+		break;
+
+		case GLUT_KEY_F4:
+			currentMode = 3;
+		break;
+	}
 	/* Now, the app*/
 	glutPostRedisplay();
 }
