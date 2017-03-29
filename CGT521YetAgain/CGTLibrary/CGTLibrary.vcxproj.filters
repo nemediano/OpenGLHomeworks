@@ -114,6 +114,9 @@
     <ClInclude Include="MathHelpers.h">
       <Filter>Header Files\math</Filter>
     </ClInclude>
+    <ClInclude Include="ScreenGrabber.h">
+      <Filter>Header Files\image</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -166,6 +169,9 @@
     </ClCompile>
     <ClCompile Include="MathHelpers.cpp">
       <Filter>Source Files\math</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenGrabber.cpp">
+      <Filter>Source Files\image</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

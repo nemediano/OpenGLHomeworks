@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 /*Headers needed for imgui */
 #include "imgui/imgui.h"
@@ -27,14 +28,18 @@
 #include "LightPhong.h"
 #include "MatPhong.h"
 #include "Geometries.h"
+#include "ScreenGrabber.h"
+
 using namespace math;
 using namespace mesh;
 using namespace camera;
 using namespace ogl;
 using namespace lighting;
+using namespace image;
 /* CGT Library related*/
 Camera cam;
 Trackball ball;
+ScreenGrabber grabber;
 Mesh* meshPtr = nullptr;
 Mesh* cubePtr = nullptr;
 Mesh* spherePtr = nullptr;
@@ -75,7 +80,7 @@ Locations phongWorldLoc;
 
 //Global variables for the program logic
 struct Light {
-	glm::vec2 angles;
+	glm::vec3 eulerAngles;
 	float distance;
 	LightPhong properties;
 };
@@ -93,6 +98,10 @@ bool rotation;
 glm::vec3 backgroundColor;
 int currentShader;
 int currentMesh;
+int currentMode;
+int selectedMaterial;
+
+std::vector<MatPhong> materials;
 
 void passLightingState();
 void reload_shaders();
@@ -158,6 +167,14 @@ void drawGUI() {
 	ImGui::RadioButton("World", &currentShader, 0); ImGui::SameLine();
 	ImGui::RadioButton("View", &currentShader, 1);
 	
+	ImGui::Text("Reflections");
+	ImGui::RadioButton("Full", &currentMode, 0); ImGui::SameLine();
+	ImGui::RadioButton("Ambient", &currentMode, 1); ImGui::SameLine();
+	ImGui::RadioButton("Diffuse", &currentMode, 2); ImGui::SameLine();
+	ImGui::RadioButton("Specular", &currentMode, 3);
+
+	
+
 	if (ImGui::CollapsingHeader("Material editor")) {
 		//Edit Material
 		vec3 Ka = mat.getKa();
@@ -167,17 +184,30 @@ void drawGUI() {
 		ImGui::ColorEdit3("Ambient", glm::value_ptr(Ka));
 		ImGui::ColorEdit3("Difusse", glm::value_ptr(Kd));
 		ImGui::ColorEdit3("Specular", glm::value_ptr(Ks));
-		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 256.0f, "%.2f", 2.0f);
+		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 128.0f, "%.2f", 3.0f);
 		mat.setKa(Ka);
 		mat.setKd(Kd);
 		mat.setKs(Ks);
 		mat.setAlpha(alpha);
+
+		const char* items[] = { 
+								"Emerald", "Jade", "Obsidian", "Pearl", "Ruby", "Turquoise",
+								"Brass", "Bronze", "Chrome", "Copper", "Gold", "Silver",
+								"Black plastic", "Cyan plastic", "Green plastic", "Red plastic", "White plastic", "Yellow plastic",
+								"Black rubber", "Cyan rubber", "Green rubber", "Red rubber", "White rubber", "Yellow rubber",
+							  };
+		static int selectedMaterial = -1;
+		ImGui::Combo("Predefined", &selectedMaterial, items, materials.size());
+		if (ImGui::Button("Load") && selectedMaterial != -1) {
+			mat = materials[selectedMaterial];
+			selectedMaterial = -1;
+		}
 	}
 
 	ImGui::Text("Light position");
 	ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
-	ImGui::SliderAngle("Azimuth angle (Theta)", &light.angles.y, 0.0f, 180.0f);
-	ImGui::SliderAngle("Polar angle (Phi)", &light.angles.x, 0.0f, 360.0f);
+	ImGui::SliderAngle("Angle X", &light.eulerAngles.x, -180.0f, 180.0f);
+	ImGui::SliderAngle("Angle Y", &light.eulerAngles.y, -180.0f, 180.0f);
 
 	if (ImGui::CollapsingHeader("Light physical properties")) {
 		vec3 La = light.properties.getLa();
@@ -236,6 +266,7 @@ void create_glut_window() {
 
 void init_program() {
 	using glm::vec3;
+	using namespace lighting;
 	/* Initialize global variables for program control */
 	rotation = false;
 	/* Then, create primitives (load them from mesh) */
@@ -267,24 +298,57 @@ void init_program() {
 	cam.setDepthView(0.1f, 3.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	//Also setup the image grabber
+	grabber.resize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Default position of the spotlight
-	light.angles = glm::vec2(TAU / 8.0f, PI / 4.0f);
+	light.eulerAngles = glm::vec3(-TAU / 8.0f, TAU / 8.0f, 0.0f);
 	light.distance = glm::sqrt(3.0f);
 	light.properties.setLa(vec3(1.0f));
 	light.properties.setLs(vec3(1.0f));
 	light.properties.setLd(vec3(1.0f));
 	//Default material
-	vec3 yellow = vec3(1.0f, 1.0f, 0.0f);
-	mat.setKa(0.25f * yellow);
-	mat.setKd(yellow);
-	mat.setKs(vec3(0.5f));
+	mat.setKa(vec3(0.122f, 0.216f, 0.145f));
+	mat.setKd(vec3(0.4f, 0.742f, 0.7f));
+	mat.setKs(vec3(0.48f, 0.188f, 0.447f));
+	mat.setAlpha(3.36f);
 
 	backgroundColor = vec3(0.15f);
 	
 	currentShader = 0;
-	currentMesh = 1;
+	currentMesh = 2;
+	currentMode = 0;
 	gammaCorrection = false;
 	gamma = 1.0f;
+	selectedMaterial = -1;
+	/*Load predefined materials*/
+
+	materials.push_back(EMERALD);
+	materials.push_back(JADE);
+	materials.push_back(OBSIDIAN);
+	materials.push_back(PEARL);
+	materials.push_back(RUBY);
+	materials.push_back(TURQUOISE);
+
+	materials.push_back(BRASS);
+	materials.push_back(BRONZE);
+	materials.push_back(CHROME);
+	materials.push_back(COPPER);
+	materials.push_back(GOLD);
+	materials.push_back(SILVER);
+
+	materials.push_back(BLACK_PLASTIC);
+	materials.push_back(CYAN_PLASTIC);
+	materials.push_back(GREEN_PLASTIC);
+	materials.push_back(RED_PLASTIC);
+	materials.push_back(WHITE_PLASTIC);
+	materials.push_back(YELLOW_PLASTIC);
+
+	materials.push_back(BLACK_RUBBER);
+	materials.push_back(CYAN_RUBBER);
+	materials.push_back(GREEN_RUBBER);
+	materials.push_back(RED_RUBBER);
+	materials.push_back(WHITE_RUBBER);
+	materials.push_back(YELLOW_RUBBER);
 }
 
 void init_OpenGL() {
@@ -385,9 +449,32 @@ void reload_shaders() {
 
 void passLightingState() {
 	if (currentShader == 0) {
-		glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
-		glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
-		glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+		switch (currentMode) {
+			//Full model
+			case 0:
+				glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+				glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+				glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+			break;
+			//Just ambient
+			case 1:
+				glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+				glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+				glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
+			break;
+			//Just difusee
+			case 2:
+				glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
+				glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+				glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+			break;
+			//Just specular
+			case 3:
+				glUniform3fv(phongWorldLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
+				glUniform3fv(phongWorldLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+				glUniform3fv(phongWorldLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
+			break;
+		}
 		glUniform1f(phongWorldLoc.u_alpha, mat.getAlpha());
 
 		glUniform3fv(phongWorldLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
@@ -395,9 +482,32 @@ void passLightingState() {
 		glUniform3fv(phongWorldLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
 	
 	} else {
-		glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
-		glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
-		glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+		switch (currentMode) {
+			//Full model
+		case 0:
+			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+			break;
+			//Just ambient
+		case 1:
+			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
+			break;
+			//Just difusee
+		case 2:
+			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+			break;
+			//Just specular
+		case 3:
+			glUniform3fv(phongViewLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+			glUniform3fv(phongViewLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
+			break;
+		}
 		glUniform1f(phongViewLoc.u_alpha, mat.getAlpha());
 
 		glUniform3fv(phongViewLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
@@ -441,6 +551,7 @@ void reshape(int new_window_width, int new_window_height) {
 	glViewport(0, 0, new_window_width, new_window_height);
 	cam.setAspectRatio(new_window_width, new_window_height);
 	ball.setWindowSize(new_window_width, new_window_height);
+	grabber.resize(new_window_width, new_window_height);
 }
 
 void display() {
@@ -449,20 +560,23 @@ void display() {
 	using glm::vec2;
 	using glm::mat4;
 
+	//Select mesh to render
+	change_mesh();
+
 	mat4 I(1.0f);
 	//Model
 	mat4 M = rotation ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
-	//M = glm::rotate(M, TAU / 4.0f, vec3(1.0, 0.0f, 0.0f));
 	M = glm::scale(M, vec3(scaleFactor));
 	M = glm::translate(M, -meshCenter);
-
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 
-	//Select mesh to render
-	change_mesh();
+	//Calculate Light position
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	if (currentShader == 0) {
@@ -474,15 +588,11 @@ void display() {
 		glUniformMatrix4fv(phongWorldLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(phongWorldLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(phongWorldLoc.u_gamma, gamma);
-		vec3 light_pos = vec3(1.0f);
-		light_pos.x = light.distance * glm::sin(light.angles.x) * glm::sin(light.angles.y);
-		light_pos.y = light.distance * glm::sin(light.angles.x) * glm::cos(light.angles.y);
-		light_pos.z = light.distance * glm::cos(light.angles.x);
-
-		glUniform3fv(phongWorldLoc.u_LightPos, 1, glm::value_ptr(light_pos));
+		glUniform3fv(phongWorldLoc.u_LightPos, 1, glm::value_ptr(light_position));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongWorldLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+
 		//Send light and material
 		passLightingState();
 		/* Draw */
@@ -498,8 +608,7 @@ void display() {
 		glUniformMatrix4fv(phongViewLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
 		glUniformMatrix4fv(phongViewLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
 		glUniform1f(phongViewLoc.u_gamma, gamma);
-		vec4 light_pos = vec4(1.0f);
-		vec3 posInView = vec3(V * light_pos);
+		vec3 posInView = vec3(V * vec4(light_position, 1.0f));
 		glUniform3fv(phongViewLoc.u_LightPos, 1, glm::value_ptr(posInView));
 		//Send light and material
 		passLightingState();
@@ -539,22 +648,26 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	/* Now, the app */
 	switch (key) {
 
-	case 'R':
-	case 'r':
-		rotation = !rotation;
+		case 'R':
+		case 'r':
+			rotation = !rotation;
 		break;
 
-	case 27:
-		exit_glut();
+		case ' ':
+			grabber.grab();
+			break;
+
+		case 27:
+			exit_glut();
 		break;
 
-	case 'c':
-	case 'C':
-		cam.setFovY(PI / 8.0f);
-		ball.resetRotation();
+		case 'c':
+		case 'C':
+			cam.setFovY(PI / 8.0f);
+			ball.resetRotation();
 		break;
 
-	default:
+		default:
 		break;
 	}
 
@@ -605,8 +718,7 @@ void mouseWheel(int button, int dir, int mouse_x, int mouse_y) {
 	io.MousePos = ImVec2(float(mouse_x), float(mouse_y));
 	if (dir > 0) {
 		io.MouseWheel = 1.0;
-	}
-	else if (dir < 0) {
+	} else if (dir < 0) {
 		io.MouseWheel = -1.0;
 	}
 

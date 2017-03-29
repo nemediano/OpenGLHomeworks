@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cstdio>
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
