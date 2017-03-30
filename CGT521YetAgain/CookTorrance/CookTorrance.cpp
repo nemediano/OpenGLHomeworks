@@ -328,7 +328,7 @@ void init_program() {
 	gammaCorrection = false;
 	gamma = 1.0f;
 	/*Load predefined materials*/
-
+	materials.push_back(EMERALD);
 }
 
 void init_OpenGL() {

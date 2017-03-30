@@ -379,6 +379,7 @@ void reload_shaders() {
 	using std::cout;
 	using std::cerr;
 	using std::endl;
+	using glm::vec3;
 
 	phongViewPtr = new OGLProgram("shaders/phongView.vert", "shaders/phongView.frag");
 	phongWorldPtr = new OGLProgram("shaders/phongWorld.vert", "shaders/phongWorld.frag");
@@ -448,6 +449,7 @@ void reload_shaders() {
 }
 
 void passLightingState() {
+	using glm::vec3;
 	if (currentShader == 0) {
 		switch (currentMode) {
 			//Full model

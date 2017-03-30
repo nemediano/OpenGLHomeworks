@@ -4,18 +4,16 @@ in vec2 fTextCoord;
 in vec3 fPosition;
 
 struct Light {
-	vec3 La;
-	vec3 Ls;
-	vec3 Ld;
 	vec3 position;
+	vec3 color;
+	float intensity;
 };
 
 struct Material {
-	vec3 Ka;
-	vec3 Ks;
-	vec3 Kd;
-	float m;
-	float eta;
+	float metalicity;
+	float roughness;
+	vec3 baseColor;
+	vec3 F0;
 };
 
 uniform Light light;
@@ -26,86 +24,72 @@ uniform int option = 0;
 
 out vec4 fragcolor;
 
-float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l);
-float roughness_term(vec3 n, vec3 h, float m);
-float fresnel_term(vec3 h, vec3 v, float eta);
+float geometric_term(float roughness, vec3 L_or_V, vec3 n);
+float distribution_term(float NdH, float alpha2);
+vec3 fresnel_term(float VdH, vec3 F0);
 
-const float EPSILON = 0.0000001;
+const float EPSILON = 1e-7;
+const float PI = 3.14159;
 
 void main(void) {
 	vec3 color = vec3(0.0);
 	vec3 l = normalize(light.position - fPosition);
 	vec3 n = normalize(fNormal);
 	vec3 v = normalize(-fPosition);
-	vec3 r = normalize(reflect(-l, n));
 	vec3 h = normalize(l + v);
 	
-	vec3 Ka = mat.Ka;
-	vec3 Kd = mat.Kd;
-	vec3 Ks = mat.Ks;
-	float eta = mat.eta;
-	float m = mat.m;
+	vec3 baseColor = mat.baseColor;
+	vec3 F0 = mat.F0;
+	float roughness = mat.roughness;
+	float metalicity = mat.metalicity;
 	
-	vec3 La = light.La;
-	vec3 Ld = light.Ld;
-	vec3 Ls = light.Ls;
+	vec3 lightColor = light.color;
+	float intensity = light.intensity;
 	
-	float F = fresnel_term(h, v, eta);
-	float D = roughness_term(n, h, m);
-	float G = geometric_attenuation(n, h, v, l);
-	
-	vec3 ambient_color = Ka * La;
-	vec3 diffuse_color = Kd * Ld * max(0.0, dot(n, l));
-	vec3 speculr_color;
-	
-	float n_dot_l = dot(n, l);
+	float n_dot_l = max(0.0, dot(n, l));
 	float n_dot_v = max(0.0, dot(n, v));
+	float v_dot_h = max(0.0, dot(v, h));
+	float n_dot_h = max(0.0, dot(n, h));
+	//No light radious (Directional light?)
+	float lighRadius = 0.0;
+	float alpha2 = roughness * roughness + lighRadius;
 	
-	if (option == 1) {
-		speculr_color = max(0.0, F / (4.0 * n_dot_l * n_dot_v)) * vec3(1.0);
-	} else if (option == 2) {
-		speculr_color = max(0.0, D / (4.0 * n_dot_l * n_dot_v)) * vec3(1.0);
-	} else if (option == 3) {
-		speculr_color = max(0.0, G / (4.0 * n_dot_l * n_dot_v)) * vec3(1.0);
-	} else {
-		speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * n_dot_l * n_dot_v));
-	}
+	vec3  F = fresnel_term(v_dot_h, F0);
+	float D = distribution_term(n_dot_h, alpha2);
+	float Gl = geometric_term(roughness, l, n);
+	float Gv = geometric_term(roughness, v, n);
 	
-	color = ambient_color + diffuse_color + speculr_color;
+	// Ambient lighting, to fake an image based map
+	vec3 ambient_color = 0.1 * baseColor;
+	// metals don't have a diffuse contribution, so turn off the diffuse color
+	// when the material is metallic
+	vec3 diffuse_color = ((1.0 - metalicity) / PI) * baseColor;
+	//use reflectance to calculate energy conservation
+	//diffuse_color *= vec3(1.0) - F0;
+	vec3 speculr_color = ((Gl * Gv * D) / (max(EPSILON, 4.0 * n_dot_l * n_dot_v))) * F;
+	
+	color = ambient_color + (lightColor * intensity) * (n_dot_l * (diffuse_color + speculr_color));
 	
 	fragcolor = vec4(pow(color, vec3(1.0 / gamma)), 1.0);
 }
 
-float geometric_attenuation(vec3 n, vec3 h, vec3 v, vec3 l) {
-	
-	float n_dot_h = max(0.0, dot(n, h));
-	float v_dot_h = max(EPSILON, dot(v, h));
-	float n_dot_v = max(0.0, dot(n, v));
-	float n_dot_l = dot(n, l);
-	
-	float masking = 2.0f * n_dot_h * n_dot_v / v_dot_h;
-	float shadowing = 2.0f * n_dot_h * n_dot_l / v_dot_h;
-	
-	return min(1.0f, min(masking, shadowing));
+float geometric_term(float roughness, vec3 L_or_V, vec3 n) {
+	// remapped roughness, to be used for the geometry term calculations,
+	// per Disney [16], Unreal [3]. N.B. don't do this in IBL
+	float roughness_remapped = 0.5 + roughness / 2.0;
+
+	float NdV = max(0.0, dot(n, L_or_V));
+
+	float k = pow(roughness_remapped + 1.0, 2.0) / 8.0;
+	return NdV / ((NdV) * (1.0 - k) + k);
+}
+//Also known as roughness term
+float distribution_term(float NdH, float alpha2) {
+	float D_denominator = ((NdH * NdH)*(alpha2 - 1.0) + 1.0);
+	return alpha2 / (max(PI * D_denominator * D_denominator, EPSILON));
 }
 
-float roughness_term(vec3 n, vec3 h, float m) {
-	float n_dot_h_sq = dot(n, h) * dot(n, h);
-	float tan_sq = (1.0f - n_dot_h_sq) / (n_dot_h_sq);
-	float m_sq = m * m;
-	
-	return exp(-1.0f * tan_sq / (m_sq)) / (3.1416f * m_sq * n_dot_h_sq * n_dot_h_sq);
-}
-
-float fresnel_term(vec3 h, vec3 v, float eta) {
-	float c = dot(v, h);
-	float g = sqrt(eta * eta + c * c - 1.0);
-	
-	float g_plus_c = g + c;
-	float g_minus_c = g - c;
-	
-	float left_factor  =  (g_minus_c * g_minus_c) / (2.0 * g_plus_c * g_plus_c);
-	float right_factor = (1.0 + pow(c * g_plus_c - 1.0, 2.0) / pow(c * g_minus_c - 1.0, 2.0));
-	
-	return left_factor * right_factor;
+// Schlick approximation
+vec3 fresnel_term(float VdH, vec3 F0) {	
+	return F0 + (vec3(1.0) - F0) * pow(2.0, (-5.55473 * VdH - 6.98316) * VdH);
 }

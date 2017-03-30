@@ -117,6 +117,9 @@
     <ClInclude Include="ScreenGrabber.h">
       <Filter>Header Files\image</Filter>
     </ClInclude>
+    <ClInclude Include="Punctual.h">
+      <Filter>Header Files\lighting</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -172,6 +175,9 @@
     </ClCompile>
     <ClCompile Include="ScreenGrabber.cpp">
       <Filter>Source Files\image</Filter>
+    </ClCompile>
+    <ClCompile Include="Punctual.cpp">
+      <Filter>Source Files\lighting</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -26,5 +26,5 @@ public:
 	float getMicrofacetSlope() const;
 	~MatCookTorrance();
 };
-
+const MatCookTorrance EMERALD = MatCookTorrance(glm::vec3(0.0215f, 0.1745f, 0.0215f), glm::vec3(0.07568f, 0.61424f, 0.07568f), glm::vec3(0.633f, 0.727811f, 0.633f), 1.48f, 0.083f);
 }
