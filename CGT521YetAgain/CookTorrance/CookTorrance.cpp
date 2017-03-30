@@ -184,8 +184,11 @@ void drawGUI() {
 		vec3 Ld = light.properties.getLd();
 		vec3 Ls = light.properties.getLs();
 		ImGui::ColorEdit3("Ambient", glm::value_ptr(La));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", La.r, La.g, La.b);
 		ImGui::ColorEdit3("Difusse", glm::value_ptr(Ld));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ld.r, Ld.g, Ld.b);
 		ImGui::ColorEdit3("Specular", glm::value_ptr(Ls));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ls.r, Ls.g, Ls.b);
 		light.properties.setLa(La);
 		light.properties.setLd(Ld);
 		light.properties.setLs(Ls);
@@ -199,8 +202,11 @@ void drawGUI() {
 		float eta = mat.getRefractionIndex();
 		float m = mat.getMicrofacetSlope();
 		ImGui::ColorEdit3("Ambient", glm::value_ptr(Ka));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ka.r, Ka.g, Ka.b);
 		ImGui::ColorEdit3("Difusse", glm::value_ptr(Kd));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", Kd.r, Kd.g, Kd.b);
 		ImGui::ColorEdit3("Specular", glm::value_ptr(Ks));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ks.r, Ks.g, Ks.b);
 		ImGui::Text("Index of refraction");
 		ImGui::SliderFloat("Eta", &eta, 1.0f, 5.0f, "%.2f");
 		ImGui::Text("Microfacet orientation");

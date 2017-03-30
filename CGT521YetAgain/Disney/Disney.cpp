@@ -61,6 +61,7 @@ struct Locations {
 
 	GLint u_intensity = -1;
 	GLint u_lightColor = -1;
+	GLint u_lightRatio = -1;
 
 	GLint u_LightPos = -1;
 	GLint u_CameraPos = -1;
@@ -82,6 +83,7 @@ Locations disneyWorldLoc;
 struct MyLight {
 	glm::vec3 eulerAngles;
 	float distance;
+	float ratio;
 	Punctual properties;
 };
 
@@ -180,10 +182,14 @@ void drawGUI() {
 	if (ImGui::CollapsingHeader("Light physical properties")) {
 		vec3 color = light.properties.getColor();
 		float intensity = light.properties.getIntensity();
+		float ratio = light.ratio;
 		ImGui::ColorEdit3("Color", glm::value_ptr(color));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", color.r, color.g, color.b);
 		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
+		ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
 		light.properties.setColor(color);
 		light.properties.setIntensity(intensity);
+		light.ratio = ratio;
 	}
 
 	if (ImGui::CollapsingHeader("Material editor")) {
@@ -193,7 +199,9 @@ void drawGUI() {
 		float metalicity = mat.getMetalicity();
 		float roughness = mat.getRoughness();
 		ImGui::ColorEdit3("Base color", glm::value_ptr(baseColor));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", baseColor.r, baseColor.g, baseColor.b);
 		ImGui::ColorEdit3("Specular Color", glm::value_ptr(F0));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", F0.r, F0.g, F0.b);
 		ImGui::SliderFloat("Metalicity", &metalicity, 0.0f, 1.0f, "%.3f");
 		ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f, "%.3f");
 		mat.setBaseColor(baseColor);
@@ -379,6 +387,7 @@ void reload_shaders() {
 	disneyViewLoc.u_LightPos = disneyViewPtr->uniformLoc("light.position");
 	disneyViewLoc.u_lightColor = disneyViewPtr->uniformLoc("light.color");
 	disneyViewLoc.u_intensity = disneyViewPtr->uniformLoc("light.intensity");
+	disneyViewLoc.u_lightRatio = disneyViewPtr->uniformLoc("light.ratio");
 	//Material
 	disneyViewLoc.u_base_color = disneyViewPtr->uniformLoc("mat.baseColor");
 	disneyViewLoc.u_roughness = disneyViewPtr->uniformLoc("mat.roughness");
@@ -402,6 +411,7 @@ void reload_shaders() {
 	disneyWorldLoc.u_LightPos = disneyWorldPtr->uniformLoc("light.position");
 	disneyWorldLoc.u_lightColor = disneyWorldPtr->uniformLoc("light.color");
 	disneyWorldLoc.u_intensity = disneyWorldPtr->uniformLoc("light.intensity");
+	disneyWorldLoc.u_lightRatio = disneyWorldPtr->uniformLoc("light.ratio");
 	//Material
 	disneyWorldLoc.u_base_color = disneyWorldPtr->uniformLoc("mat.baseColor");
 	disneyWorldLoc.u_roughness = disneyWorldPtr->uniformLoc("mat.roughness");
@@ -423,6 +433,7 @@ void passLightingState() {
 		case 0:
 			glUniform3fv(disneyWorldLoc.u_lightColor, 1, glm::value_ptr(light.properties.getColor()));
 			glUniform1f(disneyWorldLoc.u_intensity, light.properties.getIntensity());
+			glUniform1f(disneyWorldLoc.u_lightRatio, light.ratio);
 			glUniform3fv(disneyWorldLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
 			glUniform3fv(disneyWorldLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
 			break;
@@ -432,6 +443,7 @@ void passLightingState() {
 		case 3:
 			glUniform3fv(disneyWorldLoc.u_lightColor, 1, glm::value_ptr(vec3(1.0f)));
 			glUniform1f(disneyWorldLoc.u_intensity, 1.0f);
+			glUniform1f(disneyWorldLoc.u_lightRatio, 0.0f);
 			glUniform3fv(disneyWorldLoc.u_base_color, 1, glm::value_ptr(vec3(1.0f)));
 			glUniform3fv(disneyWorldLoc.u_F0, 1, glm::value_ptr(vec3(1.0f)));
 			break;
@@ -445,6 +457,7 @@ void passLightingState() {
 		case 0:
 			glUniform3fv(disneyViewLoc.u_lightColor, 1, glm::value_ptr(light.properties.getColor()));
 			glUniform1f(disneyViewLoc.u_intensity, light.properties.getIntensity());
+			glUniform1f(disneyViewLoc.u_lightRatio, light.ratio);
 			glUniform3fv(disneyViewLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
 			glUniform3fv(disneyViewLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
 			break;
@@ -454,6 +467,7 @@ void passLightingState() {
 		case 3:
 			glUniform3fv(disneyViewLoc.u_lightColor, 1, glm::value_ptr(vec3(1.0f)));
 			glUniform1f(disneyViewLoc.u_intensity, 1.0f);
+			glUniform1f(disneyViewLoc.u_lightRatio, 0.0f);
 			glUniform3fv(disneyViewLoc.u_base_color, 1, glm::value_ptr(vec3(1.0f)));
 			glUniform3fv(disneyViewLoc.u_F0, 1, glm::value_ptr(vec3(1.0f)));
 			break;

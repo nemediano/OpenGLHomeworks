@@ -7,6 +7,7 @@ struct Light {
 	vec3 position;
 	vec3 color;
 	float intensity;
+	float ratio;
 };
 
 struct Material {
@@ -51,7 +52,7 @@ void main(void) {
 	float v_dot_h = max(0.0, dot(v, h));
 	float n_dot_h = max(0.0, dot(n, h));
 	//No light radious (Directional light?)
-	float lighRadius = 0.0;
+	float lighRadius = light.ratio;
 	float alpha2 = roughness * roughness + lighRadius;
 	
 	vec3  F = fresnel_term(v_dot_h, F0);
