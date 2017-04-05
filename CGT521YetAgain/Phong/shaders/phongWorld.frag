@@ -43,6 +43,8 @@ void main(void) {
 	vec3 ambient_color = Ka * La;
 	vec3 diffuse_color = Kd * Ld * max(0.0, dot(n, l));
 	vec3 speculr_color = Ks * Ls * pow(max(0.0, dot(r, v)), alpha);
+	//Old school OpenGL actually used this model to make it faster.
+	//vec3 speculr_color = Ks * Ls * max(0.0, dot(r, v)) * alpha ;
 	
 	color = ambient_color + diffuse_color + speculr_color;
 	
