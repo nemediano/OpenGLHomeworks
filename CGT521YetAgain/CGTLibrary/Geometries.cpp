@@ -123,9 +123,107 @@ namespace mesh {
 	}
 
 	Mesh Geometries::insideOutCube() {
-		Mesh m;
+		Mesh cube;
 
-		return m;
+		vector<vec3> points(8);
+		vector<vec3> normals(6);
+		vector<vec2> textCoords(4);
+
+		points[0] = 0.5f * vec3(-1.0f, -1.0f, -1.0f);
+		points[1] = 0.5f * vec3(1.0f, -1.0f, -1.0f);
+		points[2] = 0.5f * vec3(1.0f, 1.0f, -1.0f);
+		points[3] = 0.5f * vec3(-1.0f, 1.0f, -1.0f);
+		points[4] = 0.5f * vec3(-1.0f, -1.0f, 1.0f);
+		points[5] = 0.5f * vec3(1.0f, -1.0f, 1.0f);
+		points[6] = 0.5f * vec3(1.0f, 1.0f, 1.0f);
+		points[7] = 0.5f * vec3(-1.0f, 1.0f, 1.0f);
+
+		normals[0] = vec3(0.0f, 0.0f, -1.0f);
+		normals[1] = vec3(0.0f, -1.0f, 0.0f);
+		normals[2] = vec3(-1.0f, 0.0f, 0.0f);
+		normals[3] = vec3(0.0f, 0.0f, 1.0f);
+		normals[4] = vec3(0.0f, 1.0f, 0.0f);
+		normals[5] = vec3(1.0f, 0.0f, 0.0f);
+
+		textCoords[0] = vec2(0.0f, 0.0f);
+		textCoords[1] = vec2(0.0f, 1.0f);
+		textCoords[2] = vec2(1.0f, 1.0f);
+		textCoords[3] = vec2(1.0f, 0.0f);
+
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+		Vertex v;
+		//Back face of the cube
+		v.position = points[0]; v.normal = normals[3]; v.textCoord = textCoords[2]; vertices.push_back(v); //0
+		v.position = points[1]; v.normal = normals[3]; v.textCoord = textCoords[1]; vertices.push_back(v); //1
+		v.position = points[2]; v.normal = normals[3]; v.textCoord = textCoords[0]; vertices.push_back(v); //2
+		v.position = points[3]; v.normal = normals[3]; v.textCoord = textCoords[3]; vertices.push_back(v); //3
+		indices.push_back(2);
+		indices.push_back(0);
+		indices.push_back(1);
+		indices.push_back(3);
+		indices.push_back(0);
+		indices.push_back(2);
+		//Bottom face of the cube
+		v.position = points[0]; v.normal = normals[4]; v.textCoord = textCoords[3]; vertices.push_back(v); //4
+		v.position = points[1]; v.normal = normals[4]; v.textCoord = textCoords[0]; vertices.push_back(v); //5
+		v.position = points[5]; v.normal = normals[4]; v.textCoord = textCoords[1]; vertices.push_back(v); //6
+		v.position = points[4]; v.normal = normals[4]; v.textCoord = textCoords[2]; vertices.push_back(v); //7
+		indices.push_back(4);
+		indices.push_back(6);
+		indices.push_back(5);
+		indices.push_back(4);
+		indices.push_back(7);
+		indices.push_back(6);
+		//Left face of the cube
+		v.position = points[0]; v.normal = normals[5]; v.textCoord = textCoords[1]; vertices.push_back(v); //8
+		v.position = points[3]; v.normal = normals[5]; v.textCoord = textCoords[0]; vertices.push_back(v); //9
+		v.position = points[4]; v.normal = normals[5]; v.textCoord = textCoords[2]; vertices.push_back(v); //10
+		v.position = points[7]; v.normal = normals[5]; v.textCoord = textCoords[3]; vertices.push_back(v); //11
+		indices.push_back(8);
+		indices.push_back(11);
+		indices.push_back(10);
+		indices.push_back(8);
+		indices.push_back(9);
+		indices.push_back(11);
+		//Top face of the cube
+		v.position = points[2]; v.normal = normals[1]; v.textCoord = textCoords[3]; vertices.push_back(v); //12
+		v.position = points[3]; v.normal = normals[1]; v.textCoord = textCoords[0]; vertices.push_back(v); //13
+		v.position = points[6]; v.normal = normals[1]; v.textCoord = textCoords[2]; vertices.push_back(v); //14
+		v.position = points[7]; v.normal = normals[1]; v.textCoord = textCoords[1]; vertices.push_back(v); //15
+		indices.push_back(12);
+		indices.push_back(14);
+		indices.push_back(13);
+		indices.push_back(13);
+		indices.push_back(14);
+		indices.push_back(15);
+		//Right face of the cube
+		v.position = points[1]; v.normal = normals[2]; v.textCoord = textCoords[2]; vertices.push_back(v); //16
+		v.position = points[2]; v.normal = normals[2]; v.textCoord = textCoords[3]; vertices.push_back(v); //17
+		v.position = points[5]; v.normal = normals[2]; v.textCoord = textCoords[1]; vertices.push_back(v); //18
+		v.position = points[6]; v.normal = normals[2]; v.textCoord = textCoords[0]; vertices.push_back(v); //19
+		indices.push_back(16);
+		indices.push_back(18);
+		indices.push_back(17);
+		indices.push_back(17);
+		indices.push_back(18);
+		indices.push_back(19);
+		//Front face of the cube
+		v.position = points[4]; v.normal = normals[0]; v.textCoord = textCoords[1]; vertices.push_back(v); //20
+		v.position = points[5]; v.normal = normals[0]; v.textCoord = textCoords[2]; vertices.push_back(v); //21
+		v.position = points[6]; v.normal = normals[0]; v.textCoord = textCoords[3]; vertices.push_back(v); //22
+		v.position = points[7]; v.normal = normals[0]; v.textCoord = textCoords[0]; vertices.push_back(v); //23
+		indices.push_back(20);
+		indices.push_back(22);
+		indices.push_back(21);
+		indices.push_back(20);
+		indices.push_back(23);
+		indices.push_back(22);
+
+		cube.setVertices(vertices, true, true);
+		cube.setIndex(indices);
+
+		return cube;
 	}
 
 	Mesh Geometries::cone(int rings, int divisions) {

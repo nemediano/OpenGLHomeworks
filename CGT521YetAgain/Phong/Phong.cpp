@@ -301,7 +301,7 @@ void init_program() {
 	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 3.0f);
+	cam.setDepthView(0.1f, 4.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Also setup the image grabber
@@ -377,6 +377,10 @@ void init_OpenGL() {
 
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
+
+	//Back face culling
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 	
 	glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
 }
