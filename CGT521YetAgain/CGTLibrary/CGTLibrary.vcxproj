@@ -90,6 +90,7 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="OGLHelpers.h" />
     <ClInclude Include="OGLProgram.h" />
+    <ClInclude Include="ProceduralTextures.h" />
     <ClInclude Include="Punctual.h" />
     <ClInclude Include="ScreenGrabber.h" />
     <ClInclude Include="Spotlight.h" />
@@ -112,6 +113,7 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="OGLHelpers.cpp" />
     <ClCompile Include="OGLProgram.cpp" />
+    <ClCompile Include="ProceduralTextures.cpp" />
     <ClCompile Include="Punctual.cpp" />
     <ClCompile Include="ScreenGrabber.cpp" />
     <ClCompile Include="Spotlight.cpp" />

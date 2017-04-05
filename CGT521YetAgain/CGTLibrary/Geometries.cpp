@@ -116,6 +116,29 @@ namespace mesh {
 		return m;
 	}
 
+	Mesh Geometries::cylinder(int subAxis, int divisions, bool caps) {
+		Mesh m;
+
+		return m;
+	}
+
+	Mesh Geometries::insideOutCube() {
+		Mesh m;
+
+		return m;
+	}
+
+	Mesh Geometries::cone(int rings, int divisions) {
+		Mesh m;
+
+		return m;
+	}
+
+	Mesh Geometries::superQuadric() {
+		Mesh m;
+
+		return m;
+	}
 
 	//Temporal container for triangles before mesh indexin
 	std::vector<Triangle> triangles;
@@ -209,12 +232,6 @@ namespace mesh {
 
 		triangles.clear();
 		return sphere;
-	}
-
-	Mesh Geometries::cylinder(int subAxis, int subHeig) {
-		Mesh m;
-
-		return m;
 	}
 
 	Mesh Geometries::plane() {

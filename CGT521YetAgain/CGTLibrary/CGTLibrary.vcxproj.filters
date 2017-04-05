@@ -120,6 +120,9 @@
     <ClInclude Include="Punctual.h">
       <Filter>Header Files\lighting</Filter>
     </ClInclude>
+    <ClInclude Include="ProceduralTextures.h">
+      <Filter>Header Files\image</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -178,6 +181,9 @@
     </ClCompile>
     <ClCompile Include="Punctual.cpp">
       <Filter>Source Files\lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="ProceduralTextures.cpp">
+      <Filter>Source Files\image</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

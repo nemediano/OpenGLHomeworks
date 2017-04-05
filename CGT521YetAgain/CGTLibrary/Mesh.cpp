@@ -229,6 +229,10 @@ namespace mesh {
 		update_bounding_box();
 	}
 
+	bool Mesh::save(const std::string& out_obj_file) const {
+		return false;
+	}
+
 	bool Mesh::inGPU() const {
 		return m_in_gpu;
 	}

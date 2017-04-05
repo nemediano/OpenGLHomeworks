@@ -53,6 +53,7 @@ namespace mesh {
 		GLsizei trianglesCount() const;
 		GLsizei indicesCount() const;
 		GLsizei vertexCount() const;
+		bool save(const std::string& out_obj_file) const;
 	};
 };
 #endif

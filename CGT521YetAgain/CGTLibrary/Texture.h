@@ -24,6 +24,7 @@ namespace image {
 		int get_width() const;
 		int get_height() const;
 		GLuint get_id() const;
+		bool save(const std::string& output_png_file) const;
 	};
 }
 #endif

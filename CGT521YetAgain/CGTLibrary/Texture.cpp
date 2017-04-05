@@ -43,6 +43,10 @@ namespace image {
 		return true;
 	}
 
+	bool Texture::save(const std::string& output_png_file) const {
+		return false;
+	}
+
 	void Texture::bind() const {
 		glBindTexture(GL_TEXTURE_2D, m_texture_id);
 	}
