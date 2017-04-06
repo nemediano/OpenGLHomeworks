@@ -117,9 +117,48 @@ namespace mesh {
 	}
 
 	Mesh Geometries::cylinder(int subAxis, int divisions, bool caps) {
-		Mesh m;
+		
+		Mesh cylinder;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
 
-		return m;
+		float deltaHeight = 1.0f / subAxis;
+		for (int i = 0; i < subAxis; ++i) {
+			float angle = 0.0f;
+			float deltaAngle = TAU / divisions;
+			for (int j = 0; j < divisions; ++j) {
+				Vertex v;
+				v.position.x = cos(angle);
+				v.position.y = i * deltaHeight;
+				v.position.z = sin(angle);
+				v.normal = glm::normalize(vec3(v.position.x, 0.0f, v.position.z));
+				v.textCoord.s = angle / TAU;
+				v.textCoord.t = v.position.y;
+				vertices.push_back(v);
+				angle += deltaAngle;
+				//Start to create the triangles form second iteration and so on
+				if (j > 0) {
+					indices.push_back(i + j);
+					indices.push_back(i + j + 1);
+					indices.push_back(i + j + 2);
+				}
+			}
+		}
+
+
+		if (caps) {
+
+		}
+
+		cylinder.setVertices(vertices, true, true);
+		cylinder.setIndex(indices);
+		return cylinder;
+	}
+
+	Mesh Geometries::teapot() {
+		Mesh teapot;
+
+		return teapot;
 	}
 
 	Mesh Geometries::insideOutCube() {
@@ -330,6 +369,12 @@ namespace mesh {
 
 		triangles.clear();
 		return sphere;
+	}
+
+	Mesh Geometries::tethrahedra() {
+		Mesh teth;
+
+		return teth;
 	}
 
 	Mesh Geometries::plane() {

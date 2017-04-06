@@ -43,6 +43,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Disney", "Disney\Disney.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpotLight", "SpotLight\SpotLight.vcxproj", "{D3787953-22AA-4945-9C7C-502D64FC5739}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExploreMesh", "ExploreMesh\ExploreMesh.vcxproj", "{893298AB-F783-4A94-ACA0-1D4E57CA5002}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -147,6 +149,12 @@ Global
 		{D3787953-22AA-4945-9C7C-502D64FC5739}.Release|x64.ActiveCfg = Release|x64
 		{D3787953-22AA-4945-9C7C-502D64FC5739}.Release|x64.Build.0 = Release|x64
 		{D3787953-22AA-4945-9C7C-502D64FC5739}.Release|x86.ActiveCfg = Release|x64
+		{893298AB-F783-4A94-ACA0-1D4E57CA5002}.Debug|x64.ActiveCfg = Debug|x64
+		{893298AB-F783-4A94-ACA0-1D4E57CA5002}.Debug|x64.Build.0 = Debug|x64
+		{893298AB-F783-4A94-ACA0-1D4E57CA5002}.Debug|x86.ActiveCfg = Debug|x64
+		{893298AB-F783-4A94-ACA0-1D4E57CA5002}.Release|x64.ActiveCfg = Release|x64
+		{893298AB-F783-4A94-ACA0-1D4E57CA5002}.Release|x64.Build.0 = Release|x64
+		{893298AB-F783-4A94-ACA0-1D4E57CA5002}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
