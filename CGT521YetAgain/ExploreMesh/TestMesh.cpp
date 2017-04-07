@@ -80,7 +80,10 @@ float scaleFactor;
 glm::vec3 center;
 bool gammaCorrection;
 bool wireframe;
+bool cullFace;
+
 float gamma;
+int mode;
 
 std::vector<MatPhong> materials;
 
@@ -185,9 +188,13 @@ void drawGUI() {
 		light.setLs(Ls);
 	}
 	
+	ImGui::RadioButton("Full model", &mode, 0); ImGui::SameLine();
+	ImGui::RadioButton("Difusse", &mode, 1);
 	
+
 	ImGui::Checkbox("Gamma correction", &gammaCorrection);
 	ImGui::Checkbox("Wirefreme", &wireframe);
+	ImGui::Checkbox("Cull", &cullFace);
 	if (gammaCorrection) {
 		ImGui::SliderFloat("Gamma", &gamma, 1.0f, 2.5f);
 	}
@@ -231,7 +238,8 @@ void init_program() {
 	using glm::vec3;
 	
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::icosphere(3));
+	//meshPtr = new Mesh(Geometries::icosphere(3));
+	meshPtr = new Mesh(Geometries::cylinder(2, 4));
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -241,9 +249,11 @@ void init_program() {
 	center = meshPtr->getBBCenter();
 
 	gammaCorrection = false;
-	wireframe = false;
+	wireframe = true;
+	cullFace = false;
 	gamma = 1.0f;
 	seconds_elapsed = 0.0f;
+	mode = 0;
 	
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0.0f));
@@ -254,6 +264,11 @@ void init_program() {
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Also setup the image grabber
 	grabber.resize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+
+	mat.setAlpha(128);
+	mat.setKa(0.25f * vec3(1.0f, 1.0f, 0.0f));
+	mat.setKd(0.75f * vec3(1.0f, 1.0f, 0.0f));
+	mat.setKs(vec3(0.5f));
 
 	materials.push_back(EMERALD);
 	materials.push_back(JADE);
@@ -297,7 +312,7 @@ void reload_shaders() {
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	} else {
 		cout << "Shader compiled" << endl;
-		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+		glClearColor(0.85f, 0.85f, 0.85f, 1.0f);
 	}
 
 	/************************************************************************/
@@ -313,8 +328,8 @@ void reload_shaders() {
 	phongLoc.u_Light_Ld = programPtr->uniformLoc("light.Ld");
 	//Material
 	phongLoc.u_Material_Ka = programPtr->uniformLoc("mat.Ka");
-	phongLoc.u_Material_Kd = programPtr->uniformLoc("mat.Ks");
-	phongLoc.u_Material_Ks = programPtr->uniformLoc("mat.Kd");
+	phongLoc.u_Material_Ks = programPtr->uniformLoc("mat.Ks");
+	phongLoc.u_Material_Kd = programPtr->uniformLoc("mat.Kd");
 	phongLoc.u_Material_alpha = programPtr->uniformLoc("mat.alpha");
 	//Vertex attributes location
 	phongLoc.a_position = programPtr->attribLoc("Position");
@@ -339,8 +354,7 @@ void init_OpenGL() {
 
 	//Activate antialliasing
 	glEnable(GL_MULTISAMPLE);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+	
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
 	
@@ -352,9 +366,15 @@ void passLightingState() {
 	glUniform3fv(phongLoc.u_Light_Ls, 1, glm::value_ptr(light.getLs()));
 	glUniform3fv(phongLoc.u_Light_Ld, 1, glm::value_ptr(light.getLd()));
 	//Material
-	glUniform3fv(phongLoc.u_Material_Ka, 1, glm::value_ptr(mat.getKa()));
-	glUniform3fv(phongLoc.u_Material_Ks, 1, glm::value_ptr(mat.getKs()));
-	glUniform3fv(phongLoc.u_Material_Kd, 1, glm::value_ptr(mat.getKd()));
+	if (mode == 0) {
+		glUniform3fv(phongLoc.u_Material_Ka, 1, glm::value_ptr(mat.getKa()));
+		glUniform3fv(phongLoc.u_Material_Ks, 1, glm::value_ptr(mat.getKs()));
+		glUniform3fv(phongLoc.u_Material_Kd, 1, glm::value_ptr(mat.getKd()));
+	} else if (mode == 1) {
+		glUniform3fv(phongLoc.u_Material_Ka, 1, glm::value_ptr(glm::vec3(0.0f)));
+		glUniform3fv(phongLoc.u_Material_Ks, 1, glm::value_ptr(glm::vec3(0.0f)));
+		glUniform3fv(phongLoc.u_Material_Kd, 1, glm::value_ptr(mat.getKd()));
+	}
 	glUniform1f(phongLoc.u_Material_alpha, mat.getAlpha());
 }
 
@@ -383,8 +403,16 @@ void display() {
 	using glm::mat4;
 	if (wireframe) {
 		glPolygonMode(GL_FRONT, GL_LINE);
+		glPolygonMode(GL_BACK, GL_LINE);
 	} else {
 		glPolygonMode(GL_FRONT, GL_FILL);
+		glPolygonMode(GL_BACK, GL_FILL);
+	}
+	if (cullFace) {
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+	} else {
+		glDisable(GL_CULL_FACE);
 	}
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	programPtr->use();
@@ -418,6 +446,8 @@ void display() {
 	glUseProgram(0);
 
 	/* You need to call this to draw the GUI, After unbinding your program*/
+	glPolygonMode(GL_FRONT, GL_FILL);
+	glPolygonMode(GL_BACK, GL_FILL);
 	drawGUI();
 	/* But, before flushing the drawinng commands*/
 

@@ -25,7 +25,7 @@ out vec4 fragcolor;
 
 void main(void) {
 	vec3 color = vec3(0.0);
-	//Directional light
+	//Directional light (in view space)
 	vec3 l = vec3(0.0, 0.0, 1.0);
 	vec3 n = normalize(fNormal);
 	vec3 v = normalize(-fPosition);
@@ -43,10 +43,8 @@ void main(void) {
 	vec3 ambient_color = Ka * La;
 	vec3 diffuse_color = Kd * Ld * max(0.0, dot(n, l));
 	vec3 speculr_color = Ks * Ls * pow(max(0.0, dot(r, v)), alpha);
-	//Old school OpenGL actually used this model to make it faster.
-	//vec3 speculr_color = Ks * Ls * max(0.0, dot(r, v)) * alpha ;
 	
 	color = ambient_color + diffuse_color + speculr_color;
-	
+		
 	fragcolor = vec4(pow(color, vec3(1.0 / gamma)), 1.0);
 }

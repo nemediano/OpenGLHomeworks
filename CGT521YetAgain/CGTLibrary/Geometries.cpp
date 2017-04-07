@@ -123,7 +123,7 @@ namespace mesh {
 		vector<Vertex> vertices;
 
 		float deltaHeight = 1.0f / subAxis;
-		for (int i = 0; i < subAxis; ++i) {
+		for (int i = 0; i <= subAxis; ++i) {
 			float angle = 0.0f;
 			float deltaAngle = TAU / divisions;
 			for (int j = 0; j < divisions; ++j) {
@@ -136,18 +136,66 @@ namespace mesh {
 				v.textCoord.t = v.position.y;
 				vertices.push_back(v);
 				angle += deltaAngle;
-				//Start to create the triangles form second iteration and so on
-				if (j > 0) {
-					indices.push_back(i + j);
-					indices.push_back(i + j + 1);
-					indices.push_back(i + j + 2);
+				//Start to create the triangles from second iteration and so on
+				if (j > 0 && i > 0) {
+					//Create two triangle
+					int a = (i - 1) * divisions + (j - 1);
+					int b = (i - 1) * divisions + j;
+					int c = i * divisions + (j - 1);
+					int d = i * divisions + j;
+					indices.push_back(c);
+					indices.push_back(b);
+					indices.push_back(a);
+
+					indices.push_back(c);
+					indices.push_back(d);
+					indices.push_back(b);
 				}
 			}
+			//Last two 
+			if (i > 0) {
+				int a = (i - 1) * divisions + (divisions - 1);
+				int b = (i - 1) * divisions + 0;
+				int c = i * divisions + (divisions - 1);
+				int d = i * divisions + 0;
+				indices.push_back(c);
+				indices.push_back(b);
+				indices.push_back(a);
+
+				indices.push_back(c);
+				indices.push_back(d);
+				indices.push_back(b);
+			}
+			
 		}
 
 
 		if (caps) {
-
+			int last_index = static_cast<int>(vertices.size());
+			Vertex v;
+			v.position = vec3(0.0f);
+			v.normal = vec3(0.0f, -1.0f, 0.0f);
+			v.textCoord = vec2(0.5f, 0.5f);
+			vertices.push_back(v);
+			//Bottom cap
+			float angle = 0.0f;
+			float deltaAngle = TAU / divisions;
+			for (int i = 0; i < divisions; i++) {
+				Vertex u;
+				u.position.x = cos(angle);
+				u.position.y = 0;
+				u.position.z = sin(angle);
+				u.normal = vec3(0.0f, -1.0f, 0.0f);
+				u.textCoord.s = angle / TAU;
+				u.textCoord.t = u.position.y;
+				vertices.push_back(u);
+			}
+			//Remember that index start at 0
+			//for (int i = 0; i < divisions; i++) {
+				indices.push_back(last_index);
+				indices.push_back(last_index + 2);
+				indices.push_back(last_index + 1);
+			//}
 		}
 
 		cylinder.setVertices(vertices, true, true);
