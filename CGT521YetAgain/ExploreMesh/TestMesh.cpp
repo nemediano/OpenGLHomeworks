@@ -238,8 +238,7 @@ void init_program() {
 	using glm::vec3;
 	
 	/* Then, create primitives (load them from mesh) */
-	//meshPtr = new Mesh(Geometries::icosphere(3));
-	meshPtr = new Mesh(Geometries::cone());
+	meshPtr = new Mesh(Geometries::torus(1.5f, 0.85f));
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -420,7 +419,7 @@ void display() {
 	mat4 I(1.0f);
 	//Model
 	mat4 M = I;
-	M = glm::scale(M, vec3(0.5f, 1.0f, 0.5f));
+	//M = glm::scale(M, vec3(0.5f, 1.0f, 0.5f));
 	M = glm::scale(M, vec3(scaleFactor));
 	M = glm::translate(M, -center);
 	

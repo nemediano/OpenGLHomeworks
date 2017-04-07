@@ -4,7 +4,9 @@
 
 namespace mesh {
 	using glm::vec3;
+	using glm::vec4;
 	using glm::vec2;
+	using glm::mat4;
 	using namespace std;
 	using namespace math;
 
@@ -238,6 +240,71 @@ namespace mesh {
 		return teapot;
 	}
 
+	Mesh Geometries::torus(float externRadio, float internRadio, int rings, int sections) {
+		Mesh torus;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+
+		//Create a circular section
+		float angle = 0.0f;
+		float deltaAngle = TAU / sections;
+		vector<Vertex> circle;
+		for (int i = 0; i < sections; ++i) {
+			Vertex v;
+			v.position.x = internRadio * cos(angle);
+			v.position.y = internRadio * sin(angle);
+			v.position.z = 0.0f;
+			v.normal = glm::normalize(v.position);
+			v.textCoord.s = 0.0f;
+			v.textCoord.t = i / (sections - 1);
+			angle += deltaAngle;
+			circle.push_back(v);
+		}
+
+		//Transform the circle and insert it in vector
+		angle = 0.0;
+		deltaAngle = TAU / rings;
+		for (int i = 0; i < rings; ++i) {
+			mat4 T(1.0f);
+			T = glm::rotate(T, angle, vec3(0.0f, 1.0f, 0.0));
+			T = glm::translate(T, vec3(externRadio, 0.0f, 0.0f));
+			vector<Vertex> transformedCircle = circle;
+			for (auto j = 0; j < circle.size(); ++j) {
+				transformedCircle[j].position = vec3(T * vec4(circle[j].position, 1.0f));
+				transformedCircle[j].normal = vec3(glm::inverse(glm::transpose(T)) * vec4(circle[j].normal, 0.0f));
+				transformedCircle[j].textCoord.s = j / (rings - 1);
+			}
+			vertices.insert(vertices.end(), transformedCircle.begin(), transformedCircle.end());
+			angle += deltaAngle;
+		}
+
+		//Create the triangles
+		for (int i = 0; i < rings; ++i) {
+			/*These are the literal vertex of the quadrialteral 
+			  that I want to create using two triangles.
+			  I could not came uo with a better naming convention */
+			int a, b, c, d;
+			for (int j = 0; j < sections; ++j) {
+				a = i * sections + j;
+				b = i * sections + ((j + 1) % sections);
+				c = ((i + 1) % rings) * sections + j;
+				d = ((i + 1) % rings) * sections + ((j + 1) % sections);
+				//Create the two triangles
+				indices.push_back(a);
+				indices.push_back(d);
+				indices.push_back(b);
+
+				indices.push_back(a);
+				indices.push_back(c);
+				indices.push_back(d);
+			}
+		}
+
+		torus.setVertices(vertices, true, true);
+		torus.setIndex(indices);
+		return torus;
+	}
+
 	Mesh Geometries::insideOutCube() {
 		Mesh cube;
 
@@ -371,10 +438,12 @@ namespace mesh {
 					indices.push_back(c);
 					indices.push_back(b);
 					indices.push_back(a);
-
-					indices.push_back(c);
-					indices.push_back(d);
-					indices.push_back(b);
+					if (i < rings) {
+						indices.push_back(c);
+						indices.push_back(d);
+						indices.push_back(b);
+					}
+					
 				}
 			}
 			//Last two 
@@ -533,7 +602,110 @@ namespace mesh {
 
 	Mesh Geometries::tethrahedra() {
 		Mesh teth;
+		vector<Vertex> vertices;
+		vector<unsigned int> indices;
 
+		vec3 pos[4];
+		pos[0] = vec3(0.0f, 0.0f, 1.0f);
+		pos[1] = vec3(0.0f, (2.0f / 3.0f) * glm::sqrt(2.0f), -1.0f / 3.0f);
+		pos[2] = vec3(-glm::sqrt(2.0f / 3.0f), -glm::sqrt(2.0f) / 3.0f, -1.0f / 3.0f);
+		pos[3] = vec3(glm::sqrt(2.0f / 3.0f), -glm::sqrt(2.0f) / 3.0f, -1.0f / 3.0f);
+
+		vec2 text[6];
+		text[0] = vec2(0.0f, 0.0f);
+		text[1] = vec2(0.5f, 0.0f);
+		text[2] = vec2(1.0f, 0.0f);
+		text[3] = vec2(0.25f, 0.5f);
+		text[4] = vec2(0.75f, 0.5f);
+		text[5] = vec2(0.5f, 1.0f);
+
+		vec3 normal = glm::normalize(glm::cross(pos[3] - pos[0], pos[1] - pos[0]));
+
+		Vertex v;
+		v.position = pos[0];
+		v.textCoord = text[2];
+		v.normal = normal;
+		vertices.push_back(v); //0
+
+		v.position = pos[3];
+		v.textCoord = text[4];
+		v.normal = normal;
+		vertices.push_back(v); //1
+
+		v.position = pos[1];
+		v.textCoord = text[2];
+		v.normal = normal;
+		vertices.push_back(v); //2
+
+		indices.push_back(0);
+		indices.push_back(1);
+		indices.push_back(2);
+
+		//Trinagle 2
+		normal = glm::normalize(glm::cross(pos[1] - pos[0], pos[2] - pos[0]));
+		v.position = pos[0];
+		v.textCoord = text[0];
+		v.normal = normal;
+		vertices.push_back(v); //3
+
+		v.position = pos[1];
+		v.textCoord = text[1];
+		v.normal = normal;
+		vertices.push_back(v); //4
+
+		v.position = pos[2];
+		v.textCoord = text[3];
+		v.normal = normal;
+		vertices.push_back(v); //5
+
+		indices.push_back(3);
+		indices.push_back(4);
+		indices.push_back(5);
+
+		//Trinagle 3
+		normal = glm::normalize(glm::cross(pos[2] - pos[0], pos[3] - pos[0]));
+		v.position = pos[0];
+		v.textCoord = text[5];
+		v.normal = normal;
+		vertices.push_back(v); //6
+
+		v.position = pos[2];
+		v.textCoord = text[3];
+		v.normal = normal;
+		vertices.push_back(v); //7
+
+		v.position = pos[3];
+		v.textCoord = text[4];
+		v.normal = normal;
+		vertices.push_back(v); //8
+
+		indices.push_back(6);
+		indices.push_back(7);
+		indices.push_back(8);
+
+		//Trinagle 4
+		normal = glm::normalize(glm::cross(pos[3] - pos[1], pos[2] - pos[1]));
+		v.position = pos[1];
+		v.textCoord = text[1];
+		v.normal = normal;
+		vertices.push_back(v); //9
+
+		v.position = pos[3];
+		v.textCoord = text[4];
+		v.normal = normal;
+		vertices.push_back(v); //10
+
+		v.position = pos[2];
+		v.textCoord = text[3];
+		v.normal = normal;
+		vertices.push_back(v); //11
+
+		indices.push_back(9);
+		indices.push_back(10);
+		indices.push_back(11);
+
+		teth.setVertices(vertices, true, true);
+		teth.setIndex(indices);
 		return teth;
 	}
 
