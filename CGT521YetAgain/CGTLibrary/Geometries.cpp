@@ -113,9 +113,79 @@ namespace mesh {
 	}
 
 	Mesh Geometries::sphere(int slices, int rings) {
-		Mesh m;
+		Mesh sphere;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
 
-		return m;
+		
+		float deltaAzimuth = PI / (rings - 1);
+		float deltaPolar = TAU / slices;
+
+		float polar = 0.0f;
+		float azimuth = deltaAzimuth;
+		for (int i = 1; i < (rings - 1); ++i) {
+			polar = 0.0f;
+			for (int j = 0; j < slices; j++) {
+				Vertex v;
+				v.position.x = sin(azimuth) * cos(polar);
+				v.position.y = cos(azimuth);
+				v.position.z = sin(azimuth) * sin(polar);;
+				v.normal = v.position;
+				v.textCoord.s = polar / TAU;
+				v.textCoord.t = azimuth / PI;
+
+				vertices.push_back(v);
+				polar += deltaPolar;
+			}
+			azimuth += deltaAzimuth;
+		}
+		int start = vertices.size() - slices;
+
+		for (int i = 0; i < (rings - 3); ++i) {
+			for (int j = 0; j < slices; j++) {
+				int a = i * slices + j;
+				int b = i * slices + ((j + 1) % slices);
+				int c = ((i + 1) % rings) * slices + j;
+				int d = ((i + 1) % rings) * slices + ((j + 1) % slices);
+
+				indices.push_back(a);
+				indices.push_back(b);
+				indices.push_back(d);
+
+				indices.push_back(a);
+				indices.push_back(d);
+				indices.push_back(c);
+			}
+		}
+
+		//North pole 
+		int pole = static_cast<int>(vertices.size());
+		Vertex v;
+		v.position = vec3(0.0f, 1.0f, 0.0);
+		v.normal = v.position;
+		v.textCoord = vec2(0.5, 0.0f);
+		vertices.push_back(v);
+		for (int i = 0; i < slices; ++i) {
+			indices.push_back(pole);
+			indices.push_back((i + 1) % slices);
+			indices.push_back(i);
+		}
+
+		//South pole
+		pole = static_cast<int>(vertices.size());
+		v.position = vec3(0.0f, -1.0f, 0.0);
+		v.normal = v.position;
+		v.textCoord = vec2(0.5, 1.0f);
+		vertices.push_back(v);
+		for (int i = 0; i < slices; ++i) {
+			indices.push_back(pole);
+			indices.push_back(i + start);
+			indices.push_back((i + 1) % slices + start);
+		}
+
+		sphere.setVertices(vertices, true, true);
+		sphere.setIndex(indices);
+		return sphere;
 	}
 
 	Mesh Geometries::cylinder(int subAxis, int divisions, bool caps) {

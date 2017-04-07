@@ -238,7 +238,7 @@ void init_program() {
 	using glm::vec3;
 	
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::torus(1.5f, 0.85f));
+	meshPtr = new Mesh(Geometries::sphere());
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
