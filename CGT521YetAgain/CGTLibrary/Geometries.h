@@ -9,7 +9,7 @@ namespace mesh {
 		static Mesh cylinder(int subAxis = 3, int divisions = 20, bool caps = true);
 		static Mesh plane();
 		static Mesh insideOutCube();
-		static Mesh cone(int rings = 4, int divisions = 18);
+		static Mesh cone(int rings = 4, int divisions = 18, bool cap = true);
 		static Mesh superQuadric();
 		static Mesh teapot();
 		static Mesh tethrahedra();

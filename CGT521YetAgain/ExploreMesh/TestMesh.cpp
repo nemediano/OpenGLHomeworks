@@ -239,7 +239,7 @@ void init_program() {
 	
 	/* Then, create primitives (load them from mesh) */
 	//meshPtr = new Mesh(Geometries::icosphere(3));
-	meshPtr = new Mesh(Geometries::cylinder(2, 4));
+	meshPtr = new Mesh(Geometries::cone());
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -420,8 +420,10 @@ void display() {
 	mat4 I(1.0f);
 	//Model
 	mat4 M = I;
+	M = glm::scale(M, vec3(0.5f, 1.0f, 0.5f));
 	M = glm::scale(M, vec3(scaleFactor));
 	M = glm::translate(M, -center);
+	
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection

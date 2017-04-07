@@ -189,13 +189,42 @@ namespace mesh {
 				u.textCoord.s = angle / TAU;
 				u.textCoord.t = u.position.y;
 				vertices.push_back(u);
+				angle += deltaAngle;
 			}
 			//Remember that index start at 0
-			//for (int i = 0; i < divisions; i++) {
+			for (int i = 1; i <= divisions; i++) {
 				indices.push_back(last_index);
-				indices.push_back(last_index + 2);
-				indices.push_back(last_index + 1);
-			//}
+				int tmp = i;
+				indices.push_back(last_index + tmp);
+				tmp = (i % divisions) + 1;
+				indices.push_back(last_index + tmp);
+			}
+			//Top cap
+			last_index = static_cast<int>(vertices.size());
+			v.position = vec3(0.0f, 1.0f, 0.0);
+			v.normal = vec3(0.0f, 1.0f, 0.0f);
+			v.textCoord = vec2(0.5f, 0.5f);
+			vertices.push_back(v);
+			angle = 0.0f;
+			for (int i = 0; i < divisions; i++) {
+				Vertex u;
+				u.position.x = cos(angle);
+				u.position.y = 1.0f;
+				u.position.z = sin(angle);
+				u.normal = vec3(0.0f, 1.0f, 0.0f);
+				u.textCoord.s = angle / TAU;
+				u.textCoord.t = u.position.y;
+				vertices.push_back(u);
+				angle += deltaAngle;
+			}
+			//Remember that index start at 0
+			for (int i = 1; i <= divisions; i++) {
+				indices.push_back(last_index);
+				int tmp = (i % divisions) + 1;
+				indices.push_back(last_index + tmp);
+				tmp = i;
+				indices.push_back(last_index + tmp);
+			}
 		}
 
 		cylinder.setVertices(vertices, true, true);
@@ -313,10 +342,93 @@ namespace mesh {
 		return cube;
 	}
 
-	Mesh Geometries::cone(int rings, int divisions) {
-		Mesh m;
+	Mesh Geometries::cone(int rings, int divisions, bool cap) {
+		Mesh cone;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
 
-		return m;
+		float deltaHeight = 1.0f / rings;
+		for (int i = 0; i <= rings; ++i) {
+			float angle = 0.0f;
+			float deltaAngle = TAU / divisions;
+			for (int j = 0; j < divisions; ++j) {
+				Vertex v;
+				v.position.x = (1.0f - i * deltaHeight) * cos(angle);
+				v.position.y = i * deltaHeight;
+				v.position.z = (1.0f - i * deltaHeight) * sin(angle);
+				v.normal = glm::normalize(vec3(v.position.x, cos(TAU / 8.0f), v.position.z));
+				v.textCoord.s = angle / TAU;
+				v.textCoord.t = v.position.y;
+				vertices.push_back(v);
+				angle += deltaAngle;
+				//Start to create the triangles from second iteration and so on
+				if (j > 0 && i > 0) {
+					//Create two triangle
+					int a = (i - 1) * divisions + (j - 1);
+					int b = (i - 1) * divisions + j;
+					int c = i * divisions + (j - 1);
+					int d = i * divisions + j;
+					indices.push_back(c);
+					indices.push_back(b);
+					indices.push_back(a);
+
+					indices.push_back(c);
+					indices.push_back(d);
+					indices.push_back(b);
+				}
+			}
+			//Last two 
+			if (i > 0) {
+				int a = (i - 1) * divisions + (divisions - 1);
+				int b = (i - 1) * divisions + 0;
+				int c = i * divisions + (divisions - 1);
+				int d = i * divisions + 0;
+				indices.push_back(c);
+				indices.push_back(b);
+				indices.push_back(a);
+
+				indices.push_back(c);
+				indices.push_back(d);
+				indices.push_back(b);
+			}
+
+		}
+
+
+		if (cap) {
+			int last_index = static_cast<int>(vertices.size());
+			Vertex v;
+			v.position = vec3(0.0f);
+			v.normal = vec3(0.0f, -1.0f, 0.0f);
+			v.textCoord = vec2(0.5f, 0.5f);
+			vertices.push_back(v);
+			//cap
+			float angle = 0.0f;
+			float deltaAngle = TAU / divisions;
+			for (int i = 0; i < divisions; i++) {
+				Vertex u;
+				u.position.x = cos(angle);
+				u.position.y = 0;
+				u.position.z = sin(angle);
+				u.normal = vec3(0.0f, -1.0f, 0.0f);
+				u.textCoord.s = angle / TAU;
+				u.textCoord.t = u.position.y;
+				vertices.push_back(u);
+				angle += deltaAngle;
+			}
+			//Remember that index start at 0
+			for (int i = 1; i <= divisions; i++) {
+				indices.push_back(last_index);
+				int tmp = i;
+				indices.push_back(last_index + tmp);
+				tmp = (i % divisions) + 1;
+				indices.push_back(last_index + tmp);
+			}
+		}
+
+		cone.setVertices(vertices, true, true);
+		cone.setIndex(indices);
+		return cone;
 	}
 
 	Mesh Geometries::superQuadric() {
