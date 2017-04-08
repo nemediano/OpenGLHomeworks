@@ -580,20 +580,6 @@ namespace mesh {
 			-1.0f / n.x);
 	}
 
-	glm::vec3 surface(int i, int j) {
-		float theta = ;
-		float r1 = r(theta, a, b, m, n1, n2, n3);
-
-		float phi = ;
-		float r2 = r(phi, a, b, m, n1, n2, n3);
-
-		float x = r1 * r2 * cos(theta) * cos(phi);
-		float y = r1 * r2 * sin(theta) * cos(phi);
-		float z = r2 * sin(phi);
-
-		return glm::vec3(x, y, z);
-	}
-
 	Mesh Geometries::superShape(float a, float b, float m, glm::vec3 n, int discretization) {
 		Mesh supershape;
 		vector<unsigned int> indices;
@@ -619,8 +605,12 @@ namespace mesh {
 		//Calculate normals 
 		for (int i = 0; i < discretization; ++i) {
 			for (int j = 0; j < discretization; ++j) {
-				
+				int index;
+				int a, b, c, d;
+				vec3 du = vertices[a].position - vertices[b].position;
+				vec3 dv = vertices[d].position - vertices[c].position;
 
+				vertices[index].normal = glm::normalize(glm::cross(du, dv));
 			}
 		}
 
