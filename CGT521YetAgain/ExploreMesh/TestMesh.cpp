@@ -208,7 +208,9 @@ void drawGUI() {
 	if (ImGui::Button("Screenshoot")) {
 		grabber.grab();
 	}
-	
+	if (ImGui::Button("Save Mesh")) {
+		meshPtr->save("test.obj");
+	}
 	ImGui::End();
 
 	/* End with this when you want to render GUI */

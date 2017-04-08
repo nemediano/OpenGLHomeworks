@@ -570,11 +570,66 @@ namespace mesh {
 		return cone;
 	}
 
-	Mesh Geometries::superQuadric() {
-		Mesh m;
-
-		return m;
+	
+	//Evaluate the "superformula" i.e. Formula for supershapes
+	//Remember that n.z != 0.0f, a != 0.0f, b != 0.0f
+	float superformula(float angle, float a, float b, float m, vec3 n) {
+		return glm::pow(
+			glm::pow(glm::abs(glm::cos(m * angle / 4.0f) / a), n.y) +
+			glm::pow(glm::abs(glm::sin(m * angle / 4.0f) / b), n.z),
+			-1.0f / n.x);
 	}
+
+	glm::vec3 surface(int i, int j) {
+		float theta = ;
+		float r1 = r(theta, a, b, m, n1, n2, n3);
+
+		float phi = ;
+		float r2 = r(phi, a, b, m, n1, n2, n3);
+
+		float x = r1 * r2 * cos(theta) * cos(phi);
+		float y = r1 * r2 * sin(theta) * cos(phi);
+		float z = r2 * sin(phi);
+
+		return glm::vec3(x, y, z);
+	}
+
+	Mesh Geometries::superShape(float a, float b, float m, glm::vec3 n, int discretization) {
+		Mesh supershape;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+
+		//Calculate the positions
+		for (int i = 0; i < discretization; ++i) {
+			for (int j = 0; j < discretization; ++j) {
+				Vertex v;
+				vec2 r;
+				float theta = j * TAU / (discretization - 1) - TAU / 2.0f;
+				float phi   = i * PI  / (discretization - 1) - PI  / 2.0f;
+				r.x = superformula(theta, a, b, m, n);
+				r.y = superformula(phi, a, b, m, n);
+				v.position.x = r.x * cos(theta) * r.y * cos(phi);
+				v.position.y = r.x * sin(theta) * r.y * cos(phi);
+				v.position.z = r.y * sin(phi);
+				v.textCoord = vec2(float(i) / (discretization - 1), float(j) / (discretization - 1));
+				vertices.push_back(v);
+			}
+		}
+
+		//Calculate normals 
+		for (int i = 0; i < discretization; ++i) {
+			for (int j = 0; j < discretization; ++j) {
+				
+
+			}
+		}
+
+
+		supershape.setVertices(vertices, true, true);
+		supershape.setIndex(indices);
+		return supershape;
+	}
+	
 
 	//Temporal container for triangles before mesh indexin
 	std::vector<Triangle> triangles;

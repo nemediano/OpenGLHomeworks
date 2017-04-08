@@ -230,7 +230,55 @@ namespace mesh {
 	}
 
 	bool Mesh::save(const std::string& out_obj_file) const {
-		return false;
+		std::ofstream output_file;
+		//Open for output erases previous file if necessary
+		output_file.open(out_obj_file.c_str(), std::ios::out | std::ios::trunc);
+		if (!output_file.is_open()) {
+			return false;
+		}
+
+		output_file << "o " << "Test name" << "\n";
+		//write all vertex
+		output_file << "# List of vertices..." << "\n";
+		for (auto v : m_vertices) {
+			output_file << "v " << v.position.x << " " << v.position.y << " " << v.position.z << "\n";
+		}
+
+		if (m_has_normals) {
+			output_file << "# List of normals..." << "\n";
+			for (auto v : m_vertices) {
+				output_file << "vn " << v.normal.x << " " << v.normal.y << " " << v.normal.z << "\n";
+			}
+		}
+
+		if (m_has_texture) {
+			output_file << "# List of texture coordinates..." << "\n";
+			for (auto v : m_vertices) {
+				output_file << "vt " << v.textCoord.s << " " << v.textCoord.t << "\n";
+			}
+		}
+
+		//Only indexed triangular meshes supported by this class
+		output_file << "# List of texture coordinates..." << "\n";
+		for (int i = 0; i < m_indices.size(); i +=3) {
+			//Remember obj index start at 1, not zero
+			unsigned int v1 = m_indices[i] + 1;
+			unsigned int v2 = m_indices[i + 1] + 1;
+			unsigned int v3 = m_indices[i + 2] + 1;
+			if (m_has_normals && m_has_texture) {
+				output_file << "f " << v1 << "/" << v1 << "/" << v1 << " " << v2 << "/" << v2 << "/" << v2 << " " << v3 << "/" << v3 << "/" << v3 << "\n";
+			} else if (m_has_normals) {
+				output_file << "f " << v1 << "//" << v1 << " " << v2 << "//" << v2 << " " << v3 << "//" << v3 << "\n";
+			} else if (m_has_texture) {
+				output_file << "f " << v1 << "/" << v1 << " " << v2 << "/" << v2 << " " << v3 << "/" << v3 << "\n";
+			} else {
+				output_file << "f " << v1 << " " << v2 << " " << v3 << "\n";
+			}
+			
+		}
+
+		output_file.close();
+		return true;
 	}
 
 	bool Mesh::inGPU() const {
