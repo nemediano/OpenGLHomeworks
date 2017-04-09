@@ -605,12 +605,23 @@ namespace mesh {
 		//Calculate normals 
 		for (int i = 0; i < discretization; ++i) {
 			for (int j = 0; j < discretization; ++j) {
-				int index;
-				int a, b, c, d;
-				vec3 du = vertices[a].position - vertices[b].position;
-				vec3 dv = vertices[d].position - vertices[c].position;
+				int a = i * discretization + j;
+				int b = i * discretization + ((j + 1) % discretization);
+				int c = ((i + 1) % discretization) * discretization + j;
+				int d = ((i + 1) % discretization) * discretization + ((j + 1) % discretization);
+				
+				vec3 du = vertices[b].position - vertices[a].position;
+				vec3 dv = vertices[c].position - vertices[a].position;
 
-				vertices[index].normal = glm::normalize(glm::cross(du, dv));
+				vertices[a].normal = glm::normalize(glm::cross(du, dv));
+				//First triangle
+				indices.push_back(a);
+				indices.push_back(d);
+				indices.push_back(c);
+				//Second triangle
+				indices.push_back(a);
+				indices.push_back(b);
+				indices.push_back(d);
 			}
 		}
 

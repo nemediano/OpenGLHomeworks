@@ -13,7 +13,7 @@ namespace mesh {
 		static Mesh torus(float externRadio = 1.0f, float internRadio = 0.25f, int rings = 36, int sections = 12);
 		static Mesh sphere(int slices = 20, int rings = 15);
 
-		static Mesh superShape(float a, float b, float m, glm::vec3 n, int discretization = 250);
+		static Mesh superShape(float a, float b, float m, glm::vec3 n, int discretization = 128);
 		static Mesh teapot();
 	private:
 		
