@@ -44,9 +44,11 @@ ScreenGrabber grabber;
 Mesh* meshPtr = nullptr;
 Mesh* cubePtr = nullptr;
 Mesh* spherePtr = nullptr;
+Mesh* cubeBoxPtr = nullptr;
 Mesh* currentMeshPtr = nullptr;
 OGLProgram* phongPtr = nullptr;
 OGLProgram* stencilPtr = nullptr;
+OGLProgram* lighPtr = nullptr;
 MatPhong mat;
 GLint window = 0;
 // Location for shader variables
@@ -81,6 +83,16 @@ struct Locations {
 
 Locations phongLoc;
 Locations stencilLoc;
+Locations lightLoc;
+
+struct FBO {
+	GLuint id = 0;
+	GLuint depth = 0;
+	int width = 0;
+	int height = 0;
+};
+
+FBO shadowBuffer;
 
 //Global variables for the program logic
 struct LightContainer {
@@ -99,6 +111,7 @@ float scaleFactor;
 glm::vec3 meshCenter;
 
 bool gammaCorrection;
+bool drawContainer;
 float gamma;
 bool rotation;
 glm::vec3 backgroundColor;
@@ -108,6 +121,10 @@ int currentMesh;
 std::vector<MatPhong> materials;
 
 void passLightingState();
+
+void renderGeometryPass();
+void generateShadowmapPass();
+
 void reload_shaders();
 void change_mesh();
 void create_glut_window();
@@ -230,6 +247,7 @@ void drawGUI() {
 	if (ImGui::CollapsingHeader("General options")) {
 		ImGui::Checkbox("Rotation", &rotation);
 		ImGui::Checkbox("Gamma correction", &gammaCorrection);
+		ImGui::Checkbox("Container box", &drawContainer);
 		if (gammaCorrection) {
 			ImGui::SliderFloat("Gamma", &gamma, 1.0f, 2.5f);
 		}
@@ -271,7 +289,7 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(1200, 800);
-	window = glutCreateWindow("Phong shading");
+	window = glutCreateWindow("Spoth light example");
 }
 
 void init_program() {
@@ -282,6 +300,8 @@ void init_program() {
 	meshPtr = new Mesh("../models/teapot.obj");
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
+	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
+
 	light.stencilPtr = new Texture("../img/newLight.png");
 
 	if (meshPtr) {
@@ -295,17 +315,43 @@ void init_program() {
 	if (cubePtr) {
 		cubePtr->sendToGPU();
 	}
+
+	if (cubeBoxPtr) {
+		cubeBoxPtr->sendToGPU();
+	}
+
 	//Extract info form the mesh
 	scaleFactor = meshPtr->scaleFactor();
 	meshCenter = meshPtr->getBBCenter();
 
 	seconds_elapsed = 0.0f;
 
+	//Create FBO for storing the shadow map
+	shadowBuffer.width = shadowBuffer.height = 1024;
+	glGenBuffers(1, &shadowBuffer.id);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
+	
+	glGenTextures(1, &shadowBuffer.depth);
+	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth);
+	glTextureStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32, shadowBuffer.width, shadowBuffer.height);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.0f);
-	cam.setDepthView(0.1f, 3.0f);
+	cam.setDepthView(0.1f, 4.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Also setup the image grabber
@@ -328,6 +374,7 @@ void init_program() {
 	currentShader = 1;
 	currentMesh = 0;
 	gammaCorrection = false;
+	drawContainer = true;
 	gamma = 1.0f;
 
 	/*Load predefined materials*/
@@ -393,6 +440,7 @@ void reload_shaders() {
 
 	phongPtr = new OGLProgram("shaders/phong.vert", "shaders/phong.frag");
 	stencilPtr = new OGLProgram("shaders/phong.vert", "shaders/stencil.frag");
+	lighPtr = new OGLProgram("shaders/genShadowMap.vert", "shaders/genShadowMap.frag");
 
 	if (!phongPtr || !phongPtr->isOK()) {
 		cerr << "Something wrong in Phong world shader" << endl;
@@ -404,7 +452,12 @@ void reload_shaders() {
 		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
 	}
 
-	if (phongPtr->isOK() && stencilPtr->isOK()) {
+	if (!lighPtr || !lighPtr->isOK()) {
+		cerr << "Something wrong in light shader" << endl;
+		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+	}
+
+	if (phongPtr->isOK() && stencilPtr->isOK() && lighPtr->isOK()) {
 		cout << "Shaders compiled correctlly!" << endl;
 		backgroundColor = 0.15f * vec3(1.0f);
 	}
@@ -459,6 +512,11 @@ void reload_shaders() {
 	stencilLoc.a_position = stencilPtr->attribLoc("Position");
 	stencilLoc.a_normal = stencilPtr->attribLoc("Normal");
 	stencilLoc.a_texture = stencilPtr->attribLoc("TextCoord");
+	
+	//For the shadowmap creation
+	lightLoc.u_PVM = lighPtr->attribLoc("PVM");
+	lightLoc.a_position = lighPtr->attribLoc("Position");
+
 }
 
 void passLightingState() {
@@ -521,13 +579,36 @@ void reshape(int new_window_width, int new_window_height) {
 }
 
 void display() {
+	
+
+	//Select mesh to render
+	change_mesh();
+
+	generateShadowmapPass();
+
+	renderGeometryPass();
+	
+
+
+	//Unbind an clean
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+
+	/* You need to call this to draw the GUI, After unbinding your program*/
+	drawGUI();
+	/* But, before flushing the drawinng commands*/
+
+	glutSwapBuffers();
+}
+
+void renderGeometryPass() {
 	using glm::vec3;
 	using glm::vec4;
 	using glm::vec2;
 	using glm::mat4;
-
-	//Select mesh to render
-	change_mesh();
 
 	mat4 I(1.0f);
 	//Model
@@ -545,6 +626,11 @@ void display() {
 	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
 	light.spot.setPosition(light_position);
 	light.spot.setTarget(vec3(0.0f));
+
+	//We are going to render to the default framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDrawBuffer(GL_BACK);
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	if (currentShader == 0) {
 		phongPtr->use();
@@ -566,7 +652,24 @@ void display() {
 		passLightingState();
 		/* Draw */
 		currentMeshPtr->drawTriangles(phongLoc.a_position, phongLoc.a_normal, phongLoc.a_texture);
-	} else if (currentShader == 1) {
+
+		//Draw the exterior box
+		if (drawContainer) {
+			mat4 M_box = mat4(1.0f);
+			M_box = glm::scale(M_box, vec3(3.0f));
+			glUniformMatrix4fv(phongLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
+			glUniformMatrix4fv(phongLoc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
+			glUniformMatrix4fv(phongLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
+			glUniform3fv(phongLoc.u_Ka, 1, glm::value_ptr(vec3(0.25f)));
+			glUniform3fv(phongLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongLoc.u_Kd, 1, glm::value_ptr(vec3(0.75f)));
+			glUniform1f(phongLoc.u_alpha, 1.0f);
+			cubeBoxPtr->drawTriangles(phongLoc.a_position, phongLoc.a_normal, phongLoc.a_texture);
+		}
+
+
+	}
+	else if (currentShader == 1) {
 		stencilPtr->use();
 		/************************************************************************/
 		/* Send uniform values to shader                                        */
@@ -590,18 +693,62 @@ void display() {
 		passLightingState();
 		/* Draw */
 		currentMeshPtr->drawTriangles(stencilLoc.a_position, stencilLoc.a_normal, stencilLoc.a_texture);
+
+		if (drawContainer) {
+			//Draw the exterior box
+			mat4 M_box = mat4(1.0f);
+			M_box = glm::scale(M_box, vec3(3.0f));
+			glUniformMatrix4fv(stencilLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
+			glUniformMatrix4fv(stencilLoc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
+			glUniformMatrix4fv(stencilLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
+			glUniform3fv(stencilLoc.u_Ka, 1, glm::value_ptr(vec3(0.25f)));
+			glUniform3fv(stencilLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(stencilLoc.u_Kd, 1, glm::value_ptr(vec3(0.75f)));
+			glUniform1f(stencilLoc.u_alpha, 1.0f);
+			cubeBoxPtr->drawTriangles(stencilLoc.a_position, stencilLoc.a_normal, stencilLoc.a_texture);
+		}
+
 	}
+}
+void generateShadowmapPass() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+	//We render to the shadowmap
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
+	//We only need the depth in the shadow map
+	glDrawBuffer(GL_NONE);
+
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	//Calculate Light position
+	mat4 I(1.0f);
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
+	light.spot.setPosition(light_position);
+	light.spot.setTarget(vec3(0.0f));
 	
+	//View Projection, sice we have updated the light position.
+	/*This is correct since for tthe light is his position or Model, 
+	but from the shader program is the cammera placement or his View.*/
+	mat4 PV = light.spot.getPM();
 
-	//Unbind an clean
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glUseProgram(0);
+	lighPtr->use();
 
-	/* You need to call this to draw the GUI, After unbinding your program*/
-	drawGUI();
-	/* But, before flushing the drawinng commands*/
+	mat4 M = rotation ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
+	M = glm::scale(M, vec3(scaleFactor));
+	M = glm::translate(M, -meshCenter);
+	glUniformMatrix4fv(lightLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(PV * M));
 
-	glutSwapBuffers();
+	currentMeshPtr->drawTriangles(lightLoc.a_position, -1, -1);
+	if (drawContainer) {
+		mat4 M_box = mat4(1.0f);
+		M_box = glm::scale(M_box, vec3(3.0f));
+		glUniformMatrix4fv(lightLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(PV * M_box));
+		cubeBoxPtr->drawTriangles(lightLoc.a_position, -1, -1);
+	}
+
 }
 
 void idle() {
