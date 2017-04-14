@@ -123,6 +123,9 @@
     <ClInclude Include="ProceduralTextures.h">
       <Filter>Header Files\image</Filter>
     </ClInclude>
+    <ClInclude Include="FrameBufferCapture.h">
+      <Filter>Header Files\image</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -183,6 +186,9 @@
       <Filter>Source Files\lighting</Filter>
     </ClCompile>
     <ClCompile Include="ProceduralTextures.cpp">
+      <Filter>Source Files\image</Filter>
+    </ClCompile>
+    <ClCompile Include="FrameBufferCapture.cpp">
       <Filter>Source Files\image</Filter>
     </ClCompile>
   </ItemGroup>

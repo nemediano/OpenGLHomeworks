@@ -30,6 +30,7 @@
 #include "MatPhong.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
+#include "FrameBufferCapture.h"
 
 using namespace math;
 using namespace mesh;
@@ -326,24 +327,30 @@ void init_program() {
 
 	seconds_elapsed = 0.0f;
 
+	
+
 	//Create FBO for storing the shadow map
 	shadowBuffer.width = shadowBuffer.height = 1024;
-	glGenBuffers(1, &shadowBuffer.id);
-	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
-	
+	//Create the texture for depth first
 	glGenTextures(1, &shadowBuffer.depth);
 	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth);
-	glTextureStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32, shadowBuffer.width, shadowBuffer.height);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, shadowBuffer.width, shadowBuffer.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
-
 	glBindTexture(GL_TEXTURE_2D, 0);
+	//Create framebuffer second and attach the texture to it
+	glGenFramebuffers(1, &shadowBuffer.id);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
+	//glDrawBuffer(GL_NONE);
+	
+	ogl::framebufferStatus();
+
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
@@ -406,6 +413,8 @@ void init_program() {
 	materials.push_back(RED_RUBBER);
 	materials.push_back(WHITE_RUBBER);
 	materials.push_back(YELLOW_RUBBER);
+
+	
 }
 
 void init_OpenGL() {
@@ -799,6 +808,14 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	case 'C':
 		cam.setFovY(PI / 4.0f);
 		ball.resetRotation();
+		break;
+
+
+	case 'd':
+	case 'D':
+		ogl::glError("Before");
+		captureDepth(shadowBuffer.depth, "depthsBuffer.png", GL_DEPTH_COMPONENT32);
+		ogl::glError("After");
 		break;
 
 	default:
