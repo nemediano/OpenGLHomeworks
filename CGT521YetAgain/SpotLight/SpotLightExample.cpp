@@ -30,7 +30,6 @@
 #include "MatPhong.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
-#include "FrameBufferCapture.h"
 
 using namespace math;
 using namespace mesh;
@@ -89,6 +88,7 @@ Locations lightLoc;
 struct FBO {
 	GLuint id = 0;
 	GLuint depth = 0;
+	GLuint test = 0;
 	int width = 0;
 	int height = 0;
 };
@@ -265,7 +265,11 @@ void drawGUI() {
 			grabber.grab();
 		}
 	}
+	ImGui::Text("Light depth texture");
+	ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 	ImGui::End();
+
+	
 
 	/* End with this when you want to render GUI */
 	ImGui::Render();
@@ -341,10 +345,21 @@ void init_program() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	//Create the texture for testing first
+	glGenTextures(1, &shadowBuffer.test);
+	glBindTexture(GL_TEXTURE_2D, shadowBuffer.test);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, shadowBuffer.width, shadowBuffer.height, 0, GL_RGB, GL_FLOAT, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 	glBindTexture(GL_TEXTURE_2D, 0);
 	//Create framebuffer second and attach the texture to it
 	glGenFramebuffers(1, &shadowBuffer.id);
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowBuffer.test, 0);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
 	//glDrawBuffer(GL_NONE);
 	
@@ -523,7 +538,7 @@ void reload_shaders() {
 	stencilLoc.a_texture = stencilPtr->attribLoc("TextCoord");
 	
 	//For the shadowmap creation
-	lightLoc.u_PVM = lighPtr->attribLoc("PVM");
+	lightLoc.u_PVM = lighPtr->uniformLoc("PVM");
 	lightLoc.a_position = lighPtr->attribLoc("Position");
 
 }
@@ -638,6 +653,7 @@ void renderGeometryPass() {
 
 	//We are going to render to the default framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	glDrawBuffer(GL_BACK);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -725,10 +741,12 @@ void generateShadowmapPass() {
 	using glm::mat4;
 	//We render to the shadowmap
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
+	glViewport(0, 0, shadowBuffer.width, shadowBuffer.height);
 	//We only need the depth in the shadow map
-	glDrawBuffer(GL_NONE);
+	//glDrawBuffer(GL_NONE);
+	glDrawBuffer(GL_BACK);
 
-	glClear(GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//Calculate Light position
 	mat4 I(1.0f);
@@ -808,14 +826,6 @@ void keyboard(unsigned char key, int mouse_x, int mouse_y) {
 	case 'C':
 		cam.setFovY(PI / 4.0f);
 		ball.resetRotation();
-		break;
-
-
-	case 'd':
-	case 'D':
-		ogl::glError("Before");
-		captureDepth(shadowBuffer.depth, "depthsBuffer.png", GL_DEPTH_COMPONENT32);
-		ogl::glError("After");
 		break;
 
 	default:

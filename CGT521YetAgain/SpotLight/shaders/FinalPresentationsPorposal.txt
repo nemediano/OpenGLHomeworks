@@ -1,0 +1,45 @@
+	Monday			
+1	Bertero	Colin		
+2	Guo	Yuqing		
+3	Hiller	Adam		
+4	Imboden	Lucas		
+5	McConville	Kerstin		
+6	Newberry	Casmyr 		
+7	Shay	Adam		
+8	Shoopman	Seon		
+9	Simon	Tyler		
+10	Vempati	Divya	Dodson	Jackalyn
+11	Wendling	Kelsee		
+				
+				
+	Wendesday			
+1	Cardwell	Jeffery		
+2	Eller	Clayton 		
+3	Gooden	Logan	Lybarger	Nicholas
+4	Meyer	Bryce		
+5	Moran	Duncan		
+6	Morgan	Kainen		
+7	Nickens	Caitlyn		
+8	Pederson	Shawn		
+9	Price	Kiley		
+10	Thayer	Jared	Benedict	Andrew
+11	Bain	Mason		
+				
+				
+	Thursday			
+1	Andrews	Simon		
+2	Bach	Sarah 		
+3	Barnes	Monique		
+4	Eytcheson	Brandt		
+5	Fresh	Nick 		
+6	Huang	Li-Ning		
+7	Kim	Irene 		
+8	Layman	Jade	Pederson	Shawn
+9	Lee	Isaac 		
+10	McDonald	Patrick		
+11	Owens	Nicholas		
+12	Prohl	Caroline		
+13	Shim	Eric	Barrera	Areli 
+14	Shin-Bae	David	Chi	Matthew
+15	Simpson	Bryce	Rosser	Samuel 
+16	Venters	Kade	Meyer	Bryce

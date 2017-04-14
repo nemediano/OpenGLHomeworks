@@ -2,6 +2,9 @@
 layout(location = 0) in vec3 Position;
 layout(location = 0) uniform mat4 PVM;
 
+out vec4 position;
+
 void main(void) {
-	gl_Position = PVM * vec4(Position, 1.0f);
+	position = PVM * vec4(Position, 1.0f);
+	gl_Position = position;
 }
