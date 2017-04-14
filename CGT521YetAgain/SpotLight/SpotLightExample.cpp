@@ -48,6 +48,7 @@ Mesh* cubeBoxPtr = nullptr;
 Mesh* currentMeshPtr = nullptr;
 OGLProgram* phongPtr = nullptr;
 OGLProgram* stencilPtr = nullptr;
+OGLProgram* phongShadowPtr = nullptr;
 OGLProgram* lighPtr = nullptr;
 MatPhong mat;
 GLint window = 0;
@@ -265,8 +266,8 @@ void drawGUI() {
 			grabber.grab();
 		}
 	}
-	ImGui::Text("Light depth texture");
-	ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
+	ImGui::Text("Light depth approximation texture");
+	ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 1), ImVec2(1, 0), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 	ImGui::End();
 
 	
@@ -748,6 +749,10 @@ void generateShadowmapPass() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	//Enable Polygon offset for fighting against Peter Panning
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(2.0f, 4.0f);
+
 	//Calculate Light position
 	mat4 I(1.0f);
 	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -775,7 +780,8 @@ void generateShadowmapPass() {
 		glUniformMatrix4fv(lightLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(PV * M_box));
 		cubeBoxPtr->drawTriangles(lightLoc.a_position, -1, -1);
 	}
-
+	//Return to no polygon offset after this draw
+	glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void idle() {
