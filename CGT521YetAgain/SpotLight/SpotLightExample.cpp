@@ -60,6 +60,7 @@ struct Locations {
 	GLint u_V = -1;
 	GLint u_M = -1;
 	GLint u_NormMat = -1;
+	GLint u_ShadowMat = -1;
 	GLint u_gamma = -1;
 
 	GLint u_La = -1;
@@ -71,6 +72,7 @@ struct Locations {
 	GLint u_LightM = -1;
 	GLint u_CameraPos = -1;
 	GLint u_Stencil = -1;
+	GLint u_ShadowMap = -1;
 
 	GLint u_Ka = -1;
 	GLint u_Ks = -1;
@@ -85,6 +87,7 @@ struct Locations {
 Locations phongLoc;
 Locations stencilLoc;
 Locations lightLoc;
+Locations phongShadowLoc;
 
 struct FBO {
 	GLuint id = 0;
@@ -466,7 +469,9 @@ void reload_shaders() {
 	phongPtr = new OGLProgram("shaders/phong.vert", "shaders/phong.frag");
 	stencilPtr = new OGLProgram("shaders/phong.vert", "shaders/stencil.frag");
 	lighPtr = new OGLProgram("shaders/genShadowMap.vert", "shaders/genShadowMap.frag");
+	phongShadowPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadow.frag");
 
+	//phongShadowLoc
 	if (!phongPtr || !phongPtr->isOK()) {
 		cerr << "Something wrong in Phong world shader" << endl;
 		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
@@ -477,12 +482,17 @@ void reload_shaders() {
 		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
 	}
 
+	if (!phongShadowPtr || !phongShadowPtr->isOK()) {
+		cerr << "Something wrong in Phong shadow shader" << endl;
+		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+	}
+
 	if (!lighPtr || !lighPtr->isOK()) {
 		cerr << "Something wrong in light shader" << endl;
 		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
 	}
 
-	if (phongPtr->isOK() && stencilPtr->isOK() && lighPtr->isOK()) {
+	if (phongPtr->isOK() && stencilPtr->isOK() && lighPtr->isOK() && phongShadowPtr->isOK()) {
 		cout << "Shaders compiled correctlly!" << endl;
 		backgroundColor = 0.15f * vec3(1.0f);
 	}
@@ -538,6 +548,34 @@ void reload_shaders() {
 	stencilLoc.a_normal = stencilPtr->attribLoc("Normal");
 	stencilLoc.a_texture = stencilPtr->attribLoc("TextCoord");
 	
+
+	//Uniforms
+	phongShadowLoc.u_PVM = phongShadowPtr->uniformLoc("PVM");
+	phongShadowLoc.u_M = phongShadowPtr->uniformLoc("M");
+	phongShadowLoc.u_NormMat = phongShadowPtr->uniformLoc("NormalMat");
+	phongShadowLoc.u_ShadowMat = phongShadowPtr->uniformLoc("ShadowMat");
+	phongShadowLoc.u_gamma = phongShadowPtr->uniformLoc("gamma");
+	phongShadowLoc.u_CameraPos = phongShadowPtr->uniformLoc("cameraPosition");
+	phongShadowLoc.u_Stencil = phongShadowPtr->uniformLoc("lightStencil");
+	phongShadowLoc.u_ShadowMap = phongShadowPtr->uniformLoc("shadowMap");
+	//Light
+	phongShadowLoc.u_LightPos = phongShadowPtr->uniformLoc("light.position");
+	phongShadowLoc.u_LightPM = phongShadowPtr->uniformLoc("light.PM");
+	phongShadowLoc.u_LightM = phongShadowPtr->uniformLoc("light.M");
+	phongShadowLoc.u_La = phongShadowPtr->uniformLoc("light.La");
+	phongShadowLoc.u_Ld = phongShadowPtr->uniformLoc("light.Ld");
+	phongShadowLoc.u_Ls = phongShadowPtr->uniformLoc("light.Ls");
+	//Material
+	phongShadowLoc.u_alpha = phongShadowPtr->uniformLoc("mat.alpha");
+	phongShadowLoc.u_Ka = phongShadowPtr->uniformLoc("mat.Ka");
+	phongShadowLoc.u_Kd = phongShadowPtr->uniformLoc("mat.Kd");
+	phongShadowLoc.u_Ks = phongShadowPtr->uniformLoc("mat.Ks");
+	//Atrributes
+	phongShadowLoc.a_position = phongShadowPtr->attribLoc("Position");
+	phongShadowLoc.a_normal = phongShadowPtr->attribLoc("Normal");
+	phongShadowLoc.a_texture = phongShadowPtr->attribLoc("TextCoord");
+
+
 	//For the shadowmap creation
 	lightLoc.u_PVM = lighPtr->uniformLoc("PVM");
 	lightLoc.a_position = lighPtr->attribLoc("Position");
@@ -562,6 +600,14 @@ void passLightingState() {
 		glUniform3fv(stencilLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
 		glUniform3fv(stencilLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
 		glUniform3fv(stencilLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
+	} else if (currentShader == 2) {
+		glUniform3fv(phongShadowLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+		glUniform3fv(phongShadowLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+		glUniform3fv(phongShadowLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+		glUniform1f(phongShadowLoc.u_alpha, mat.getAlpha());
+		glUniform3fv(phongShadowLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
+		glUniform3fv(phongShadowLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+		glUniform3fv(phongShadowLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
 	}
 }
 
@@ -604,17 +650,12 @@ void reshape(int new_window_width, int new_window_height) {
 }
 
 void display() {
-	
-
 	//Select mesh to render
 	change_mesh();
 
 	generateShadowmapPass();
-
 	renderGeometryPass();
 	
-
-
 	//Unbind an clean
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glActiveTexture(GL_TEXTURE0);
@@ -694,8 +735,7 @@ void renderGeometryPass() {
 		}
 
 
-	}
-	else if (currentShader == 1) {
+	} else if (currentShader == 1) {
 		stencilPtr->use();
 		/************************************************************************/
 		/* Send uniform values to shader                                        */
@@ -732,6 +772,57 @@ void renderGeometryPass() {
 			glUniform3fv(stencilLoc.u_Kd, 1, glm::value_ptr(vec3(0.75f)));
 			glUniform1f(stencilLoc.u_alpha, 1.0f);
 			cubeBoxPtr->drawTriangles(stencilLoc.a_position, stencilLoc.a_normal, stencilLoc.a_texture);
+		}
+
+	} else if (currentShader == 2) {
+		phongShadowPtr->use();
+		/************************************************************************/
+		/* Send uniform values to shader                                        */
+		/************************************************************************/
+		
+		mat4 biasMat = glm::scale(I, vec3(0.5f));
+		biasMat = glm::translate(biasMat, vec3(0.5f));
+		mat4 shadowMat = biasMat * light.spot.getPM() * M;
+		glUniformMatrix4fv(phongShadowLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(phongShadowLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+		glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(shadowMat))));
+		glUniformMatrix4fv(phongShadowLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
+		glUniform1f(phongShadowLoc.u_gamma, gamma);
+		glUniform3fv(phongShadowLoc.u_LightPos, 1, glm::value_ptr(light_position));
+		glUniformMatrix4fv(phongShadowLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
+		glUniformMatrix4fv(phongShadowLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+		glUniform3fv(phongShadowLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+		glBindTexture(GL_TEXTURE_2D, light.stencilPtr->get_id()); //The next binded texture will be refered with the active texture unit
+		if (phongShadowLoc.u_Stencil != -1) {
+			glUniform1i(phongShadowLoc.u_Stencil, 0); // we bound our texture to texture unit 0
+		}
+		glActiveTexture(GL_TEXTURE1); //Active texture unit 1
+		glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth); //The next binded texture will be refered with the active texture unit
+		if (phongShadowLoc.u_ShadowMap != -1) {
+			glUniform1i(phongShadowLoc.u_ShadowMap, 1); // we bound our texture to texture unit 0
+		}
+		//Send light and material
+		passLightingState();
+		/* Draw */
+		currentMeshPtr->drawTriangles(phongShadowLoc.a_position, phongShadowLoc.a_normal, phongShadowLoc.a_texture);
+
+		if (drawContainer) {
+			//Draw the exterior box
+			mat4 M_box = mat4(1.0f);
+			M_box = glm::scale(M_box, vec3(3.0f));
+			mat4 shadowMat = biasMat * light.spot.getPM() * M_box;
+			glUniformMatrix4fv(phongShadowLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
+			glUniformMatrix4fv(phongShadowLoc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
+			glUniformMatrix4fv(phongShadowLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
+			glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(shadowMat))));
+			glUniform3fv(phongShadowLoc.u_Ka, 1, glm::value_ptr(vec3(0.25f)));
+			glUniform3fv(phongShadowLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongShadowLoc.u_Kd, 1, glm::value_ptr(vec3(0.75f)));
+			glUniform1f(phongShadowLoc.u_alpha, 1.0f);
+			cubeBoxPtr->drawTriangles(phongShadowLoc.a_position, phongShadowLoc.a_normal, phongShadowLoc.a_texture);
 		}
 
 	}
@@ -885,6 +976,7 @@ void special(int key, int mouse_x, int mouse_y) {
 		case GLUT_KEY_F3:
 			currentShader = 2;
 		break;
+
 	}
 	/* Now, the app*/
 	glutPostRedisplay();
