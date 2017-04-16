@@ -10,13 +10,13 @@ layout(location = 3) uniform mat4 ShadowMat;
 
 out vec3 fNormal;
 out vec2 fTextCoord;
-out vec2 fShadowCoord;
+out vec4 fShadowCoord;
 out vec3 fPosition;
 
 void main(void) {
 	gl_Position = PVM * vec4(Position, 1.0f);
 	fNormal = (NormalMat * vec4(Normal, 0.0)).xyz;
 	fPosition = (M * vec4(Position, 1.0f)).xyz;
-	fShadowCoord = (ShadowMat * vec4(Position, 1.0f)).xy;
+	fShadowCoord = ShadowMat * vec4(Position, 1.0f);
 	fTextCoord = TextCoord;
 }

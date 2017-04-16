@@ -780,12 +780,12 @@ void renderGeometryPass() {
 		/* Send uniform values to shader                                        */
 		/************************************************************************/
 		
-		mat4 biasMat = glm::scale(I, vec3(0.5f));
-		biasMat = glm::translate(biasMat, vec3(0.5f));
+		mat4 biasMat = glm::translate(I, vec3(0.5f)); 
+		biasMat = glm::scale(biasMat, vec3(0.5f));
 		mat4 shadowMat = biasMat * light.spot.getPM() * M;
 		glUniformMatrix4fv(phongShadowLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(phongShadowLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
-		glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(shadowMat))));
+		glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
 		glUniformMatrix4fv(phongShadowLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(phongShadowLoc.u_gamma, gamma);
 		glUniform3fv(phongShadowLoc.u_LightPos, 1, glm::value_ptr(light_position));
@@ -817,7 +817,7 @@ void renderGeometryPass() {
 			glUniformMatrix4fv(phongShadowLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
 			glUniformMatrix4fv(phongShadowLoc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
 			glUniformMatrix4fv(phongShadowLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
-			glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(shadowMat))));
+			glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
 			glUniform3fv(phongShadowLoc.u_Ka, 1, glm::value_ptr(vec3(0.25f)));
 			glUniform3fv(phongShadowLoc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
 			glUniform3fv(phongShadowLoc.u_Kd, 1, glm::value_ptr(vec3(0.75f)));

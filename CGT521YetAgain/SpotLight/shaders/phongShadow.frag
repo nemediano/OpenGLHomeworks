@@ -1,7 +1,7 @@
 #version 430
 in vec3 fNormal;
 in vec2 fTextCoord;
-in vec2 fShadowCoord;
+in vec4 fShadowCoord;
 in vec3 fPosition;
 
 struct Light {
@@ -25,7 +25,7 @@ uniform Material mat;
 uniform float gamma = 1.0;
 uniform vec3 cameraPosition;
 uniform sampler2D lightStencil;
-uniform sampler2D shadowMap;
+uniform sampler2DShadow shadowMap;
 
 out vec4 fragcolor;
 
@@ -51,8 +51,8 @@ void main(void) {
 	if (all(greaterThanEqual(infront, vec2(0.0))) && all(lessThanEqual(inside, vec2(1.0)))) {
 	  vec2 uv = clamp(0.5 * light_space_pos.xy + 0.5, vec2(EPSILON), vec2(1.0 - EPSILON));
 	  vec3 stencil =  texture(lightStencil, uv, 0).rgb;
-	  vec3 shadowFactor = texture(shadowMap, fShadowCoord, 0).rgb;
-	  color += phongShading() * stencil * shadowFactor * 0.5;
+	  float shadowFactor = textureProj(shadowMap, fShadowCoord, 0);
+	  color += phongShading() * stencil * shadowFactor;
 	}
 
 	fragcolor = vec4(applyGamma(color), 1.0);
