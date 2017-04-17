@@ -61,8 +61,23 @@ void main(void) {
 }
 
 float getShadowFactor() {
+	float shadow = 0.0;
+	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
 	vec3 shadowCoord = fShadowCoord.xyz / fShadowCoord.w;
-	return texture(shadowMap, shadowCoord, 0);
+	vec3 l = normalize(light.position - fPosition);
+	vec3 n = normalize(fNormal);
+	float bias = max(0.0005 * (1.0 - dot(n, l)), 0.0);
+	shadowCoord.z -= bias;
+	
+	const int size = 3;
+	for(int x = -size; x <= size; ++x) {
+		for(int y = -size; y <= size; ++y) {
+			shadow += texture(shadowMap, shadowCoord + vec3(vec2(x, y) * texelSize, 0.0));
+		}
+	}
+	shadow /= (2 * size + 1) * (2 * size + 1);
+	
+	return shadow;
 }
 
 vec3 applyGamma(vec3 color) {

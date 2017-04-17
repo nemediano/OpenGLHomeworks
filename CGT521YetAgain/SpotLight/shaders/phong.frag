@@ -42,10 +42,10 @@ void main(void) {
 	light_space_pos = light_space_pos / light_space_pos.w;
 	//Eliminate light space backprojection
 	if (light_space_normal.z <= 0.0) {
-		color = vec3(0.5);
+		color = vec3(0.5, 0.0, 0.0);
 	} else if (light_space_pos.z <= 0.0) {
 		// clipped in z, behind light
-		color = vec3(1.0, 0.0, 0.0);
+		color = vec3(0.0, 0.5, 0.0);
 	} else if (light_space_pos.x > 1.0 || light_space_pos.x < -1.0 || light_space_pos.y > 1.0 || light_space_pos.y < -1.0) {
 		// outside of projection frustrum (out black)
 		color = vec3(1.0, 1.0, 0.0);

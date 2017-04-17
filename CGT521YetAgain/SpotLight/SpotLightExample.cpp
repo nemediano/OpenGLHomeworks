@@ -1092,6 +1092,10 @@ void special(int key, int mouse_x, int mouse_y) {
 			currentShader = 2;
 		break;
 
+		case GLUT_KEY_F4:
+			currentShader = 3;
+		break;
+
 	}
 	/* Now, the app*/
 	glutPostRedisplay();
