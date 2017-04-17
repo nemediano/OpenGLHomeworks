@@ -407,7 +407,7 @@ void init_program() {
 
 	backgroundColor = vec3(0.15f);
 
-	currentShader = 1;
+	currentShader = 2;
 	currentMesh = 0;
 	gammaCorrection = false;
 	drawContainer = true;
