@@ -139,7 +139,7 @@ namespace mesh {
 			}
 			azimuth += deltaAzimuth;
 		}
-		int start = vertices.size() - slices;
+		int start = static_cast<int>(vertices.size()) - slices;
 
 		for (int i = 0; i < (rings - 3); ++i) {
 			for (int j = 0; j < slices; j++) {
@@ -326,7 +326,7 @@ namespace mesh {
 			v.position.z = 0.0f;
 			v.normal = glm::normalize(v.position);
 			v.textCoord.s = 0.0f;
-			v.textCoord.t = i / (sections - 1);
+			v.textCoord.t = static_cast<float>(i) / (sections - 1);
 			angle += deltaAngle;
 			circle.push_back(v);
 		}
@@ -342,7 +342,7 @@ namespace mesh {
 			for (auto j = 0; j < circle.size(); ++j) {
 				transformedCircle[j].position = vec3(T * vec4(circle[j].position, 1.0f));
 				transformedCircle[j].normal = vec3(glm::inverse(glm::transpose(T)) * vec4(circle[j].normal, 0.0f));
-				transformedCircle[j].textCoord.s = j / (rings - 1);
+				transformedCircle[j].textCoord.s = static_cast<float>(j) / (rings - 1);
 			}
 			vertices.insert(vertices.end(), transformedCircle.begin(), transformedCircle.end());
 			angle += deltaAngle;
