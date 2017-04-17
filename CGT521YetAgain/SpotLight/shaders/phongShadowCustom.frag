@@ -33,6 +33,8 @@ vec3 applyGamma(vec3 color);
 vec3 phongShading();
 const float EPSILON = 1e-2;
 
+float getShadowFactor();
+
 void main(void) {
 	vec3 Ka = mat.Ka;
 	vec3 La = light.La;
@@ -51,11 +53,16 @@ void main(void) {
 	if (all(greaterThanEqual(infront, vec2(0.0))) && all(lessThanEqual(inside, vec2(1.0)))) {
 	  vec2 uv = clamp(0.5 * light_space_pos.xy + 0.5, vec2(EPSILON), vec2(1.0 - EPSILON));
 	  vec3 stencil =  texture(lightStencil, uv, 0).rgb;
-	  float shadowFactor = textureProj(shadowMap, fShadowCoord, 0);
+	  float shadowFactor = getShadowFactor();
 	  color += phongShading() * stencil * shadowFactor;
 	}
 
 	fragcolor = vec4(applyGamma(color), 1.0);
+}
+
+float getShadowFactor() {
+	vec3 shadowCoord = fShadowCoord.xyz / fShadowCoord.w;
+	return texture(shadowMap, shadowCoord, 0);
 }
 
 vec3 applyGamma(vec3 color) {
