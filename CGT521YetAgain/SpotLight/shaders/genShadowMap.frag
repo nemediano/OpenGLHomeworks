@@ -4,5 +4,6 @@ in vec4 position;
 Actually you just need to execute the shader so the depth test is actually made*/
 out vec4 fragcolor;
 void main(void) {
-	fragcolor = (position.z / position.w) * vec4(1.0);
+	//fragcolor = (1.0 - (position.z / position.w)) * vec4(1.0);
+	//fragcolor = vec4(1.0);
 }

@@ -92,7 +92,7 @@ Locations phongShadowLoc;
 struct FBO {
 	GLuint id = 0;
 	GLuint depth = 0;
-	GLuint test = 0;
+	//GLuint test = 0;
 	int width = 0;
 	int height = 0;
 };
@@ -122,6 +122,10 @@ bool rotation;
 glm::vec3 backgroundColor;
 int currentShader;
 int currentMesh;
+
+//To avoid depth fighting in the shadowmap generation
+float factor;
+float units;
 
 std::vector<MatPhong> materials;
 
@@ -185,13 +189,13 @@ void drawGUI() {
 	ImGui::Begin("Options");
 
 	ImGui::Text("Mesh");
-	ImGui::RadioButton("Custom", &currentMesh, 0); ImGui::SameLine();
-	ImGui::RadioButton("Sphere", &currentMesh, 1); ImGui::SameLine();
+	ImGui::RadioButton("Custom", &currentMesh, 0);
+	ImGui::RadioButton("Sphere", &currentMesh, 1);
 	ImGui::RadioButton("Cube", &currentMesh, 2);
 
 	ImGui::Text("Mode");
-	ImGui::RadioButton("Mark spaces", &currentShader, 0); ImGui::SameLine();
-	ImGui::RadioButton("Stencil", &currentShader, 1); ImGui::SameLine();
+	ImGui::RadioButton("Mark spaces", &currentShader, 0);
+	ImGui::RadioButton("Stencil", &currentShader, 1);
 	ImGui::RadioButton("Shadow", &currentShader, 2);
 
 	ImGui::Text("Light position");
@@ -269,8 +273,13 @@ void drawGUI() {
 			grabber.grab();
 		}
 	}
-	ImGui::Text("Light depth approximation texture");
-	ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 1), ImVec2(1, 0), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
+
+	ImGui::Text("Polygon offset parameters");
+	ImGui::SliderFloat("Factor", &factor, 0.0f, 10.0f, "%.2f");
+	ImGui::SliderFloat("Units", &units, 0.0f, 5.0f, "%.2f");
+
+	//ImGui::Text("Light depth approximation texture");
+	//ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 1), ImVec2(1, 0), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 	ImGui::End();
 
 	
@@ -351,19 +360,19 @@ void init_program() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	//Create the texture for testing first
-	glGenTextures(1, &shadowBuffer.test);
+	/*glGenTextures(1, &shadowBuffer.test);
 	glBindTexture(GL_TEXTURE_2D, shadowBuffer.test);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, shadowBuffer.width, shadowBuffer.height, 0, GL_RGB, GL_FLOAT, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);*/
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	//Create framebuffer second and attach the texture to it
 	glGenFramebuffers(1, &shadowBuffer.id);
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowBuffer.test, 0);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowBuffer.test, 0);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
 	//glDrawBuffer(GL_NONE);
 	
@@ -388,7 +397,7 @@ void init_program() {
 	light.properties.setLa(vec3(1.0f));
 	light.properties.setLs(vec3(1.0f));
 	light.properties.setLd(vec3(1.0f));
-	light.spot.setAperture(PI / 12.0f);
+	light.spot.setAperture(PI / 6.0f);
 	//Default material
 	mat.setKa(vec3(0.122f, 0.216f, 0.145f));
 	mat.setKd(vec3(0.4f, 0.742f, 0.7f));
@@ -402,6 +411,9 @@ void init_program() {
 	gammaCorrection = false;
 	drawContainer = true;
 	gamma = 1.0f;
+
+	factor = 3.0f;
+	units = 2.0f;
 
 	/*Load predefined materials*/
 
@@ -835,14 +847,20 @@ void generateShadowmapPass() {
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
 	glViewport(0, 0, shadowBuffer.width, shadowBuffer.height);
 	//We only need the depth in the shadow map
-	//glDrawBuffer(GL_NONE);
-	glDrawBuffer(GL_BACK);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	//glDrawBuffer(GL_BACK);
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearDepth(1.0);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
-	//Enable Polygon offset for fighting against Peter Panning
+	//Enable Polygon offset for fighting against Shadiow acne
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(2.0f, 4.0f);
+	glPolygonOffset(factor, units);
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
 
 	//Calculate Light position
 	mat4 I(1.0f);
@@ -873,6 +891,8 @@ void generateShadowmapPass() {
 	}
 	//Return to no polygon offset after this draw
 	glDisable(GL_POLYGON_OFFSET_FILL);
+	//And to the back face culling
+	glCullFace(GL_BACK);
 }
 
 void idle() {
