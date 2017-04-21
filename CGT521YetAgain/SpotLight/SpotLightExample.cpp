@@ -323,7 +323,7 @@ void init_program() {
 	cubePtr = new Mesh(Geometries::cube());
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
 
-	light.stencilPtr = new Texture("../img/newLight.png");
+	light.stencilPtr = new Texture("../img/NewLight.png");
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -378,7 +378,7 @@ void init_program() {
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
 	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowBuffer.test, 0);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
-	//glDrawBuffer(GL_NONE);
+	
 	
 	ogl::framebufferStatus();
 
@@ -410,7 +410,7 @@ void init_program() {
 
 	backgroundColor = vec3(0.15f);
 
-	currentShader = 2;
+	currentShader = 3;
 	currentMesh = 0;
 	gammaCorrection = false;
 	drawContainer = true;
@@ -858,7 +858,7 @@ void renderGeometryPass() {
 		glActiveTexture(GL_TEXTURE1); //Active texture unit 1
 		glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth); //The next binded texture will be refered with the active texture unit
 		if (phongShadowLoc.u_ShadowMap != -1) {
-			glUniform1i(phongShadowLoc.u_ShadowMap, 1); // we bound our texture to texture unit 0
+			glUniform1i(phongShadowLoc.u_ShadowMap, 1); // we bound our texture to texture unit 1
 		}
 		//Send light and material
 		passLightingState();

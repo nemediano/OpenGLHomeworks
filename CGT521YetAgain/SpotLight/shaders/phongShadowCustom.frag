@@ -53,8 +53,7 @@ void main(void) {
 	if (all(greaterThanEqual(infront, vec2(0.0))) && all(lessThanEqual(inside, vec2(1.0)))) {
 	  vec2 uv = clamp(0.5 * light_space_pos.xy + 0.5, vec2(EPSILON), vec2(1.0 - EPSILON));
 	  vec3 stencil =  texture(lightStencil, uv, 0).rgb;
-	  float shadowFactor = getShadowFactor();
-	  color += phongShading() * stencil * shadowFactor;
+	  color += stencil * getShadowFactor() * phongShading();
 	}
 
 	fragcolor = vec4(applyGamma(color), 1.0);
@@ -69,7 +68,7 @@ float getShadowFactor() {
 	float bias = max(0.0005 * (1.0 - dot(n, l)), 0.0);
 	shadowCoord.z -= bias;
 	
-	const int size = 3;
+	const int size = 2;
 	for(int x = -size; x <= size; ++x) {
 		for(int y = -size; y <= size; ++y) {
 			shadow += texture(shadowMap, shadowCoord + vec3(vec2(x, y) * texelSize, 0.0));
