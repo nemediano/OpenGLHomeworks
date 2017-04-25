@@ -46,11 +46,13 @@ Mesh* cubePtr = nullptr;
 Mesh* spherePtr = nullptr;
 Mesh* cubeBoxPtr = nullptr;
 Mesh* currentMeshPtr = nullptr;
+Mesh* coneMeshPtr = nullptr;
 OGLProgram* phongPtr = nullptr;
 OGLProgram* stencilPtr = nullptr;
 OGLProgram* phongShadowPtr = nullptr;
 OGLProgram* phongShadowCustomPtr = nullptr;
 OGLProgram* lighPtr = nullptr;
+OGLProgram* renderLightPrt = nullptr;
 MatPhong mat;
 GLint window = 0;
 // Location for shader variables
@@ -85,6 +87,7 @@ struct Locations {
 	GLint a_texture = -1;
 };
 
+Locations renderLightLoc;
 Locations phongLoc;
 Locations stencilLoc;
 Locations lightLoc;
@@ -121,6 +124,7 @@ bool gammaCorrection;
 bool drawContainer;
 float gamma;
 bool rotation;
+bool renderLight;
 glm::vec3 backgroundColor;
 int currentShader;
 int currentMesh;
@@ -135,6 +139,7 @@ void passLightingState();
 
 void renderGeometryPass();
 void generateShadowmapPass();
+void renderSpotLight();
 
 void reload_shaders();
 void change_mesh();
@@ -280,7 +285,7 @@ void drawGUI() {
 	ImGui::Text("Polygon offset parameters");
 	ImGui::SliderFloat("Factor", &factor, 0.0f, 10.0f, "%.2f");
 	ImGui::SliderFloat("Units", &units, 0.0f, 5.0f, "%.2f");
-
+	ImGui::Checkbox("Render light", &renderLight);
 	//ImGui::Text("Light depth approximation texture");
 	//ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 1), ImVec2(1, 0), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 	ImGui::End();
@@ -322,6 +327,7 @@ void init_program() {
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
+	coneMeshPtr = new Mesh(Geometries::cone(3, 40, true));
 
 	light.stencilPtr = new Texture("../img/NewLight.png");
 
@@ -339,6 +345,10 @@ void init_program() {
 
 	if (cubeBoxPtr) {
 		cubeBoxPtr->sendToGPU();
+	}
+
+	if (coneMeshPtr) {
+		coneMeshPtr->sendToGPU();
 	}
 
 	//Extract info form the mesh
@@ -414,6 +424,7 @@ void init_program() {
 	currentMesh = 0;
 	gammaCorrection = false;
 	drawContainer = true;
+	renderLight = true;
 	gamma = 1.0f;
 
 	factor = 3.0f;
@@ -487,6 +498,7 @@ void reload_shaders() {
 	lighPtr = new OGLProgram("shaders/genShadowMap.vert", "shaders/genShadowMap.frag");
 	phongShadowPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadow.frag");
 	phongShadowCustomPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadowCustom.frag");
+	renderLightPrt = new OGLProgram("shaders/renderLight.vert", "shaders/renderLight.frag");
 	
 	if (!phongPtr || !phongPtr->isOK()) {
 		cerr << "Something wrong in Phong world shader" << endl;
@@ -513,9 +525,14 @@ void reload_shaders() {
 		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
 	}
 
-	if (phongPtr->isOK() && stencilPtr->isOK() && lighPtr->isOK() && 
-		phongShadowPtr->isOK() && phongShadowCustomPtr->isOK()) {
+	if (!renderLightPrt || !renderLightPrt->isOK()) {
+		cerr << "Something wrong in render light shader" << endl;
+		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+	}
 
+	if (phongPtr->isOK() && stencilPtr->isOK() && lighPtr->isOK() && 
+		phongShadowPtr->isOK() && phongShadowCustomPtr->isOK() &&
+		renderLightPrt->isOK()) {
 		cout << "Shaders compiled correctlly!" << endl;
 		backgroundColor = 0.15f * vec3(1.0f);
 	}
@@ -628,6 +645,25 @@ void reload_shaders() {
 	lightLoc.u_PVM = lighPtr->uniformLoc("PVM");
 	lightLoc.a_position = lighPtr->attribLoc("Position");
 
+	// Render light shader Location
+	//Uniforms
+	renderLightLoc.u_PVM = renderLightPrt->uniformLoc("PVM");
+	renderLightLoc.u_NormMat = renderLightPrt->uniformLoc("NormalMat");
+	renderLightLoc.u_CameraPos = renderLightPrt->uniformLoc("cameraPosition");
+	//Light
+	renderLightLoc.u_La = renderLightPrt->uniformLoc("light.La");
+	renderLightLoc.u_Ld = renderLightPrt->uniformLoc("light.Ld");
+	renderLightLoc.u_Ls = renderLightPrt->uniformLoc("light.Ls");
+	//Material
+	renderLightLoc.u_alpha = renderLightPrt->uniformLoc("mat.alpha");
+	renderLightLoc.u_Ka = renderLightPrt->uniformLoc("mat.Ka");
+	renderLightLoc.u_Kd = renderLightPrt->uniformLoc("mat.Kd");
+	renderLightLoc.u_Ks = renderLightPrt->uniformLoc("mat.Ks");
+	//Atrributes
+	renderLightLoc.a_position = renderLightPrt->attribLoc("Position");
+	renderLightLoc.a_normal = renderLightPrt->attribLoc("Normal");
+	
+
 }
 
 void passLightingState() {
@@ -711,6 +747,10 @@ void display() {
 
 	generateShadowmapPass();
 	renderGeometryPass();
+
+	if (renderLight) {
+		renderSpotLight();
+	}
 	
 	//Unbind an clean
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -988,6 +1028,47 @@ void generateShadowmapPass() {
 	glDisable(GL_POLYGON_OFFSET_FILL);
 	//And to the back face culling
 	glCullFace(GL_BACK);
+}
+
+void renderSpotLight() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::vec2;
+	using glm::mat4;
+
+	mat4 I(1.0f);
+	//Model
+	mat4 M = I;
+	M = glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z);
+	M = glm::translate(M, vec3(0.0f, 0.0f, light.distance - 0.2f));
+	M = glm::rotate(M, TAU / 4.0f, vec3(1.0f, 0.0f, 0.0f));
+	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()), 0.05f, 0.25f * sin(light.spot.getAperture())));
+	M = glm::rotate(M, TAU / 8.0f, vec3(0.0f, 1.0f, 0.0f));
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	renderLightPrt->use();
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+	glUniformMatrix4fv(renderLightLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(renderLightLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
+	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+	glUniform3fv(renderLightLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+	//Send light and material
+	vec3 yellow = vec3(1.0f, 1.0f, 0.0f);
+	glUniform3fv(renderLightLoc.u_Ka, 1, glm::value_ptr(0.5f * yellow));
+	glUniform3fv(renderLightLoc.u_Ks, 1, glm::value_ptr(vec3(1.0f)));
+	glUniform3fv(renderLightLoc.u_Kd, 1, glm::value_ptr(yellow));
+	glUniform1f(renderLightLoc.u_alpha, 1.0f);
+	glUniform3fv(renderLightLoc.u_La, 1, glm::value_ptr(vec3(1.0f)));
+	glUniform3fv(renderLightLoc.u_Ls, 1, glm::value_ptr(vec3(1.0f)));
+	glUniform3fv(renderLightLoc.u_Ld, 1, glm::value_ptr(vec3(1.0f)));
+	/* Draw */
+	coneMeshPtr->drawTriangles(renderLightLoc.a_position, renderLightLoc.a_normal, renderLightLoc.a_texture);
 }
 
 void idle() {
