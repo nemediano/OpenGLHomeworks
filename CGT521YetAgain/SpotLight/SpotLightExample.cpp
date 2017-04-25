@@ -65,6 +65,7 @@ struct Locations {
 	GLint u_NormMat = -1;
 	GLint u_ShadowMat = -1;
 	GLint u_gamma = -1;
+	GLint u_spread = -1;
 
 	GLint u_La = -1;
 	GLint u_Ls = -1;
@@ -132,6 +133,9 @@ int currentMesh;
 //To avoid depth fighting in the shadowmap generation
 float factor;
 float units;
+
+//Spread
+float spread;
 
 std::vector<MatPhong> materials;
 
@@ -286,6 +290,7 @@ void drawGUI() {
 	ImGui::SliderFloat("Factor", &factor, 0.0f, 10.0f, "%.2f");
 	ImGui::SliderFloat("Units", &units, 0.0f, 5.0f, "%.2f");
 	ImGui::Checkbox("Render light", &renderLight);
+	ImGui::SliderFloat("Spread", &spread, 1.0f, 1500.0f, "%.2f");
 	//ImGui::Text("Light depth approximation texture");
 	//ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 1), ImVec2(1, 0), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 	ImGui::End();
@@ -302,6 +307,8 @@ void exit_glut() {
 	delete spherePtr;
 	delete phongPtr;
 	delete stencilPtr;
+	delete coneMeshPtr;
+	delete renderLightPrt;
 	delete light.stencilPtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
@@ -426,6 +433,7 @@ void init_program() {
 	drawContainer = true;
 	renderLight = true;
 	gamma = 1.0f;
+	spread = 250.0f;
 
 	factor = 3.0f;
 	units = 2.0f;
@@ -497,7 +505,7 @@ void reload_shaders() {
 	stencilPtr = new OGLProgram("shaders/phong.vert", "shaders/stencil.frag");
 	lighPtr = new OGLProgram("shaders/genShadowMap.vert", "shaders/genShadowMap.frag");
 	phongShadowPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadow.frag");
-	phongShadowCustomPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadowCustom.frag");
+	phongShadowCustomPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadowCustom2.frag");
 	renderLightPrt = new OGLProgram("shaders/renderLight.vert", "shaders/renderLight.frag");
 	
 	if (!phongPtr || !phongPtr->isOK()) {
@@ -621,6 +629,7 @@ void reload_shaders() {
 	phongShadowCustomLoc.u_NormMat = phongShadowCustomPtr->uniformLoc("NormalMat");
 	phongShadowCustomLoc.u_ShadowMat = phongShadowCustomPtr->uniformLoc("ShadowMat");
 	phongShadowCustomLoc.u_gamma = phongShadowCustomPtr->uniformLoc("gamma");
+	phongShadowCustomLoc.u_spread = phongShadowCustomPtr->uniformLoc("spread");
 	phongShadowCustomLoc.u_CameraPos = phongShadowCustomPtr->uniformLoc("cameraPosition");
 	phongShadowCustomLoc.u_Stencil = phongShadowCustomPtr->uniformLoc("lightStencil");
 	phongShadowCustomLoc.u_ShadowMap = phongShadowCustomPtr->uniformLoc("shadowMap");
@@ -935,6 +944,7 @@ void renderGeometryPass() {
 		glUniformMatrix4fv(phongShadowCustomLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
 		glUniformMatrix4fv(phongShadowCustomLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(phongShadowCustomLoc.u_gamma, gamma);
+		glUniform1f(phongShadowCustomLoc.u_spread, spread);
 		glUniform3fv(phongShadowCustomLoc.u_LightPos, 1, glm::value_ptr(light_position));
 		glUniformMatrix4fv(phongShadowCustomLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
 		glUniformMatrix4fv(phongShadowCustomLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
@@ -1036,13 +1046,12 @@ void renderSpotLight() {
 	using glm::vec2;
 	using glm::mat4;
 
-	mat4 I(1.0f);
 	//Model
-	mat4 M = I;
+	mat4 M;
 	M = glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z);
 	M = glm::translate(M, vec3(0.0f, 0.0f, light.distance - 0.2f));
 	M = glm::rotate(M, TAU / 4.0f, vec3(1.0f, 0.0f, 0.0f));
-	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()), 0.05f, 0.25f * sin(light.spot.getAperture())));
+	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()) / sqrt(2.0f), 0.05f, 0.25f * sin(light.spot.getAperture()) / sqrt(2.0f)));
 	M = glm::rotate(M, TAU / 8.0f, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
@@ -1059,10 +1068,9 @@ void renderSpotLight() {
 	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 	glUniform3fv(renderLightLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 	//Send light and material
-	vec3 yellow = vec3(1.0f, 1.0f, 0.0f);
-	glUniform3fv(renderLightLoc.u_Ka, 1, glm::value_ptr(0.5f * yellow));
+	glUniform3fv(renderLightLoc.u_Ka, 1, glm::value_ptr(vec3(0.33f, 0.22f, 0.03f)));
 	glUniform3fv(renderLightLoc.u_Ks, 1, glm::value_ptr(vec3(1.0f)));
-	glUniform3fv(renderLightLoc.u_Kd, 1, glm::value_ptr(yellow));
+	glUniform3fv(renderLightLoc.u_Kd, 1, glm::value_ptr(vec3(0.78f, 0.57f, 0.11f)));
 	glUniform1f(renderLightLoc.u_alpha, 1.0f);
 	glUniform3fv(renderLightLoc.u_La, 1, glm::value_ptr(vec3(1.0f)));
 	glUniform3fv(renderLightLoc.u_Ls, 1, glm::value_ptr(vec3(1.0f)));
