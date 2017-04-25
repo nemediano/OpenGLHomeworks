@@ -32,7 +32,6 @@ out vec4 fragcolor;
 
 vec3 applyGamma(vec3 color);
 vec3 phongShading();
-const float EPSILON = 1e-2;
 
 vec2 poissonDisk[32] = vec2[](
 	vec2(-0.436676, -0.16539f),
@@ -89,7 +88,7 @@ void main(void) {
 	vec2 infront = vec2(light_space_normal.z, light_space_pos.z);
 	vec2 inside = abs(light_space_pos.xy);
 	if (all(greaterThan(infront, vec2(0.0))) && all(lessThan(inside, vec2(1.0)))) {
-	  vec2 uv = clamp(0.5 * light_space_pos.xy + 0.5, vec2(EPSILON), vec2(1.0 - EPSILON));
+	  vec2 uv = 0.5 * light_space_pos.xy + 0.5;
 	  vec3 stencil =  texture(lightStencil, uv, 0).rgb;
 	  color += stencil * getShadowFactor() * phongShading();
 	}

@@ -50,8 +50,8 @@ void main(void) {
 	//See if we are inside of the light cone
 	vec2 infront = vec2(light_space_normal.z, light_space_pos.z);
 	vec2 inside = abs(light_space_pos.xy);
-	if (all(greaterThanEqual(infront, vec2(0.0))) && all(lessThanEqual(inside, vec2(1.0)))) {
-	  vec2 uv = clamp(0.5 * light_space_pos.xy + 0.5, vec2(EPSILON), vec2(1.0 - EPSILON));
+	if (all(greaterThan(infront, vec2(0.0))) && all(lessThan(inside, vec2(1.0)))) {
+	  vec2 uv = 0.5 * light_space_pos.xy + 0.5;
 	  vec3 stencil =  texture(lightStencil, uv, 0).rgb;
 	  color += stencil * getShadowFactor() * phongShading();
 	}
