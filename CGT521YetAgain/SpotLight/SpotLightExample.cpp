@@ -334,7 +334,7 @@ void init_program() {
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
-	coneMeshPtr = new Mesh(Geometries::cone(3, 40, true));
+	coneMeshPtr = new Mesh(Geometries::cone(2, 40, true));
 
 	light.stencilPtr = new Texture("../img/NewLight.png");
 

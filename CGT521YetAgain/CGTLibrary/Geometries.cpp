@@ -7,6 +7,7 @@ namespace mesh {
 	using glm::vec4;
 	using glm::vec2;
 	using glm::mat4;
+	using glm::mat3;
 	using namespace std;
 	using namespace math;
 
@@ -304,11 +305,242 @@ namespace mesh {
 		return cylinder;
 	}
 
-	Mesh Geometries::teapot() {
-		Mesh teapot;
+	
 
+	vector< vector<unsigned int> > patchIndices = {
+		// rim
+		{ 102, 103, 104, 105, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+		// body
+		{ 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 },{ 24, 25, 26, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40 },
+		// lid
+		{ 96, 96, 96, 96, 97, 98, 99, 100, 101, 101, 101, 101, 0, 1, 2, 3, },{ 0, 1, 2, 3, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117 },
+		// bottom
+		{ 118, 118, 118, 118, 124, 122, 119, 121, 123, 126, 125, 120, 40, 39, 38, 37 },
+		// handle
+		{ 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56 },{ 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 28, 65, 66, 67 },
+		// spout
+		{ 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83 },{ 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95 }
+	};
+
+	const float LID = 1.0f;
+	const float LID_Z = 1.0f;
+
+	vector<vec3> curveData{
+		{ 0.2f*LID, 0.f*LID, 2.7f*LID_Z },{ 0.2f*LID, -0.112f*LID, 2.7f*LID_Z },{ 0.112f*LID, -0.2f*LID, 2.7f*LID_Z },{ 0.f*LID, -0.2f*LID, 2.7f*LID_Z },
+		{ 1.3375f, 0.f, 2.53125f },{ 1.3375f, -0.749f, 2.53125f },{ 0.749f, -1.3375f, 2.53125f },{ 0.f, -1.3375f, 2.53125f },
+		{ 1.4375f, 0.f, 2.53125f },{ 1.4375f, -0.805f, 2.53125f },{ 0.805f, -1.4375f, 2.53125f },{ 0.f, -1.4375f, 2.53125f },
+		{ 1.5f, 0.f, 2.4f },{ 1.5f, -0.84f, 2.4f },{ 0.84f, -1.5f, 2.4f },{ 0.f, -1.5f, 2.4f },{ 1.75f, 0.f, 1.875f },
+		{ 1.75f, -0.98f, 1.875f },{ 0.98f, -1.75f, 1.875f },{ 0.f, -1.75f, 1.875f },{ 2.f, 0.f, 1.35f },{ 2.f, -1.12f, 1.35f },
+		{ 1.12f, -2.f, 1.35f },{ 0.f, -2.f, 1.35f },{ 2.f, 0.f, 0.9f },{ 2.f, -1.12f, 0.9f },{ 1.12f, -2.f, 0.9f },
+		{ 0.f, -2.f, 0.9f },{ -2.f, 0.f, 0.9f },{ 2.f, 0.f, 0.45f },{ 2.f, -1.12f, 0.45f },{ 1.12f, -2.f, 0.45f },{ 0.f, -2.f, 0.45f },
+		// 33
+		{ 1.5f, 0.f, 0.225f },
+		{ 1.5f, -0.84f, 0.225f },{ 0.84f, -1.5f, 0.225f },{ 0.f, -1.5f, 0.225f },{ 1.5f, 0.f, 0.15f },{ 1.5f,
+		-0.84f, 0.15f },{ 0.84f, -1.5f, 0.15f },{ 0.f, -1.5f, 0.15f },{ -1.6f, 0.f, 2.025f },{ -1.6f, -0.3f,
+		2.025f },{ -1.5f, -0.3f, 2.25f },{ -1.5f, 0.f, 2.25f },{ -2.3f, 0.f, 2.025f },{ -2.3f, -0.3f, 2.025f },
+		{ -2.5f, -0.3f, 2.25f },{ -2.5f, 0.f, 2.25f },{ -2.7f, 0.f, 2.025f },{ -2.7f, -0.3f, 2.025f },{ -3.f,
+		-0.3f, 2.25f },{ -3.f, 0.f, 2.25f },{ -2.7f, 0.f, 1.8f },{ -2.7f, -0.3f, 1.8f },{ -3.f, -0.3f, 1.8f },
+		{ -3.f, 0.f, 1.8f },{ -2.7f, 0.f, 1.575f },{ -2.7f, -0.3f, 1.575f },{ -3.f, -0.3f, 1.35f },{ -3.f, 0.f,
+		1.35f },{ -2.5f, 0.f, 1.125f },{ -2.5f, -0.3f, 1.125f },{ -2.65f, -0.3f, 0.9375f },{ -2.65f, 0.f,
+		0.9375f },{ -2.f, -0.3f, 0.9f },{ -1.9f, -0.3f, 0.6f },
+		// 67
+		{ -1.9f, 0.f, 0.6f },{ 1.7f, 0.f, 1.425f },{ 1.7f, -0.66f, 1.425f },{ 1.7f, -0.66f, 0.6f },{ 1.7f, 0.f, 0.6f },{ 2.6f, 0.f, 1.425f },{ 2.6f, -0.66f,
+		1.425f },{ 3.1f, -0.66f, 0.825f },{ 3.1f, 0.f, 0.825f },{ 2.3f, 0.f, 2.1f },{ 2.3f, -0.25f, 2.1f },
+		{ 2.4f, -0.25f, 2.025f },{ 2.4f, 0.f, 2.025f },{ 2.7f, 0.f, 2.4f },{ 2.7f, -0.25f, 2.4f },{ 3.3f, -0.25f,
+		2.4f },{ 3.3f, 0.f, 2.4f },{ 2.8f, 0.f, 2.475f },{ 2.8f, -0.25f, 2.475f },{ 3.525f, -0.25f, 2.49375f },
+		{ 3.525f, 0.f, 2.49375f },{ 2.9f, 0.f, 2.475f },{ 2.9f, -0.15f, 2.475f },{ 3.45f, -0.15f, 2.5125f },
+		{ 3.45f, 0.f, 2.5125f },{ 2.8f, 0.f, 2.4f },{ 2.8f, -0.15f, 2.4f },{ 3.2f, -0.15f, 2.4f },{ 3.2f, 0.f,
+		2.4f },
+		// 96:
+		{ 0.f*LID, 0.f*LID, 3.15f*LID_Z },{ 0.8f*LID, 0.f*LID, 3.15f*LID_Z },{ 0.8f*LID, -0.45f*LID, 3.15f*LID_Z },{ 0.45f*LID, -0.8f*LID, 3.15f*LID_Z },
+		{ 0.f*LID, -0.8f*LID, 3.15f*LID_Z },{ 0.f*LID, 0.f*LID, 2.85f*LID_Z },
+		// 102:
+		{ 1.4f, 0.f, 2.4f },{ 1.4f, -0.784f, 2.4f },{ 0.784f, -1.4f, 2.4f },{ 0.f, -1.4f, 2.4f },
+		// 106:
+		{ 0.4f*LID, 0.f*LID, 2.55f*LID_Z },{ 0.4f*LID, -0.224f*LID, 2.55f*LID_Z },{ 0.224f*LID, -0.4f*LID, 2.55f*LID_Z },
+		{ 0.f*LID, -0.4f*LID,2.55f*LID_Z },{ 1.3f*LID, 0.f*LID, 2.55f*LID_Z },{ 1.3f*LID, -0.728f*LID, 2.55f*LID_Z },{ 0.728f*LID, -1.3f*LID, 2.55f*LID_Z },{ 0.f*LID, -1.3f*LID, 2.55f*LID_Z },
+		{ 1.3f*LID, 0.f*LID, 2.4f*LID_Z },{ 1.3f*LID, -0.728f*LID, 2.4f*LID_Z },{ 0.728f*LID, -1.3f*LID, 2.4f*LID_Z },{ 0.f*LID, -1.3f*LID, 2.4f*LID_Z },
+		// 118:
+		{ 0.f, 0.f, 0.f },{ 1.425f, -0.798f, 0.f },{ 1.5f, 0.f, 0.075f },{ 1.425f, 0.f, 0.f },{ 0.798f, -1.425f, 0.f },{ 0.f,
+		-1.5f, 0.075f },{ 0.f, -1.425f, 0.f },{ 1.5f, -0.84f, 0.075f },{ 0.84f, -1.5f, 0.075f }
+	};
+
+
+	vec3 evaluate(int gridU, int gridV, const vector<float>& B, const vec3 patch[][4]) {
+		vec3 p;
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				p += patch[i][j] * B[gridU * 4 + i] * B[gridV * 4 + j];
+			}
+		}
+
+		return p;
+	}
+
+	vec3 evaluateNormal(int gridU, int gridV, const vector<float>& B, const vector<float>& dB, const vec3 patch[][4]) {
+		vec3 du, dv;
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				du += patch[i][j] * dB[gridU * 4 + i] * B[gridV * 4 + j];
+				dv += patch[i][j] * B[gridU * 4 + i] * dB[gridV * 4 + j];
+			}
+		}
+
+		return normalize(cross(du, dv));
+	}
+
+	void getPatch(int patchNum, vec3 patch[][4], bool reverseV)	{
+		for (int u = 0; u < 4; u++) {          // Loop in u direction
+			for (int v = 0; v < 4; v++) {     // Loop in v direction
+				if (reverseV) {
+					patch[u][v] = vec3(
+						curveData[patchIndices[patchNum][u * 4 + (3 - v)]][0],
+						curveData[patchIndices[patchNum][u * 4 + (3 - v)]][1],
+						curveData[patchIndices[patchNum][u * 4 + (3 - v)]][2]
+					);
+				}
+				else {
+					patch[u][v] = vec3(
+						curveData[patchIndices[patchNum][u * 4 + v]][0],
+						curveData[patchIndices[patchNum][u * 4 + v]][1],
+						curveData[patchIndices[patchNum][u * 4 + v]][2]
+					);
+				}
+			}
+		}
+	}
+
+	void buildPatch(vec3 patch[][4], const vector<float>& B, const vector<float>& dB, vector<Vertex>& vertices,
+		vector<unsigned int>& indices, int &index, int &elIndex, int &tcIndex, int grid, mat3 reflect, bool invertNormal) {
+		int startIndex = index;
+		float tcFactor = 1.0f / grid;
+
+		float scale = 2.0f / 6.42813f; // awful hack to keep it within unit cube
+
+		for (int i = 0; i <= grid; i++) {
+			for (int j = 0; j <= grid; j++) {
+				vec3 pt = reflect * evaluate(i, j, B, patch);
+				vec3 norm = reflect * evaluateNormal(i, j, B, dB, patch);
+				if (invertNormal)
+					norm = -norm;
+				// awful hack due to normals discontinuity
+				if (abs(pt.x) < 0.01f && abs(pt.y) < 0.01f)
+					norm = (pt.z < 1) ? vec3(0, 0, -1) : vec3(0, 0, 1);
+
+				vertices[index].position = pt * scale;
+				vertices[index].normal = norm;
+				vertices[index].textCoord = tcFactor * vec2(i, j);
+				index++;
+				tcIndex += 2;
+			}
+		}
+
+		for (int i = 0; i < grid; i++) {
+			int iStart = i * (grid + 1) + startIndex;
+			int nextiStart = (i + 1) * (grid + 1) + startIndex;
+			for (int j = 0; j < grid; j++) {
+				indices[elIndex] = iStart + j;
+				indices[elIndex + 1] = nextiStart + j + 1;
+				indices[elIndex + 2] = nextiStart + j;
+
+				indices[elIndex + 3] = iStart + j;
+				indices[elIndex + 4] = iStart + j + 1;
+				indices[elIndex + 5] = nextiStart + j + 1;
+
+				elIndex += 2;
+			}
+		}
+	}
+
+	void buildPatchReflect(int patchNum, const vector<float>& B, const vector<float>& dB, vector<Vertex>& vertices, vector<unsigned int>& indices,
+		int &index, int &elIndex, int &tcIndex, int grid, bool reflectX, bool reflectY) {
+
+		vec3 patch[4][4];
+		vec3 patchRevV[4][4];
+		getPatch(patchNum, patch, false);
+		getPatch(patchNum, patchRevV, true);
+
+		// Patch without modification
+		buildPatch(patchRevV, B, dB, vertices, indices, index, elIndex, tcIndex, grid, mat3(), false);
+
+		// Patch reflected in x
+		if (reflectX) {
+			mat3 reflect(glm::scale(vec3(-1, 1, 1)));
+			buildPatch(patch, B, dB, vertices, indices, index, elIndex, tcIndex, grid, reflect, true);
+		}
+
+		// Patch reflected in y
+		if (reflectY) {
+			mat3 reflect(glm::scale(vec3(1, -1, 1)));
+			buildPatch(patch, B, dB, vertices, indices, index, elIndex, tcIndex, grid, reflect, true);
+		}
+
+		// Patch reflected in x and y
+		if (reflectX && reflectY) {
+			mat3 reflect(glm::scale(vec3(-1, -1, 1)));
+			buildPatch(patchRevV, B, dB, vertices, indices, index, elIndex, tcIndex, grid, reflect, false);
+		}
+
+	}
+
+	void computeBasisFunctions(vector<float>& B, vector<float>& dB, int grid) {
+		float inc = 1.0f / grid;
+		for (int i = 0; i <= grid; i++) {
+			float t = i * inc;
+			float tSqr = t * t;
+			float oneMinusT = (1.0f - t);
+			float oneMinusT2 = oneMinusT * oneMinusT;
+
+			B[i * 4 + 0] = oneMinusT * oneMinusT2;
+			B[i * 4 + 1] = 3.0f * oneMinusT2 * t;
+			B[i * 4 + 2] = 3.0f * oneMinusT * tSqr;
+			B[i * 4 + 3] = t * tSqr;
+
+			dB[i * 4 + 0] = -3.0f * oneMinusT2;
+			dB[i * 4 + 1] = -6.0f * t * oneMinusT + 3.0f * oneMinusT2;
+			dB[i * 4 + 2] = -3.0f * tSqr + 6.0f * t * oneMinusT;
+			dB[i * 4 + 3] = 3.0f * tSqr;
+		}
+	}
+
+	void generatePatches(vector<Vertex>& vertices, vector<unsigned int>& indices, int grid) {
+		vector<float> B(4 * (grid + 1));  // Pre-computed Bernstein basis functions
+		vector<float> dB(4 * (grid + 1)); // Pre-computed derivitives of basis functions
+		int idx = 0, elIndex = 0, tcIndex = 0;
+
+		// Build each patch
+		// The rim
+		buildPatchReflect(0, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
+		// The body
+		buildPatchReflect(1, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
+		buildPatchReflect(2, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
+		// The lid
+		buildPatchReflect(3, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
+		buildPatchReflect(4, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
+		// The bottom
+		buildPatchReflect(5, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
+		// The handle
+		buildPatchReflect(6, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, false, true);
+		buildPatchReflect(7, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, false, true);
+		// The spout
+		buildPatchReflect(8, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, false, true);
+		buildPatchReflect(9, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, false, true);
+	}
+
+	Mesh Geometries::teapot(int subdivisions) {
+		Mesh teapot;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+
+		vertices.resize(32 * (subdivisions + 1) * (subdivisions + 1));
+		indices.resize(6 * subdivisions * subdivisions * 32);
+		generatePatches(vertices, indices, subdivisions);
+
+		teapot.setVertices(vertices, true, true);
+		teapot.setIndex(indices);
 		return teapot;
 	}
+
 
 	Mesh Geometries::torus(float externRadio, float internRadio, int rings, int sections) {
 		Mesh torus;

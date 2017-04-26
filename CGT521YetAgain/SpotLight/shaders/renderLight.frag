@@ -24,8 +24,8 @@ out vec4 fragcolor;
 vec3 applyGamma(vec3 color);
 
 void main(void) {
-	//Artificial directional light form the camera position
-	vec3 l = normalize(-cameraPosition);
+	//Artificial directional light from the camera position
+	vec3 l = normalize(cameraPosition);
 	vec3 n = normalize(fNormal);
 	
 	vec3 Ka = mat.Ka;
