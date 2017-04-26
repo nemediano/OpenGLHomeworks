@@ -305,7 +305,7 @@ namespace mesh {
 		return cylinder;
 	}
 
-	
+	/*****************************************************************************************************************/
 
 	vector< vector<unsigned int> > patchIndices = {
 		// rim
@@ -440,14 +440,14 @@ namespace mesh {
 			int nextiStart = (i + 1) * (grid + 1) + startIndex;
 			for (int j = 0; j < grid; j++) {
 				indices[elIndex] = iStart + j;
-				indices[elIndex + 1] = nextiStart + j + 1;
-				indices[elIndex + 2] = nextiStart + j;
+				indices[elIndex + 1] = nextiStart + j;
+				indices[elIndex + 2] = nextiStart + j + 1;
 
 				indices[elIndex + 3] = iStart + j;
-				indices[elIndex + 4] = iStart + j + 1;
-				indices[elIndex + 5] = nextiStart + j + 1;
+				indices[elIndex + 4] = nextiStart + j + 1;
+				indices[elIndex + 5] = iStart + j + 1;
 
-				elIndex += 2;
+				elIndex += 6;
 			}
 		}
 	}
@@ -508,6 +508,10 @@ namespace mesh {
 		vector<float> dB(4 * (grid + 1)); // Pre-computed derivitives of basis functions
 		int idx = 0, elIndex = 0, tcIndex = 0;
 
+		// Pre-compute the basis functions  (Bernstein polynomials)
+		// and their derivatives
+		computeBasisFunctions(B, dB, grid);
+
 		// Build each patch
 		// The rim
 		buildPatchReflect(0, B, dB, vertices, indices, idx, elIndex, tcIndex, grid, true, true);
@@ -538,10 +542,19 @@ namespace mesh {
 
 		teapot.setVertices(vertices, true, true);
 		teapot.setIndex(indices);
+		glm::vec3 c = teapot.getBBCenter();
+		float scaleFactor = teapot.scaleFactor();
+
+		glm::mat4 T = glm::rotate(mat4(1.0f), -TAU / 4.0f, vec3(1.0f, 0.0f, 0.0f));
+		T = glm::scale(T, glm::vec3(2.0f * scaleFactor));
+		T = glm::translate(T, -c);
+
+		teapot.transform(T);
+
 		return teapot;
 	}
 
-
+/*****************************************************************************************************************/
 	Mesh Geometries::torus(float externRadio, float internRadio, int rings, int sections) {
 		Mesh torus;
 		vector<unsigned int> indices;

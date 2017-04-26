@@ -185,6 +185,14 @@ namespace mesh {
 			return false;
 		}
 	}
+
+	void Mesh::transform(const glm::mat4& T) {
+		glm::mat4 normalMat = glm::inverse(glm::transpose(T));
+		for (auto& v : m_vertices) {
+			v.position = glm::vec3(T * glm::vec4(v.position, 1.0f));
+			v.normal = glm::vec3(normalMat * glm::vec4(v.normal, 0.0f));
+		}
+	}
 	
 	void Mesh::indexFromTriangles(const std::vector<Triangle>& triangles) {
 		//This set will be used to get rid of the duplicate vertex

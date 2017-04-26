@@ -330,7 +330,7 @@ void init_program() {
 	using namespace lighting;
 	
 	/* Load assets */
-	meshPtr = new Mesh("../models/teapot.obj");
+	meshPtr = new Mesh(Geometries::teapot(6));
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
