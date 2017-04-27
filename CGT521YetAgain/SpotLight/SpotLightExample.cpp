@@ -832,6 +832,7 @@ void renderGeometryPass() {
 	mat4 I(1.0f);
 	//Model
 	mat4 M = rotation ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
+	//M = glm::scale(M, vec3(0.1));
 	M = glm::scale(M, vec3(scaleFactor));
 	M = glm::translate(M, -meshCenter);
 	//View
@@ -1149,9 +1150,10 @@ void renderSpotLight() {
 	//Model
 	mat4 M;
 	M = glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z);
-	M = glm::translate(M, vec3(0.0f, 0.0f, light.distance - 0.2f));
+	M = glm::translate(M, vec3(0.0f, 0.0f, light.distance));
 	M = glm::rotate(M, TAU / 4.0f, vec3(1.0f, 0.0f, 0.0f));
-	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()) / sqrt(2.0f), 0.05f, 0.25f * sin(light.spot.getAperture()) / sqrt(2.0f)));
+	M = glm::translate(M, vec3(0.0f, -0.1f, 0.0));
+	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()) / sqrt(2.0f), 0.1f, 0.25f * sin(light.spot.getAperture()) / sqrt(2.0f)));
 	//M = glm::rotate(M, TAU / 8.0f, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
