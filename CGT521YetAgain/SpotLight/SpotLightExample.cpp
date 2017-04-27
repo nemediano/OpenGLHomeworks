@@ -51,6 +51,7 @@ OGLProgram* phongPtr = nullptr;
 OGLProgram* stencilPtr = nullptr;
 OGLProgram* phongShadowPtr = nullptr;
 OGLProgram* phongShadowCustomPtr = nullptr;
+OGLProgram* phongShadowCustom2Ptr = nullptr;
 OGLProgram* lighPtr = nullptr;
 OGLProgram* renderLightPrt = nullptr;
 MatPhong mat;
@@ -94,6 +95,7 @@ Locations stencilLoc;
 Locations lightLoc;
 Locations phongShadowLoc;
 Locations phongShadowCustomLoc;
+Locations phongShadowCustom2Loc;
 
 struct FBO {
 	GLuint id = 0;
@@ -208,7 +210,8 @@ void drawGUI() {
 	ImGui::RadioButton("Mark spaces", &currentShader, 0);
 	ImGui::RadioButton("Stencil", &currentShader, 1);
 	ImGui::RadioButton("Shadow", &currentShader, 2);
-	ImGui::RadioButton("Custom Shadow", &currentShader, 3);
+	ImGui::RadioButton("Soft Shadow (Avg)", &currentShader, 3);
+	ImGui::RadioButton("Soft Shadow (Poisson disk)", &currentShader, 4);
 
 	ImGui::Text("Light position");
 	float aperture = light.spot.getAperture();
@@ -290,7 +293,7 @@ void drawGUI() {
 	ImGui::SliderFloat("Factor", &factor, 0.0f, 10.0f, "%.2f");
 	ImGui::SliderFloat("Units", &units, 0.0f, 5.0f, "%.2f");
 	ImGui::Checkbox("Render light", &renderLight);
-	ImGui::SliderFloat("Spread", &spread, 1.0f, 1500.0f, "%.2f");
+	ImGui::SliderFloat("Spread", &spread, 0.0f, 30.0f, "%.2f");
 	//ImGui::Text("Light depth approximation texture");
 	//ImGui::Image((ImTextureID)shadowBuffer.test, ImVec2(shadowBuffer.width * 0.25f, shadowBuffer.height * 0.25f), ImVec2(0, 1), ImVec2(1, 0), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 	ImGui::End();
@@ -310,6 +313,8 @@ void exit_glut() {
 	delete coneMeshPtr;
 	delete renderLightPrt;
 	delete light.stencilPtr;
+	delete phongShadowCustomPtr;
+	delete phongShadowCustom2Ptr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
@@ -334,7 +339,7 @@ void init_program() {
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
-	coneMeshPtr = new Mesh(Geometries::cone(2, 40, true));
+	coneMeshPtr = new Mesh(Geometries::pyramid());
 
 	light.stencilPtr = new Texture("../img/NewLight.png");
 
@@ -427,13 +432,13 @@ void init_program() {
 
 	backgroundColor = vec3(0.15f);
 
-	currentShader = 3;
+	currentShader = 4;
 	currentMesh = 0;
 	gammaCorrection = false;
 	drawContainer = true;
 	renderLight = true;
 	gamma = 1.0f;
-	spread = 250.0f;
+	spread = 3.0f;
 
 	factor = 3.0f;
 	units = 2.0f;
@@ -505,7 +510,8 @@ void reload_shaders() {
 	stencilPtr = new OGLProgram("shaders/phong.vert", "shaders/stencil.frag");
 	lighPtr = new OGLProgram("shaders/genShadowMap.vert", "shaders/genShadowMap.frag");
 	phongShadowPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadow.frag");
-	phongShadowCustomPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadowCustom2.frag");
+	phongShadowCustomPtr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadowCustom.frag");
+	phongShadowCustom2Ptr = new OGLProgram("shaders/phongShadow.vert", "shaders/phongShadowCustom2.frag");
 	renderLightPrt = new OGLProgram("shaders/renderLight.vert", "shaders/renderLight.frag");
 	
 	if (!phongPtr || !phongPtr->isOK()) {
@@ -524,7 +530,12 @@ void reload_shaders() {
 	}
 
 	if (!phongShadowCustomPtr || !phongShadowCustomPtr->isOK()) {
-		cerr << "Something wrong in Custom Phong shadow shader" << endl;
+		cerr << "Something wrong in Phong shadow average shader" << endl;
+		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
+	}
+
+	if (!phongShadowCustom2Ptr || !phongShadowCustom2Ptr->isOK()) {
+		cerr << "Something wrong in Phong shadow Poisson disk shader" << endl;
 		backgroundColor = vec3(1.0f, 0.0f, 1.0f);
 	}
 
@@ -650,6 +661,35 @@ void reload_shaders() {
 	phongShadowCustomLoc.a_normal = phongShadowCustomPtr->attribLoc("Normal");
 	phongShadowCustomLoc.a_texture = phongShadowCustomPtr->attribLoc("TextCoord");
 
+	// Custom shader 2 Location
+	//Uniforms
+	phongShadowCustom2Loc.u_PVM = phongShadowCustom2Ptr->uniformLoc("PVM");
+	phongShadowCustom2Loc.u_M = phongShadowCustom2Ptr->uniformLoc("M");
+	phongShadowCustom2Loc.u_NormMat = phongShadowCustom2Ptr->uniformLoc("NormalMat");
+	phongShadowCustom2Loc.u_ShadowMat = phongShadowCustom2Ptr->uniformLoc("ShadowMat");
+	phongShadowCustom2Loc.u_gamma = phongShadowCustom2Ptr->uniformLoc("gamma");
+	phongShadowCustom2Loc.u_spread = phongShadowCustom2Ptr->uniformLoc("spread");
+	phongShadowCustom2Loc.u_CameraPos = phongShadowCustom2Ptr->uniformLoc("cameraPosition");
+	phongShadowCustom2Loc.u_Stencil = phongShadowCustom2Ptr->uniformLoc("lightStencil");
+	phongShadowCustom2Loc.u_ShadowMap = phongShadowCustom2Ptr->uniformLoc("shadowMap");
+	//Light
+	phongShadowCustom2Loc.u_LightPos = phongShadowCustom2Ptr->uniformLoc("light.position");
+	phongShadowCustom2Loc.u_LightPM = phongShadowCustom2Ptr->uniformLoc("light.PM");
+	phongShadowCustom2Loc.u_LightM = phongShadowCustom2Ptr->uniformLoc("light.M");
+	phongShadowCustom2Loc.u_La = phongShadowCustom2Ptr->uniformLoc("light.La");
+	phongShadowCustom2Loc.u_Ld = phongShadowCustom2Ptr->uniformLoc("light.Ld");
+	phongShadowCustom2Loc.u_Ls = phongShadowCustom2Ptr->uniformLoc("light.Ls");
+	//Material
+	phongShadowCustom2Loc.u_alpha = phongShadowCustom2Ptr->uniformLoc("mat.alpha");
+	phongShadowCustom2Loc.u_Ka = phongShadowCustom2Ptr->uniformLoc("mat.Ka");
+	phongShadowCustom2Loc.u_Kd = phongShadowCustom2Ptr->uniformLoc("mat.Kd");
+	phongShadowCustom2Loc.u_Ks = phongShadowCustom2Ptr->uniformLoc("mat.Ks");
+	//Atrributes
+	phongShadowCustom2Loc.a_position = phongShadowCustom2Ptr->attribLoc("Position");
+	phongShadowCustom2Loc.a_normal = phongShadowCustom2Ptr->attribLoc("Normal");
+	phongShadowCustom2Loc.a_texture = phongShadowCustom2Ptr->attribLoc("TextCoord");
+
+
 	//For the shadowmap creation
 	lightLoc.u_PVM = lighPtr->uniformLoc("PVM");
 	lightLoc.a_position = lighPtr->attribLoc("Position");
@@ -709,6 +749,14 @@ void passLightingState() {
 		glUniform3fv(phongShadowCustomLoc.u_La, 1, glm::value_ptr(light.properties.getLa()));
 		glUniform3fv(phongShadowCustomLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
 		glUniform3fv(phongShadowCustomLoc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
+	} else if (currentShader == 4) {
+		glUniform3fv(phongShadowCustom2Loc.u_Ka, 1, glm::value_ptr(mat.getKa()));
+		glUniform3fv(phongShadowCustom2Loc.u_Ks, 1, glm::value_ptr(mat.getKs()));
+		glUniform3fv(phongShadowCustom2Loc.u_Kd, 1, glm::value_ptr(mat.getKd()));
+		glUniform1f(phongShadowCustom2Loc.u_alpha, mat.getAlpha());
+		glUniform3fv(phongShadowCustom2Loc.u_La, 1, glm::value_ptr(light.properties.getLa()));
+		glUniform3fv(phongShadowCustom2Loc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+		glUniform3fv(phongShadowCustom2Loc.u_Ld, 1, glm::value_ptr(light.properties.getLd()));
 	}
 }
 
@@ -982,6 +1030,58 @@ void renderGeometryPass() {
 			cubeBoxPtr->drawTriangles(phongShadowCustomLoc.a_position, phongShadowCustomLoc.a_normal, phongShadowCustomLoc.a_texture);
 		}
 
+	} else if (currentShader == 4) {
+		phongShadowCustom2Ptr->use();
+		/************************************************************************/
+		/* Send uniform values to shader                                        */
+		/************************************************************************/
+
+		mat4 biasMat = glm::translate(I, vec3(0.5f));
+		biasMat = glm::scale(biasMat, vec3(0.5f));
+		mat4 shadowMat = biasMat * light.spot.getPM() * M;
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
+		glUniform1f(phongShadowCustom2Loc.u_gamma, gamma);
+		glUniform1f(phongShadowCustom2Loc.u_spread, spread);
+		glUniform3fv(phongShadowCustom2Loc.u_LightPos, 1, glm::value_ptr(light_position));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+		glUniform3fv(phongShadowCustom2Loc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+		glBindTexture(GL_TEXTURE_2D, light.stencilPtr->get_id()); //The next binded texture will be refered with the active texture unit
+		if (phongShadowCustom2Loc.u_Stencil != -1) {
+			glUniform1i(phongShadowCustom2Loc.u_Stencil, 0); // we bound our texture to texture unit 0
+		}
+		glActiveTexture(GL_TEXTURE1); //Active texture unit 1
+		glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth); //The next binded texture will be refered with the active texture unit
+		if (phongShadowCustom2Loc.u_ShadowMap != -1) {
+			glUniform1i(phongShadowCustom2Loc.u_ShadowMap, 1); // we bound our texture to texture unit 0
+		}
+		//Send light and material
+		passLightingState();
+		/* Draw */
+		currentMeshPtr->drawTriangles(phongShadowCustom2Loc.a_position, phongShadowCustom2Loc.a_normal, phongShadowCustom2Loc.a_texture);
+
+		if (drawContainer) {
+			//Draw the exterior box
+			mat4 M_box = mat4(1.0f);
+			M_box = glm::scale(M_box, vec3(3.0f));
+			mat4 shadowMat = biasMat * light.spot.getPM() * M_box;
+			glUniformMatrix4fv(phongShadowCustom2Loc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
+			glUniformMatrix4fv(phongShadowCustom2Loc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
+			glUniformMatrix4fv(phongShadowCustom2Loc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
+			glUniformMatrix4fv(phongShadowCustom2Loc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
+			glUniform3fv(phongShadowCustom2Loc.u_Ka, 1, glm::value_ptr(vec3(0.25f)));
+			glUniform3fv(phongShadowCustom2Loc.u_Ks, 1, glm::value_ptr(vec3(0.0f)));
+			glUniform3fv(phongShadowCustom2Loc.u_Kd, 1, glm::value_ptr(vec3(0.75f)));
+			glUniform1f(phongShadowCustom2Loc.u_alpha, 1.0f);
+			cubeBoxPtr->drawTriangles(phongShadowCustom2Loc.a_position, phongShadowCustom2Loc.a_normal, phongShadowCustom2Loc.a_texture);
+		}
+
 	}
 }
 void generateShadowmapPass() {
@@ -1052,7 +1152,7 @@ void renderSpotLight() {
 	M = glm::translate(M, vec3(0.0f, 0.0f, light.distance - 0.2f));
 	M = glm::rotate(M, TAU / 4.0f, vec3(1.0f, 0.0f, 0.0f));
 	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()) / sqrt(2.0f), 0.05f, 0.25f * sin(light.spot.getAperture()) / sqrt(2.0f)));
-	M = glm::rotate(M, TAU / 8.0f, vec3(0.0f, 1.0f, 0.0f));
+	//M = glm::rotate(M, TAU / 8.0f, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
@@ -1183,6 +1283,10 @@ void special(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F4:
 			currentShader = 3;
+		break;
+
+		case GLUT_KEY_F5:
+			currentShader = 4;
 		break;
 
 	}

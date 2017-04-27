@@ -98,7 +98,8 @@ void main(void) {
 
 float getShadowFactor() {
 	float shadow = 0.0;
-	
+	vec2 sizes = 1.0 / textureSize(shadowMap, 0);
+	float texelSize = max(sizes.x, sizes.y);
 	vec3 shadowCoord = fShadowCoord.xyz / fShadowCoord.w;
 	vec3 l = normalize(light.position - fPosition);
 	vec3 n = normalize(fNormal);
@@ -108,7 +109,7 @@ float getShadowFactor() {
 	const int numSamples = 16; //Depends on the speed of the GPU
 	for(int i = 0; i < numSamples; ++i) {
 		int randomIndex = int(32.0 * random(vec4(fPosition, i))) % 32;
-		shadow += texture(shadowMap, shadowCoord + vec3(poissonDisk[randomIndex] / spread, 0.0));
+		shadow += texture(shadowMap, shadowCoord + vec3(poissonDisk[randomIndex] * texelSize * spread, 0.0));
 	}
 	shadow /= numSamples;
 	

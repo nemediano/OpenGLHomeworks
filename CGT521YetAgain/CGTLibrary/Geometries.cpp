@@ -724,6 +724,134 @@ namespace mesh {
 		return cube;
 	}
 
+	Mesh Geometries::pyramid() {
+		Mesh pyramid;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices(16);
+
+		vec3 positions[] = {
+			vec3( 0.0f, 1.0f,  0.0f),  // 0
+			vec3( 1.0f, 0.0f, -1.0f),  // 1
+			vec3( 1.0f, 0.0f,  1.0f),  // 2
+			vec3(-1.0f, 0.0f, -1.0f),  // 3
+			vec3(-1.0f, 0.0f,  1.0f)   // 4
+		};
+
+		vec2 textCoords[] = {
+			vec2(0.5f, 0.0f),   //0
+			vec2(0.25f, 0.25f), //1 
+			vec2(0.75f, 0.25f), //2
+			vec2(0.0f, 0.5f),   //3
+			vec2(1.0f, 0.5f),   //4
+			vec2(0.25f, 0.75f), //5
+			vec2(0.75f, 0.75f), //6
+			vec2(0.5f, 1.0f)    //7
+		};
+
+		//Front face
+		vec3 normal = glm::triangleNormal(positions[0], positions[4], positions[2]);
+		vertices[0].position = positions[0];
+		vertices[0].textCoord = textCoords[7];
+		vertices[0].normal = normal;
+
+		vertices[1].position = positions[4];
+		vertices[1].textCoord = textCoords[5];
+		vertices[1].normal = normal;
+
+		vertices[2].position = positions[2];
+		vertices[2].textCoord = textCoords[6];
+		vertices[2].normal = normal;
+
+		indices.push_back(0);
+		indices.push_back(1);
+		indices.push_back(2);
+
+		//Left face
+		normal = glm::triangleNormal(positions[0], positions[2], positions[1]);
+		vertices[3].position = positions[0];
+		vertices[3].textCoord = textCoords[4];
+		vertices[3].normal = normal;
+
+		vertices[4].position = positions[2];
+		vertices[4].textCoord = textCoords[6];
+		vertices[4].normal = normal;
+
+		vertices[5].position = positions[1];
+		vertices[5].textCoord = textCoords[2];
+		vertices[5].normal = normal;
+
+		indices.push_back(3);
+		indices.push_back(4);
+		indices.push_back(5);
+
+		//back face
+		normal = glm::triangleNormal(positions[0], positions[1], positions[3]);
+		vertices[6].position = positions[0];
+		vertices[6].textCoord = textCoords[0];
+		vertices[6].normal = normal;
+
+		vertices[7].position = positions[1];
+		vertices[7].textCoord = textCoords[2];
+		vertices[7].normal = normal;
+
+		vertices[8].position = positions[3];
+		vertices[8].textCoord = textCoords[1];
+		vertices[8].normal = normal;
+
+		indices.push_back(6);
+		indices.push_back(7);
+		indices.push_back(8);
+
+		//right face
+		normal = glm::triangleNormal(positions[0], positions[3], positions[4]);
+		vertices[9].position = positions[0];
+		vertices[9].textCoord = textCoords[3];
+		vertices[9].normal = normal;
+
+		vertices[10].position = positions[3];
+		vertices[10].textCoord = textCoords[1];
+		vertices[10].normal = normal;
+
+		vertices[11].position = positions[4];
+		vertices[11].textCoord = textCoords[5];
+		vertices[11].normal = normal;
+
+		indices.push_back(9);
+		indices.push_back(10);
+		indices.push_back(11);
+
+
+		//Base two triangles face
+		normal = glm::triangleNormal(positions[2], positions[3], positions[1]);
+		vertices[12].position = positions[4];
+		vertices[12].textCoord = textCoords[5];
+		vertices[12].normal = normal;
+
+		vertices[13].position = positions[2];
+		vertices[13].textCoord = textCoords[6];
+		vertices[13].normal = normal;
+
+		vertices[14].position = positions[1];
+		vertices[14].textCoord = textCoords[2];
+		vertices[14].normal = normal;
+
+		vertices[15].position = positions[3];
+		vertices[15].textCoord = textCoords[1];
+		vertices[15].normal = normal;
+
+		indices.push_back(12);
+		indices.push_back(14);
+		indices.push_back(13);
+
+		indices.push_back(12);
+		indices.push_back(15);
+		indices.push_back(14);
+
+		pyramid.setVertices(vertices);
+		pyramid.setIndex(indices);
+		return pyramid;
+	}
+
 	Mesh Geometries::cone(int rings, int divisions, bool cap) {
 		Mesh cone;
 		vector<unsigned int> indices;

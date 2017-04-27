@@ -240,7 +240,7 @@ void init_program() {
 	using glm::vec3;
 	
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::teapot(10));
+	meshPtr = new Mesh(Geometries::pyramid());
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
