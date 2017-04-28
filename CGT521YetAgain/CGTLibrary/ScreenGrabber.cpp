@@ -17,6 +17,7 @@ namespace image {
 	}
 
 	void ScreenGrabber::grab(bool useFrontBuffer, const char* fileName) {
+		
 		GLubyte * screenBuffer = new GLubyte[(m_width * m_height * m_bytesPerPixel)];
 		
 		(useFrontBuffer) ? glReadBuffer(GL_FRONT) : glReadBuffer(GL_BACK);

@@ -343,6 +343,8 @@ void init_program() {
 
 	light.stencilPtr = new Texture("../img/NewLight.png");
 
+	light.stencilPtr->save("Copy.png");
+
 	if (meshPtr) {
 		meshPtr->sendToGPU();
 	}

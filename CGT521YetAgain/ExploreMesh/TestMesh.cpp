@@ -41,6 +41,7 @@ Camera cam;
 Trackball ball;
 Texture* textureMapPtr = nullptr;
 Mesh* meshPtr = nullptr;
+Texture* texturePtr = nullptr;
 OGLProgram* programPtr = nullptr;
 ScreenGrabber grabber;
 MatPhong mat;
@@ -241,6 +242,9 @@ void init_program() {
 	
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh(Geometries::pyramid());
+	texturePtr = new Texture(defaultStencil(256));
+
+	texturePtr->save("MyStencil.png");
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();

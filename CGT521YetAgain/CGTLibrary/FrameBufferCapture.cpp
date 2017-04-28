@@ -4,7 +4,22 @@
 namespace image {
 	
 	void captureColor(GLuint texture_id, const char* fileName, GLenum format) {
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, texture_id);
+		int width;
+		int height;
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+		
+		const int bytesPerPixel = 3;
+		GLubyte* buffer = new GLubyte[(width * height * bytesPerPixel)];
+		glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, buffer);
 
+		FIBITMAP* image = FreeImage_ConvertFromRawBits(buffer, width, height, (3 * width), 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
+		FreeImage_Save(FIF_PNG, image, fileName, 0);
+
+		FreeImage_Unload(image);
+		delete buffer;
 	}
 
 	void captureDepth(GLuint depth_buffer_id, const char* fileName, GLenum precision) {

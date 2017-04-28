@@ -10,7 +10,7 @@ namespace image {
 	private:
 		unsigned int m_width;
 		unsigned int m_height;
-		unsigned char* m_data;
+		std::vector<unsigned char> m_data;
 		GLuint m_texture_id;
 		void send_to_gpu();
 		void release_location();
@@ -25,6 +25,8 @@ namespace image {
 		int get_height() const;
 		GLuint get_id() const;
 		bool save(const std::string& output_png_file) const;
+		friend Texture defaultStencil(unsigned int size);
+		friend Texture chessBoard(unsigned int size, unsigned int cells);
 	};
 }
 #endif
