@@ -326,7 +326,7 @@ void create_glut_window() {
 	//Set number of samples per pixel
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
-	glutInitWindowSize(1200, 800);
+	glutInitWindowSize(900, 600);
 	window = glutCreateWindow("Spoth light example");
 }
 
@@ -832,7 +832,6 @@ void renderGeometryPass() {
 	mat4 I(1.0f);
 	//Model
 	mat4 M = rotation ? glm::rotate(I, TAU / 10.0f * seconds_elapsed, vec3(0.0f, 1.0f, 0.0f)) : I;
-	//M = glm::scale(M, vec3(0.1));
 	M = glm::scale(M, vec3(scaleFactor));
 	M = glm::translate(M, -meshCenter);
 	//View
