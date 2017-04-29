@@ -25,8 +25,8 @@ namespace image {
 		int get_height() const;
 		GLuint get_id() const;
 		bool save(const std::string& output_png_file) const;
-		friend Texture defaultStencil(unsigned int size);
-		friend Texture chessBoard(unsigned int size, unsigned int cells);
+		friend Texture defaultStencil(float cutoff, unsigned int size);
+		friend Texture chessBoard(unsigned int size, unsigned int cells, glm::vec3 black, glm::vec3 white);
 	};
 }
 #endif

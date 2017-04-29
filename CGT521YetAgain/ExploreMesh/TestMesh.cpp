@@ -244,7 +244,7 @@ void init_program() {
 	meshPtr = new Mesh(Geometries::pyramid());
 
 
-	texturePtr = new Texture(defaultStencil(256));
+	texturePtr = new Texture(defaultStencil(0.2f, 1024));
 	texturePtr->save("MyStencil.png");
 
 	if (meshPtr) {

@@ -4,8 +4,8 @@
 #include "Texture.h"
 
 namespace image {
-	Texture defaultStencil(unsigned int size = 1024);
-	Texture chessBoard(unsigned int size = 1024, unsigned int cells = 8);
+	Texture defaultStencil(float cutoff = 0.2f, unsigned int size = 1024);
+	Texture chessBoard(unsigned int size = 1024, unsigned int cells = 8, glm::vec3 black = glm::vec3(0.0f), glm::vec3 white = glm::vec3(1.0f));
 }
 
 #endif
