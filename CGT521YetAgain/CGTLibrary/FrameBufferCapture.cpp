@@ -37,6 +37,7 @@ namespace image {
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, static_cast<GLvoid*>(pixels));
 			FIBITMAP* image = FreeImage_ConvertFromRawBits((unsigned char*)(pixels), width, height, (4 * width), 16, 0xFFFF, 0x0000, 0x0000, false);
 			FreeImage_Save(FIF_PNG, image, fileName, 0);
+			FreeImage_Unload(image);
 			delete[] pixels;
 		} else if (precision == GL_DEPTH_COMPONENT24) {
 			GLuint* pixels = new GLuint[width * height];    //There is no 24 bit variable, so we'll have to settle for 32 bit
@@ -44,6 +45,7 @@ namespace image {
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT_24_8, static_cast<GLvoid*>(pixels));
 			FIBITMAP* image = FreeImage_ConvertFromRawBits((unsigned char*)(pixels), width, height, (4 * width), 24, 0xFFFFFF, 0x000000, 0x000000, false);
 			FreeImage_Save(FIF_PNG, image, fileName, 0);
+			FreeImage_Unload(image);
 			delete[] pixels;
 		} else if (precision == GL_DEPTH_COMPONENT32 || precision == GL_DEPTH_COMPONENT32F)	{
 			GLuint* pixels = new GLuint[width * height];
@@ -68,6 +70,7 @@ namespace image {
 
 			FIBITMAP* image = FreeImage_ConvertFromRawBits((unsigned char*)(pixels), width, height, width * sizeof(GLuint), 32, 0xFFFFFFFF, 0x00000000, 0x00000000, false);
 			FreeImage_Save(FIF_PNG, image, fileName, 0);
+			FreeImage_Unload(image);
 			delete[] pixels;
 		}
 

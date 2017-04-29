@@ -242,8 +242,9 @@ void init_program() {
 	
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh(Geometries::pyramid());
-	texturePtr = new Texture(defaultStencil(256));
 
+
+	texturePtr = new Texture(defaultStencil(256));
 	texturePtr->save("MyStencil.png");
 
 	if (meshPtr) {

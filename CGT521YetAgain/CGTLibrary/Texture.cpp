@@ -43,12 +43,14 @@ namespace image {
 	}
 
 	bool Texture::save(const std::string& output_png_file) const {
+		const int bytesPerPixel = 4;
+		unsigned char* tmpBuffer = new unsigned char[m_width * m_height * bytesPerPixel];
+		std::copy(m_data.begin(), m_data.end(), tmpBuffer);
 		
-		unsigned char* tmpBuffer = new unsigned char(m_data.size());
-		std::memcpy(tmpBuffer, m_data.data(), m_data.size());
-		
-		FIBITMAP* image = FreeImage_ConvertFromRawBits(tmpBuffer, m_width, m_height, m_width * sizeof(GLuint), 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
+		FIBITMAP* image = FreeImage_ConvertFromRawBits(tmpBuffer, m_width, m_height, m_width * bytesPerPixel, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
 		FreeImage_Save(FIF_PNG, image, output_png_file.c_str(), 0);
+
+		FreeImage_Unload(image);
 		
 		delete[] tmpBuffer;
 

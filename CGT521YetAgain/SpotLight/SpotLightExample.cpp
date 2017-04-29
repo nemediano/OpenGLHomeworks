@@ -341,10 +341,6 @@ void init_program() {
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
 	coneMeshPtr = new Mesh(Geometries::pyramid());
 
-	light.stencilPtr = new Texture("../img/NewLight.png");
-
-	light.stencilPtr->save("Copy.png");
-
 	if (meshPtr) {
 		meshPtr->sendToGPU();
 	}
