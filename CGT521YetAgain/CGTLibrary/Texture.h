@@ -12,7 +12,6 @@ namespace image {
 		unsigned int m_height;
 		std::vector<unsigned char> m_data;
 		GLuint m_texture_id;
-		void send_to_gpu();
 		void release_location();
 		void ask_locations();
 	public:
@@ -21,6 +20,7 @@ namespace image {
 		~Texture();
 		bool load_texture(const std::string& input_file_name);
 		void bind() const;
+		void send_to_gpu();
 		int get_width() const;
 		int get_height() const;
 		GLuint get_id() const;

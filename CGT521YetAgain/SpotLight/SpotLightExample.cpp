@@ -30,6 +30,7 @@
 #include "MatPhong.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
+#include "ProceduralTextures.h"
 
 using namespace math;
 using namespace mesh;
@@ -366,8 +367,9 @@ void init_program() {
 	meshCenter = meshPtr->getBBCenter();
 
 	seconds_elapsed = 0.0f;
-
-	
+	//light.stencilPtr = new Texture("../img/NewLight.png");
+	light.stencilPtr = new Texture(defaultStencil());
+	light.stencilPtr->send_to_gpu();
 
 	//Create FBO for storing the shadow map
 	shadowBuffer.width = shadowBuffer.height = 1024;

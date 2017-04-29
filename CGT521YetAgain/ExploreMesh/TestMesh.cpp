@@ -28,6 +28,7 @@
 #include "MatPhong.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
+#include "ProceduralTextures.h"
 
 using namespace ogl;
 using namespace math;
@@ -244,7 +245,7 @@ void init_program() {
 	meshPtr = new Mesh(Geometries::pyramid());
 
 
-	texturePtr = new Texture(defaultStencil(0.2f, 1024));
+	texturePtr = new Texture(chessBoard());
 	texturePtr->save("MyStencil.png");
 
 	if (meshPtr) {
