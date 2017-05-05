@@ -81,8 +81,8 @@
     <ClInclude Include="FrameBufferCapture.h" />
     <ClInclude Include="Geometries.h" />
     <ClInclude Include="Geometry.h" />
-    <ClInclude Include="Light.h" />
-    <ClInclude Include="LightPhong.h" />
+    <ClInclude Include="DisneyLight.h" />
+    <ClInclude Include="PhongLight.h" />
     <ClInclude Include="MatCookTorrance.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MathConstants.h" />
@@ -106,8 +106,9 @@
     <ClCompile Include="FrameBufferCapture.cpp" />
     <ClCompile Include="Geometries.cpp" />
     <ClCompile Include="Geometry.cpp" />
-    <ClCompile Include="Light.cpp" />
-    <ClCompile Include="LightPhong.cpp" />
+    <ClCompile Include="DisneyLight.cpp" />
+    <ClCompile Include="MathConstants.cpp" />
+    <ClCompile Include="PhongLight.cpp" />
     <ClCompile Include="MatCookTorrance.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="MathHelpers.cpp" />

@@ -1,8 +1,8 @@
 #pragma once
-#include "Light.h"
+
 namespace lighting {
 
-	class Directional : public Light {
+	class Directional {
 		public:
 			Directional();
 			Directional(const Directional& other);

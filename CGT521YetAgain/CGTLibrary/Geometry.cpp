@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "Geometry.h"
 #include "MathConstants.h"
+#include "Geometry.h"
 
 namespace math {
 	bool almostZero(glm::vec3 v) {

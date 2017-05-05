@@ -1,8 +1,7 @@
 #pragma once
-#include "Light.h"
 
 namespace lighting {
-	class Punctual : public Light {
+	class Punctual {
 	private:
 		glm::vec3 m_position;
 

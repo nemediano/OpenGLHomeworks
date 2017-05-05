@@ -6,7 +6,7 @@
 namespace lighting {
 	using namespace math;
 
-	Spotlight::Spotlight() : Light() {
+	Spotlight::Spotlight() {
 		setPosition(glm::vec3(0.0f, 0.0f, 1.0f));
 		setTarget(glm::vec3(0.0f));
 		setAperture(30.0f * TO_RADIANS);
@@ -16,33 +16,21 @@ namespace lighting {
 		m_position = other.m_position;
 		m_target = other.m_target;
 		m_aperture = other.m_aperture;
-		m_intensity = other.m_intensity;
-		m_color = other.m_color;
 		m_ratio = other.m_ratio;
 	}
 
-	Spotlight::Spotlight(const glm::vec3& position, const glm::vec3& target, float aperture) : Light() {
+	Spotlight::Spotlight(const glm::vec3& position, const glm::vec3& target, float aperture) {
 		setPosition(position);
 		setTarget(target);
 		setAperture(aperture);
 		setRatio(0.5f);
 	}
 
-	Spotlight::Spotlight(const glm::vec3& color, float intensity, float ratio) {
-		setPosition(glm::vec3(0.0f, 0.0f, 1.0f));
-		setTarget(glm::vec3(0.0f));
-		setAperture(30.0f * TO_RADIANS);
-		setColor(color);
-		setIntensity(intensity);
-		setRatio(ratio);
-	}
 
 	Spotlight::Spotlight(const glm::vec3& position, const glm::vec3& target, float aperture, const glm::vec3& color, float intensity, float ratio) {
 		setPosition(position);
 		setTarget(target);
 		setAperture(aperture);
-		setColor(color);
-		setIntensity(intensity);
 		setRatio(ratio);
 	}
 

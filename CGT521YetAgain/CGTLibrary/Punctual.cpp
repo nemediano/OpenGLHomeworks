@@ -2,15 +2,15 @@
 #include "Punctual.h"
 
 namespace lighting {
-	Punctual::Punctual() : Light() {
+	Punctual::Punctual() {
 		m_position = glm::normalize(glm::vec3(1.0f));
 	}
 
-	Punctual::Punctual(const Punctual& other) : Light(other) {
+	Punctual::Punctual(const Punctual& other) {
 		m_position = other.m_position;
 	}
 
-	Punctual::Punctual(const glm::vec3 position) : Light() {
+	Punctual::Punctual(const glm::vec3 position) {
 		m_position = position;
 	}
 

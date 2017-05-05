@@ -6,17 +6,15 @@ namespace lighting {
 	using namespace math;
 	using glm::vec3;
 
-	Directional::Directional() : Light() {
+	Directional::Directional() {
 		setDirection(vec3(0.0f, 0.0f, -1.0f));
 	}
 
 	Directional::Directional(const Directional& other) {
-		m_color = other.m_color;
-		m_intensity = other.m_intensity;
 		m_direction = other.m_direction;
 	}
 
-	Directional::Directional(const glm::vec3 direction) : Light() {
+	Directional::Directional(const glm::vec3 direction) {
 		setDirection(direction);
 	}
 

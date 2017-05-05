@@ -7,7 +7,7 @@ namespace lighting {
 	}
 
 	Material::Material(const Material& other) {
-		m_base_color = other.m_base_color;
+		m_baseColor = other.m_baseColor;
 		m_F0 = other.m_F0;
 		m_roughness = other.m_roughness;
 		m_metalicity = other.m_metalicity;
@@ -29,7 +29,7 @@ namespace lighting {
 	}
 
 	glm::vec3 Material::getBaseColor() const {
-		return m_base_color;
+		return m_baseColor;
 	}
 
 	glm::vec3 Material::getF0() const {
@@ -45,7 +45,7 @@ namespace lighting {
 	}
 
 	void Material::setBaseColor(const glm::vec3& baseColor) {
-		m_base_color = glm::clamp(baseColor, glm::vec3(0.0f), glm::vec3(1.0f));
+		m_baseColor = glm::clamp(baseColor, glm::vec3(0.0f), glm::vec3(1.0f));
 	}
 
 	void Material::setF0(const glm::vec3& F0) {

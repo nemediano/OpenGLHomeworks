@@ -336,11 +336,15 @@ void init_program() {
 	using namespace lighting;
 	
 	/* Load assets */
+	/* Meshes*/
 	meshPtr = new Mesh(Geometries::teapot(6));
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 	cubeBoxPtr = new Mesh(Geometries::insideOutCube());
 	coneMeshPtr = new Mesh(Geometries::pyramid());
+
+	/* Images */
+	light.stencilPtr = new Texture(defaultStencil());
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -362,14 +366,17 @@ void init_program() {
 		coneMeshPtr->sendToGPU();
 	}
 
+	if (light.stencilPtr) {
+		light.stencilPtr->send_to_gpu();
+	}
+
 	//Extract info form the mesh
 	scaleFactor = meshPtr->scaleFactor();
 	meshCenter = meshPtr->getBBCenter();
 
 	seconds_elapsed = 0.0f;
 	//light.stencilPtr = new Texture("../img/NewLight.png");
-	light.stencilPtr = new Texture(defaultStencil());
-	light.stencilPtr->send_to_gpu();
+	
 
 	//Create FBO for storing the shadow map
 	shadowBuffer.width = shadowBuffer.height = 1024;

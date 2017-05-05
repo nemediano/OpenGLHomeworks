@@ -1,12 +1,16 @@
-#pragma once
+// Protect against multiple inclusions in the same source file
+#ifndef MATH_CONSTANTS_H
+#define MATH_CONSTANTS_H
 
 namespace math {
 	//Math constant equal two PI
-	const float TAU = 6.28318f;
-	const float PI = 3.14159f;
+	extern const float TAU;
+	extern const float PI;
 	//Degree transformation
-	const float TO_DEGREE = 57.295780f;
-	const float TO_RADIANS = 0.0174533f;
+	extern const float TO_DEGREE;
+	extern const float TO_RADIANS;
 	//Error tolerance for graphics algorithms
-	const float EPSILON = 0.0001f;
+	extern const float EPSILON;
 }
+
+#endif

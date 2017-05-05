@@ -1,14 +1,12 @@
 #pragma once
-#include "Light.h"
 
 namespace lighting {
-	class Spotlight : public Light {
+	class Spotlight {
 
 	public:
 		Spotlight();
 		Spotlight(const Spotlight& other);
 		Spotlight(const glm::vec3& position, const glm::vec3& target, float aperture);
-		Spotlight(const glm::vec3& color, float intensity, float ratio);
 		Spotlight(const glm::vec3& position, const glm::vec3& target, float aperture, const glm::vec3& color, float intensity, float ratio);
 		glm::vec3 getPosition() const;
 		float getAperture() const;

@@ -16,7 +16,7 @@ namespace math {
 	}
 
 	unsigned char toICol(const float& v) {
-		return round(v * 255.0f);
+		return static_cast<unsigned char>(round(v * 255.0f));
 	}
 
 	glm::vec3 toFCol(const unsigned char& r, const unsigned char& g, const unsigned char& b) {

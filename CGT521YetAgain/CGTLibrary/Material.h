@@ -4,7 +4,7 @@ namespace lighting {
 		float m_metalicity;
 		float m_roughness;
 		glm::vec3 m_F0;
-		glm::vec3 m_base_color;
+		glm::vec3 m_baseColor;
 
 	public:
 		Material();

@@ -1,5 +1,5 @@
-#include "MathConstants.h"
 #include "stdafx.h"
+#include "MathConstants.h"
 #include "MatCookTorrance.h"
 
 namespace lighting {
@@ -48,7 +48,7 @@ namespace lighting {
 	}
 
 	void MatCookTorrance::setMicrofacetSlope(float m) {
-		m_m = glm::clamp(m, 0.0f, 3.14159f);
+		m_m = glm::clamp(m, 0.0f, math::PI);
 	}
 
 	glm::vec3 MatCookTorrance::getKa() const {
