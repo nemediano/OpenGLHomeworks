@@ -24,7 +24,7 @@
 #include "Camera.h"
 #include "Trackball.h"
 #include "OGLProgram.h"
-#include "LightPhong.h"
+#include "PhongLight.h"
 #include "MatPhong.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
@@ -46,7 +46,7 @@ Texture* texturePtr = nullptr;
 OGLProgram* programPtr = nullptr;
 ScreenGrabber grabber;
 MatPhong mat;
-LightPhong light;
+PhongLight light;
 
 GLint window = 0;
 

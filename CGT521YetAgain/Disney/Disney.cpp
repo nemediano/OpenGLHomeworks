@@ -29,6 +29,7 @@
 #include "Punctual.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
+#include "DisneyLight.h"
 
 using namespace math;
 using namespace mesh;
@@ -84,7 +85,7 @@ struct MyLight {
 	glm::vec3 eulerAngles;
 	float distance;
 	float ratio;
-	Punctual properties;
+	DisneyLight properties;
 };
 
 MyLight light;
@@ -275,7 +276,7 @@ void init_program() {
 	/* Initialize global variables for program control */
 	rotation = false;
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh("../models/teapot.obj");
+	meshPtr = new Mesh(Geometries::teapot(8));
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 

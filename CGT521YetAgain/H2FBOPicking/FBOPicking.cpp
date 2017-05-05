@@ -200,7 +200,9 @@ void setupGeomPass() {
 		meshPtr->sendToGPU();
 	}
 	textureMapPtr = new Texture("../models/AmagoTexture.png");
-
+	if (textureMapPtr) {
+		textureMapPtr->send_to_gpu();
+	}
 	/* Generate a bunch of random colors*/
 	vec3 color;
 	for (int i = 0; i < MAX_INSTANCES; ++i) {

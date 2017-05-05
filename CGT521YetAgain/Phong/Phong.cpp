@@ -25,7 +25,7 @@
 #include "Camera.h"
 #include "Trackball.h"
 #include "OGLProgram.h"
-#include "LightPhong.h"
+#include "PhongLight.h"
 #include "MatPhong.h"
 #include "Geometries.h"
 #include "ScreenGrabber.h"
@@ -82,7 +82,7 @@ Locations phongWorldLoc;
 struct Light {
 	glm::vec3 eulerAngles;
 	float distance;
-	LightPhong properties;
+	PhongLight properties;
 };
 
 Light light;
@@ -276,7 +276,7 @@ void init_program() {
 	/* Initialize global variables for program control */
 	rotation = false;
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh("../models/teapot.obj");
+	meshPtr = new Mesh(Geometries::teapot(8));
 	spherePtr = new Mesh(Geometries::icosphere(3));
 	cubePtr = new Mesh(Geometries::cube());
 

@@ -24,7 +24,7 @@
 #include "Camera.h"
 #include "Trackball.h"
 #include "OGLProgram.h"
-#include "Spotlight.h"
+#include "DisneyLight.h"
 #include "Directional.h"
 #include "Material.h"
 #include "Geometries.h"
@@ -42,8 +42,16 @@ Texture* textureMapPtr = nullptr;
 Mesh* meshPtr = nullptr;
 OGLProgram* programPtr = nullptr;
 Material mat;
-Spotlight light;
 Directional dirLight;
+
+struct Light {
+	Directional d;
+	DisneyLight p;
+};
+
+Light light;
+
+
 GLint window = 0;
 // Location for shader variables
 GLint u_PVM_location = -1;
@@ -158,16 +166,16 @@ void drawGUI() {
 		float ratio = light.getRatio();
 		vec3 lightColor = light.getColor();
 		*/
-		float intensity = dirLight.getIntensity();
-		vec3 lightColor = dirLight.getColor();
+		float intensity = light.p.getIntensity();
+		vec3 lightColor = light.p.getColor();
 		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
 		//ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
 		ImGui::ColorEdit3("Color", glm::value_ptr(lightColor));
 		/*light.setIntensity(intensity);
 		light.setRatio(ratio);
 		light.setColor(lightColor);*/
-		dirLight.setIntensity(intensity);
-		dirLight.setColor(lightColor);
+		light.p.setIntensity(intensity);
+		light.p.setColor(lightColor);
 	}
 	bool spotLight = false;
 	if (spotLight && ImGui::CollapsingHeader("Light position")) {
@@ -244,14 +252,10 @@ void init_program() {
 	//Default position of the spotlight
 	light_angles = glm::vec2(0.0f);
 	light_distance = 2.0f;
-	light.setPosition(vec3(0.0f, 0.0f, light_distance));
-	light.setTarget(vec3(0.0f));
-	light.setAperture(30.0f * TO_RADIANS);
-	light.setRatio(0.5f);
-	light.setIntensity(1.0f);
+	
 	//Default direction of the directional light
-	dirLight.setIntensity(1.0f);
-	dirLight.setDirection(vec3(0.0f, 0.0f, -1.0f));
+	light.p.setIntensity(1.0f);
+	light.d.setDirection(vec3(0.0f, 0.0f, -1.0f));
 	//Default material
 	mat.setF0(vec3(0.04f, 0.78f, 0.06f));
 	mat.setMetalicity(0.45f);
@@ -330,24 +334,15 @@ void passLightingState() {
 	//Light
 	if (u_LightCol_loc != -1) {
 		//glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(light.getColor()));
-		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(dirLight.getColor()));
+		glUniform3fv(u_LightCol_loc, 1, glm::value_ptr(light.p.getColor()));
 	}
 	if (u_LightInt_loc != -1) {
 		//glUniform1f(u_LightInt_loc, light.getIntensity());
-		glUniform1f(u_LightInt_loc, dirLight.getIntensity());
-	}
-	if (u_LightPos_loc != -1) {
-		glUniform3fv(u_LightPos_loc, 1, glm::value_ptr(light.getPosition()));
+		glUniform1f(u_LightInt_loc, light.p.getIntensity());
 	}
 	if (u_LightRatio_loc != -1) {
 		//glUniform1f(u_LightRatio_loc, light.getRatio());
 		glUniform1f(u_LightRatio_loc, 0.0f);
-	}
-	if (u_LightM_loc != -1) {
-		glUniformMatrix4fv(u_LightM_loc, 1, GL_FALSE, glm::value_ptr(light.getM()));
-	}
-	if (u_LightPM_loc != -1) {
-		glUniformMatrix4fv(u_LightPM_loc, 1, GL_FALSE, glm::value_ptr(light.getPM()));
 	}
 	if (u_LightDir_loc != -1) {
 		glUniform3fv(u_LightDir_loc, 1, glm::value_ptr(dirLight.getDirection()));

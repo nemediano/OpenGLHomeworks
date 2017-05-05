@@ -192,6 +192,7 @@ namespace mesh {
 			v.position = glm::vec3(T * glm::vec4(v.position, 1.0f));
 			v.normal = glm::vec3(normalMat * glm::vec4(v.normal, 0.0f));
 		}
+		update_bounding_box();
 	}
 	
 	void Mesh::indexFromTriangles(const std::vector<Triangle>& triangles) {
