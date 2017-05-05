@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GEOMETRIES_H_
+#define GEOMETRIES_H_
+
 #include "Mesh.h"
 namespace mesh {
 	class Geometries {
@@ -20,3 +22,5 @@ namespace mesh {
 
 	};
 }
+
+#endif

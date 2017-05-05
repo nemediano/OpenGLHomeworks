@@ -1,10 +1,15 @@
-#pragma once
+#ifndef MATERIAL_PHONG_H_
+#define MATERIAL_PHONG_H_
+
 namespace lighting {
 	class MatPhong {
+
+	private:
 		glm::vec3 m_Ka;
 		glm::vec3 m_Ks;
 		glm::vec3 m_Kd;
 		float m_alpha;
+
 	public:
 		MatPhong();
 		MatPhong(const MatPhong& other);
@@ -51,3 +56,5 @@ namespace lighting {
 	const MatPhong WHITE_RUBBER = MatPhong(glm::vec3(0.05f, 0.05f, 0.05f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(0.7f, 0.7f, 0.7f), sha * 0.078125f);
 	const MatPhong YELLOW_RUBBER = MatPhong(glm::vec3(0.05f, 0.05f, 0.0f), glm::vec3(0.5f, 0.5f, 0.4f), glm::vec3(0.7f, 0.7f, 0.04f), sha * 0.078125f);
 }
+
+#endif

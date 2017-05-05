@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MAT_COOK_TORRANCE_H_
+#define MAT_COOK_TORRANCE_H_
 
 namespace lighting {
 
@@ -29,3 +30,5 @@ public:
 const MatCookTorrance EMERALD = MatCookTorrance(glm::vec3(0.0215f, 0.1745f, 0.0215f), glm::vec3(0.07568f, 0.61424f, 0.07568f), glm::vec3(0.633f, 0.727811f, 0.633f), 1.48f, 0.083f);
 const MatCookTorrance BLACK_PLASTIC = MatCookTorrance(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.01f, 0.01f, 0.1f), glm::vec3(0.5f, 0.5f, 0.5f), 1.78f, 0.265f);
 }
+
+#endif

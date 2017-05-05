@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OGL_HELPERS_H_
+#define OGL_HELPERS_H_
 
 namespace ogl {
 	void printShaderInfoLog(GLuint object);
@@ -15,3 +16,5 @@ namespace ogl {
 	void printVector(glm::vec4 u);
 	void printVector(glm::vec3 u);
 }
+
+#endif

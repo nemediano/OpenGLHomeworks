@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef CAMERA_H_
+#define CAMERA_H_
 namespace camera {
 	class Camera {
 	private:
@@ -38,3 +38,4 @@ namespace camera {
 
 }
 
+#endif

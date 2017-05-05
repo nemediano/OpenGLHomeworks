@@ -1,6 +1,10 @@
-#pragma once
+#ifndef PHONG_LIGHT_H_
+#define PHONG_LIGHT_H_
+
 namespace lighting {
+
 	class PhongLight {
+	private:
 		glm::vec3 m_La;
 		glm::vec3 m_Ls;
 		glm::vec3 m_Ld;
@@ -17,3 +21,5 @@ namespace lighting {
 		~PhongLight();
 	};
 }
+
+#endif

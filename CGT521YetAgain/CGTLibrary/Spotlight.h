@@ -1,7 +1,14 @@
-#pragma once
+#ifndef SPOT_LIGHT_H_
+#define SPOT_LIGHT_H_
 
 namespace lighting {
 	class Spotlight {
+
+	private:
+		glm::vec3 m_position;
+		glm::vec3 m_target;
+		float m_aperture;
+		float m_ratio;
 
 	public:
 		Spotlight();
@@ -22,10 +29,8 @@ namespace lighting {
 		void setAperture(float aperture);
 		void setRatio(float ratio);
 		void setLookAt(const glm::vec3& position, const glm::vec3& target, float aperture);
-	private:
-		glm::vec3 m_position;
-		glm::vec3 m_target;
-		float m_aperture;
-		float m_ratio;
+	
 	};
 }
+
+#endif

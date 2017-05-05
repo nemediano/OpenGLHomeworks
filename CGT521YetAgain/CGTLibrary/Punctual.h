@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PUNCTUAL_H_
+#define PUNCTUAL_H_
 
 namespace lighting {
 	class Punctual {
@@ -16,3 +17,5 @@ namespace lighting {
 	};
 
 }
+
+#endif

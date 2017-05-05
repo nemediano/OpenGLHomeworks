@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TRACKBALL_H_
+#define TRACKBALL_H_
 
 namespace camera {
 	class Trackball	{
@@ -31,3 +32,4 @@ namespace camera {
 	};
 }
 
+#endif

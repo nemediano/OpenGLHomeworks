@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DIRECTIONAL_H_
+#define DIRECTIONAL_H_
 
 namespace lighting {
 
@@ -18,3 +19,5 @@ namespace lighting {
 
 	};
 }
+
+#endif

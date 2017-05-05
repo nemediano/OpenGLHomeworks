@@ -64,8 +64,7 @@ namespace image {
 			for (unsigned int j = 0; j < size; j++) {
 				vec2 coordinates = (1.0f / size) * vec2(i, j) + (0.5f / size);
 				ivec2 cell = static_cast<float>(cells) * coordinates;
-				bool flag = (cell.x + cell.y) % 2;
-				vec3 pixel = flag ? white : black;
+				vec3 pixel = (cell.x + cell.y) % 2 ? white : black;
 				unsigned char red = math::toICol(pixel.r);
 				unsigned char green = math::toICol(pixel.g);
 				unsigned char blue = math::toICol(pixel.b);

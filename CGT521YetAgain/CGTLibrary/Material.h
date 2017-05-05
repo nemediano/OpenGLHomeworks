@@ -1,6 +1,10 @@
-#pragma once
+#ifndef MATERIAL_H_
+#define MATERIAL_H_
+
 namespace lighting {
 	class Material {
+
+	private:
 		float m_metalicity;
 		float m_roughness;
 		glm::vec3 m_F0;
@@ -22,3 +26,5 @@ namespace lighting {
 		~Material();
 	};
 }
+
+#endif

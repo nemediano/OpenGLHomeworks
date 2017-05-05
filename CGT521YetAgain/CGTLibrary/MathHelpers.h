@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MATH_HELPERS_H_
+#define MATH_HELPERS_H_
 
 namespace math {
 	float toRadians(const float& degree);
@@ -8,3 +9,5 @@ namespace math {
 	glm::vec3 toFCol(const unsigned char& r, const unsigned char& g, const unsigned char& b);
 	glm::vec4 toFCol(const unsigned char& r, const unsigned char& g, const unsigned char& b, const unsigned char& a);
 }
+
+#endif

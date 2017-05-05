@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DISNEY_LIGHT_H_
+#define DISNEY_LIGHT_H_
 
 namespace lighting {
 	class DisneyLight {
@@ -17,3 +18,5 @@ namespace lighting {
 		glm::vec3 getColor() const;
 	};
 }
+
+#endif

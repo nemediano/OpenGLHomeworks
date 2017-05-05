@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OGL_PROGRAM_H_
+#define OGL_PROGRAM_H_
 
 namespace ogl {
 	class OGLProgram {
@@ -32,3 +33,5 @@ namespace ogl {
 		bool validate_shader_type(const GLenum& shadertype);
 	};
 }
+
+#endif
