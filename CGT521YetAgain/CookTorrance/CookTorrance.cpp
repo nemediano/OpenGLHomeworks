@@ -370,12 +370,12 @@ void reload_shaders() {
 	cookTorranceWorldPtr = new OGLProgram("shaders/cookTorranceWorld.vert", "shaders/cookTorranceWorld.frag");
 
 	if (!cookTorranceViewPtr || !cookTorranceViewPtr->isOK()) {
-		cerr << "Something wrong in Phong view shader" << endl;
+		cerr << "Something wrong in Cook Torrance view shader" << endl;
 		backgroundColor = glm::vec3(1.0f, 0.0f, 1.0f);
 	}
 
 	if (!cookTorranceWorldPtr || !cookTorranceWorldPtr->isOK()) {
-		cerr << "Something wrong in Phong world shader" << endl;
+		cerr << "Something wrong in Cook Torrance world shader" << endl;
 		backgroundColor = glm::vec3(1.0f, 0.0f, 1.0f);
 	}
 
@@ -469,7 +469,7 @@ void passLightingState() {
 		switch (currentMode) {
 			//Full model
 			case 0:
-				glUniform3fv(cookTorranceWorldLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
+				glUniform3fv(cookTorranceViewLoc.u_Ls, 1, glm::value_ptr(light.properties.getLs()));
 				glUniform3fv(cookTorranceViewLoc.u_Ka, 1, glm::value_ptr(mat.getKa()));
 				glUniform3fv(cookTorranceViewLoc.u_Ks, 1, glm::value_ptr(mat.getKs()));
 				glUniform3fv(cookTorranceViewLoc.u_Kd, 1, glm::value_ptr(mat.getKd()));
@@ -478,7 +478,7 @@ void passLightingState() {
 			case 1:
 			case 2:
 			case 3:
-				glUniform3fv(cookTorranceWorldLoc.u_Ls, 1, glm::value_ptr(vec3(1.0f)));
+				glUniform3fv(cookTorranceViewLoc.u_Ls, 1, glm::value_ptr(vec3(1.0f)));
 				glUniform3fv(cookTorranceViewLoc.u_Ka, 1, glm::value_ptr(vec3(0.0f)));
 				glUniform3fv(cookTorranceViewLoc.u_Ks, 1, glm::value_ptr(vec3(1.0f)));
 				glUniform3fv(cookTorranceViewLoc.u_Kd, 1, glm::value_ptr(vec3(0.0f)));
@@ -564,6 +564,7 @@ void display() {
 		glUniformMatrix4fv(cookTorranceWorldLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(cookTorranceWorldLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(cookTorranceWorldLoc.u_gamma, gamma);
+		glUniform1i(cookTorranceWorldLoc.u_option, currentMode);
 		glUniform3fv(cookTorranceWorldLoc.u_LightPos, 1, glm::value_ptr(light_position));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
@@ -580,11 +581,11 @@ void display() {
 		/************************************************************************/
 		/* Send uniform values to shader                                        */
 		/************************************************************************/
-
 		glUniformMatrix4fv(cookTorranceViewLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(cookTorranceViewLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
 		glUniformMatrix4fv(cookTorranceViewLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(V * M))));
 		glUniform1f(cookTorranceViewLoc.u_gamma, gamma);
+		glUniform1i(cookTorranceViewLoc.u_option, currentMode);
 		vec3 posInView = vec3(V * vec4(light_position, 1.0f));
 		glUniform3fv(cookTorranceViewLoc.u_LightPos, 1, glm::value_ptr(posInView));
 		//Send light and material

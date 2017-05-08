@@ -63,10 +63,16 @@ void main(void) {
 	
 	if (option == 1) {
 		speculr_color = max(0.0, F / (4.0 * n_dot_l * n_dot_v)) * vec3(1.0);
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
 	} else if (option == 2) {
 		speculr_color = max(0.0, D / (4.0 * n_dot_l * n_dot_v)) * vec3(1.0);
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
 	} else if (option == 3) {
 		speculr_color = max(0.0, G / (4.0 * n_dot_l * n_dot_v)) * vec3(1.0);
+		ambient_color = vec3(0.0);
+		diffuse_color = vec3(0.0);
 	} else {
 		speculr_color = mat.Ks * light.Ls * max(0.0, (F * D * G) / (4.0 * n_dot_l * n_dot_v));
 	}

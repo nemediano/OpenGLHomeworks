@@ -42,6 +42,7 @@ namespace mesh {
 		bool inGPU() const;
 		void sendToGPU();
 		void transform(const glm::mat4& T);
+		void toUnitCube();
 		GLuint getVertexLocation() const;
 		GLuint getIndexLocation() const;
 		void drawTriangles(const GLint& position_location, const GLint& normal_location, const GLint& texture_coordinates_location, const GLsizei& instances = 1) const;

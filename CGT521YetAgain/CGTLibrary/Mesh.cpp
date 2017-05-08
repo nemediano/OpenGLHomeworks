@@ -194,6 +194,18 @@ namespace mesh {
 		}
 		update_bounding_box();
 	}
+
+	void Mesh::toUnitCube() {
+
+		float s = this->scaleFactor();
+		glm::vec3 c = this->getBBCenter();
+
+		glm::mat4 T(1.0f);
+		T = glm::scale(T, glm::vec3(s));
+		T = glm::translate(T, c);
+		
+		this->transform(T);
+	}
 	
 	void Mesh::indexFromTriangles(const std::vector<Triangle>& triangles) {
 		//This set will be used to get rid of the duplicate vertex
