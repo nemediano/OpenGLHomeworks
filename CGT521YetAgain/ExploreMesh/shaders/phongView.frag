@@ -20,6 +20,8 @@ struct Material {
 uniform Light light;
 uniform Material mat;
 uniform float gamma = 1.0;
+layout(binding = 0) uniform sampler2D diffuseMap;
+uniform float mixValue = 1.0;
 
 out vec4 fragcolor;
 
@@ -32,7 +34,7 @@ void main(void) {
 	vec3 r = normalize(reflect(-l, n));
 	
 	vec3 Ka = mat.Ka;
-	vec3 Kd = mat.Kd;
+	vec3 Kd = mat.Kd; 
 	vec3 Ks = mat.Ks;
 	float alpha = mat.alpha;
 	
@@ -44,7 +46,7 @@ void main(void) {
 	vec3 diffuse_color = Kd * Ld * max(0.0, dot(n, l));
 	vec3 speculr_color = Ks * Ls * pow(max(0.0, dot(r, v)), alpha);
 	
-	color = ambient_color + diffuse_color + speculr_color;
+	color = mix(ambient_color + diffuse_color + speculr_color, texture(diffuseMap, fTextCoord).rgb, mixValue);
 		
 	fragcolor = vec4(pow(color, vec3(1.0 / gamma)), 1.0);
 }

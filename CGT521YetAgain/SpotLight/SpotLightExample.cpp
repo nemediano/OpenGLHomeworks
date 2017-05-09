@@ -25,7 +25,7 @@
 #include "Camera.h"
 #include "Trackball.h"
 #include "OGLProgram.h"
-#include "LightPhong.h"
+#include "PhongLight.h"
 #include "Spotlight.h"
 #include "MatPhong.h"
 #include "Geometries.h"
@@ -112,7 +112,7 @@ FBO shadowBuffer;
 struct LightContainer {
 	glm::vec3 eulerAngles;
 	float distance;
-	LightPhong properties;
+	PhongLight properties;
 	Spotlight spot;
 	Texture* stencilPtr;
 };
@@ -375,8 +375,6 @@ void init_program() {
 	meshCenter = meshPtr->getBBCenter();
 
 	seconds_elapsed = 0.0f;
-	//light.stencilPtr = new Texture("../img/NewLight.png");
-	
 
 	//Create FBO for storing the shadow map
 	shadowBuffer.width = shadowBuffer.height = 1024;

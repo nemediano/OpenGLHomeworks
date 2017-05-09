@@ -40,7 +40,6 @@ using namespace lighting;
 /* CGT Library related*/
 Camera cam;
 Trackball ball;
-Texture* textureMapPtr = nullptr;
 Mesh* meshPtr = nullptr;
 Texture* texturePtr = nullptr;
 OGLProgram* programPtr = nullptr;
@@ -57,6 +56,7 @@ struct Locations {
 	GLint u_NormalMat = -1;
 	GLint u_texture = -1;
 	GLint u_gamma = -1;
+	GLint u_mixValue = -1;
 	GLint a_position = -1;
 	GLint a_normal = -1;
 	GLint a_texture = -1;
@@ -83,8 +83,10 @@ glm::vec3 center;
 bool gammaCorrection;
 bool wireframe;
 bool cullFace;
+bool textureMap;
 
 float gamma;
+float mixValue;
 int mode;
 
 std::vector<MatPhong> materials;
@@ -197,8 +199,12 @@ void drawGUI() {
 	ImGui::Checkbox("Gamma correction", &gammaCorrection);
 	ImGui::Checkbox("Wirefreme", &wireframe);
 	ImGui::Checkbox("Cull", &cullFace);
+	ImGui::Checkbox("Texture map", &textureMap);
 	if (gammaCorrection) {
 		ImGui::SliderFloat("Gamma", &gamma, 1.0f, 2.5f);
+	}
+	if (textureMap) {
+		ImGui::SliderFloat("Mix", &mixValue, 0.0f, 1.0f);
 	}
 	if (ImGui::Button("Quit")) {
 		exit_glut();
@@ -220,7 +226,7 @@ void drawGUI() {
 }
 
 void exit_glut() {
-	delete textureMapPtr;
+	delete texturePtr;
 	delete meshPtr;
 	delete programPtr;
 	/* Shut down the gui */
@@ -243,22 +249,24 @@ void init_program() {
 	
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh(Geometries::pyramid());
-
-
 	texturePtr = new Texture(chessBoard());
-	texturePtr->save("MyStencil.png");
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
+	}
+	if (texturePtr) {
+		texturePtr->send_to_gpu();
 	}
 	//Extract info form the mesh
 	scaleFactor = meshPtr->scaleFactor();
 	center = meshPtr->getBBCenter();
 
 	gammaCorrection = false;
-	wireframe = true;
-	cullFace = false;
+	wireframe = false;
+	cullFace = true;
+	textureMap = false;
 	gamma = 1.0f;
+	mixValue = 0.75f;
 	seconds_elapsed = 0.0f;
 	mode = 0;
 	
@@ -329,6 +337,8 @@ void reload_shaders() {
 	phongLoc.u_VM = programPtr->uniformLoc("VM");;
 	phongLoc.u_NormalMat = programPtr->uniformLoc("NormalMat");
 	phongLoc.u_gamma = programPtr->uniformLoc("gamma");
+	phongLoc.u_mixValue = programPtr->uniformLoc("mixValue");
+	phongLoc.u_texture = programPtr->uniformLoc("difusseMap");
 	//Light
 	phongLoc.u_Light_La = programPtr->uniformLoc("light.La");
 	phongLoc.u_Light_Ls = programPtr->uniformLoc("light.Ls");
@@ -444,6 +454,17 @@ void display() {
 	glUniformMatrix4fv(phongLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
 	glUniformMatrix4fv(phongLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(V * M))));
 	glUniform1f(phongLoc.u_gamma, gamma);
+	if (textureMap) {
+		glUniform1f(phongLoc.u_mixValue, mixValue);
+	} else {
+		glUniform1f(phongLoc.u_mixValue, 0.0f);
+	}
+	glActiveTexture(GL_TEXTURE0);
+	texturePtr->bind(); //The next binded texture will be refered with the active texture unit
+	if (phongLoc.u_texture != -1) {
+		glUniform1i(phongLoc.u_texture, 0); // we bound our texture to texture unit 0
+	}
+
 	//Send light and material
 	passLightingState();
 
