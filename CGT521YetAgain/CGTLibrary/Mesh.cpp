@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "Mesh.h"
+#include "MathConstants.h"
+#include "MathHelpers.h"
+#include "Geometry.h"
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
 #include "tiny_obj_loader.h"
 
@@ -240,10 +243,31 @@ namespace mesh {
 		Vertex tmp_vertex;
 		for (auto position : tmp_storage) {
 			tmp_vertex.position = position;
-			tmp_vertex.normal = glm::normalize(position);
-			tmp_vertex.textCoord = glm::vec2(0.0f);
+			//tmp_vertex.normal = glm::normalize(position);
+			//tmp_vertex.textCoord = glm::vec2(0.0f);
 			m_vertices.push_back(tmp_vertex);
 		}
+
+		cout << "theta\tphi\ts\tt" << endl;
+		for (auto& v : m_vertices) {
+			v.normal = glm::normalize(v.position);
+			//r == 1 in the unit sphere thta is why I dont divide it.
+			//test if the arguments if valid
+			float theta = glm::acos(v.position.y);
+			float phi = glm::atan(v.position.z, v.position.x) + math::PI;
+			//This happens in the nort pole and the south pole
+			if (math::almostZero(v.position.z) && math::almostZero(v.position.x)) {
+				phi = math::PI;
+			}
+			
+			v.textCoord.s = glm::clamp(1.0f - phi / math::TAU, 0.001f, 1.0f);
+			v.textCoord.t = glm::clamp(1.0f - theta / math::PI, 0.001f, 1.0f);
+			std::cout.unsetf(std::ios::floatfield);                // floatfield not set
+			std::cout.precision(3);
+			cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
+			cout << v.textCoord.s << "\t" << v.textCoord.t << endl;
+		}
+
 		m_has_normals = true;
 		m_has_texture = false;
 

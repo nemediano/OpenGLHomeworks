@@ -248,8 +248,10 @@ void init_program() {
 	using glm::vec3;
 	
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::pyramid());
+	meshPtr = new Mesh(Geometries::sphere(3, 4));
+	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
 	texturePtr = new Texture(chessBoard());
+	//texturePtr = new Texture("../models/world32k.jpg");
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();

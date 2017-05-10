@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "Geometries.h"
+#include "MathHelpers.h"
+#include "Geometry.h"
 #include "MathConstants.h"
 
 namespace mesh {
@@ -131,9 +133,6 @@ namespace mesh {
 				v.position.x = sin(azimuth) * cos(polar);
 				v.position.y = cos(azimuth);
 				v.position.z = sin(azimuth) * sin(polar);;
-				v.normal = v.position;
-				v.textCoord.s = polar / TAU;
-				v.textCoord.t = azimuth / PI;
 
 				vertices.push_back(v);
 				polar += deltaPolar;
@@ -163,8 +162,8 @@ namespace mesh {
 		int pole = static_cast<int>(vertices.size());
 		Vertex v;
 		v.position = vec3(0.0f, 1.0f, 0.0);
-		v.normal = v.position;
-		v.textCoord = vec2(0.5, 0.0f);
+		//v.normal = v.position;
+		//v.textCoord = vec2(0.5, 0.0f);
 		vertices.push_back(v);
 		for (int i = 0; i < slices; ++i) {
 			indices.push_back(pole);
@@ -175,13 +174,31 @@ namespace mesh {
 		//South pole
 		pole = static_cast<int>(vertices.size());
 		v.position = vec3(0.0f, -1.0f, 0.0);
-		v.normal = v.position;
-		v.textCoord = vec2(0.5, 1.0f);
+		//v.normal = v.position;
+		//v.textCoord = vec2(0.5, 1.0f);
 		vertices.push_back(v);
 		for (int i = 0; i < slices; ++i) {
 			indices.push_back(pole);
 			indices.push_back(i + start);
 			indices.push_back((i + 1) % slices + start);
+		}
+
+		//Vertex have only positions so far
+		//We trasnverse them assigninig normals and texture coordinates
+		cout << "theta\tphi\ts\tt" << endl;
+		for (auto& v : vertices) {
+			v.normal = glm::normalize(v.position);
+			float r = glm::length(v.position);
+			float theta = glm::acos(v.position.y / r);
+			//Por como generamos la esfera nunca llegamos a phi 0 or 360
+			float phi = glm::atan(v.position.z, v.position.x) + math::PI - math::TAU / (2 *  slices);
+			//El problema es s
+			v.textCoord.s = glm::clamp(1.0f - phi / math::TAU , 0.0001f, 1.0f);
+			v.textCoord.t = glm::clamp(1.0f - theta / math::PI, 0.0001f, 1.0f);
+			std::cout.unsetf(std::ios::floatfield);                // floatfield not set
+			std::cout.precision(3);
+			cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
+			cout << v.textCoord.s << "\t" << v.textCoord.t << endl;
 		}
 
 		sphere.setVertices(vertices, true, true);
@@ -1132,7 +1149,7 @@ namespace mesh {
 		vertices.push_back(v); //1
 
 		v.position = pos[1];
-		v.textCoord = text[2];
+		v.textCoord = text[1];
 		v.normal = normal;
 		vertices.push_back(v); //2
 
