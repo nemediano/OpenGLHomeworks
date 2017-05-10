@@ -115,77 +115,81 @@ namespace mesh {
 		return cube;
 	}
 
-	Mesh Geometries::sphere(int slices, int rings) {
+	Mesh Geometries::sphere(int slices, int stacks) {
 		Mesh sphere;
 		vector<unsigned int> indices;
 		vector<Vertex> vertices;
-
-		
-		float deltaAzimuth = PI / (rings - 1);
+		//Polar angle is tropi goes in [0, TAU]
+		//Azimuth is a meridian goes in [0, PI]
 		float deltaPolar = TAU / slices;
-
-		float polar = 0.0f;
+		float deltaAzimuth = PI / stacks;
+		//To keep the CCW orientation I will sweep polar form TAU to 0
+		float polar = TAU;
 		float azimuth = deltaAzimuth;
-		for (int i = 1; i < (rings - 1); ++i) {
+		Vertex v;
+
+		assert(stacks >= 2);
+		assert(slices >= 3);
+		
+		for (int i = 0; i < (stacks - 1); ++i) {
 			polar = 0.0f;
-			for (int j = 0; j < slices; j++) {
-				Vertex v;
+			for (int j = 0; j < slices; j++) {		
 				v.position.x = sin(azimuth) * cos(polar);
 				v.position.y = cos(azimuth);
 				v.position.z = sin(azimuth) * sin(polar);;
 
 				vertices.push_back(v);
-				polar += deltaPolar;
+				polar -= deltaPolar;
 			}
 			azimuth += deltaAzimuth;
 		}
-		int start = static_cast<int>(vertices.size()) - slices;
 
-		for (int i = 0; i < (rings - 3); ++i) {
-			for (int j = 0; j < slices; j++) {
+		//Create triangles for the center part
+		for (int i = 0; i < (stacks - 2); ++i) {
+			for (int j = 0; j < slices; ++j) {
 				int a = i * slices + j;
 				int b = i * slices + ((j + 1) % slices);
-				int c = ((i + 1) % rings) * slices + j;
-				int d = ((i + 1) % rings) * slices + ((j + 1) % slices);
-
+				int c = a + slices;
+				int d = b + slices;
+				
 				indices.push_back(a);
-				indices.push_back(b);
-				indices.push_back(d);
-
-				indices.push_back(a);
-				indices.push_back(d);
 				indices.push_back(c);
+				indices.push_back(b);
+
+				indices.push_back(b);
+				indices.push_back(c);
+				indices.push_back(d);
 			}
 		}
-
-		//North pole 
-		int pole = static_cast<int>(vertices.size());
-		Vertex v;
-		v.position = vec3(0.0f, 1.0f, 0.0);
-		//v.normal = v.position;
-		//v.textCoord = vec2(0.5, 0.0f);
+		
+		//North pole and south pole
+		v.position = vec3(0.0f, 1.0f, 0.0f);
 		vertices.push_back(v);
-		for (int i = 0; i < slices; ++i) {
-			indices.push_back(pole);
-			indices.push_back((i + 1) % slices);
-			indices.push_back(i);
-		}
-
-		//South pole
-		pole = static_cast<int>(vertices.size());
-		v.position = vec3(0.0f, -1.0f, 0.0);
-		//v.normal = v.position;
-		//v.textCoord = vec2(0.5, 1.0f);
+		v.position = vec3(0.0f, -1.0f, 0.0f);
 		vertices.push_back(v);
+		
+		int indexNorth = vertices.size() - 2;
+		int indexSouth = vertices.size() - 1;
+		//Triangles for the "Triangle fan" in the north
 		for (int i = 0; i < slices; ++i) {
-			indices.push_back(pole);
-			indices.push_back(i + start);
-			indices.push_back((i + 1) % slices + start);
+			indices.push_back(indexNorth);
+			int b = i;
+			int c = (i + 1) % slices;
+			indices.push_back(b);
+			indices.push_back(c);
 		}
-
+		//"Triangle fan" in the south
+		int indexLast = indexNorth - slices;
+		for (int i = 0; i < slices; ++i) {
+			indices.push_back(indexSouth);
+			int b = indexLast + (i + 1) % slices;
+			int c = indexLast + i;
+			indices.push_back(b);
+			indices.push_back(c);
+		}
 		//Vertex have only positions so far
 		//We trasnverse them assigninig normals and texture coordinates
-		cout << "theta\tphi\ts\tt" << endl;
+		//cout << "theta\tphi\ts\tt" << endl;
 		for (auto& v : vertices) {
 			v.normal = glm::normalize(v.position);
 			float r = glm::length(v.position);
@@ -195,10 +199,10 @@ namespace mesh {
 			//El problema es s
 			v.textCoord.s = glm::clamp(1.0f - phi / math::TAU , 0.0001f, 1.0f);
 			v.textCoord.t = glm::clamp(1.0f - theta / math::PI, 0.0001f, 1.0f);
-			std::cout.unsetf(std::ios::floatfield);                // floatfield not set
-			std::cout.precision(3);
-			cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
-			cout << v.textCoord.s << "\t" << v.textCoord.t << endl;
+		//	std::cout.unsetf(std::ios::floatfield);                // floatfield not set
+		//	std::cout.precision(3);
+		//	cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
+		//	cout << v.textCoord.s << "\t" << v.textCoord.t << endl;
 		}
 
 		sphere.setVertices(vertices, true, true);
