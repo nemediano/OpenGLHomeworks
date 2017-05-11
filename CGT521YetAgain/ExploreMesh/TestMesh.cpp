@@ -248,7 +248,7 @@ void init_program() {
 	using glm::vec3;
 	
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::sphere());
+	meshPtr = new Mesh(Geometries::cylinder());
 	//meshPtr = new Mesh(Geometries::sphere(4, 4));
 	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
 	//texturePtr = new Texture(chessBoard());

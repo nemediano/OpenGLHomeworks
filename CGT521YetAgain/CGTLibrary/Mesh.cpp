@@ -248,7 +248,7 @@ namespace mesh {
 			m_vertices.push_back(tmp_vertex);
 		}
 
-		cout << "theta\tphi\ts\tt" << endl;
+		//cout << "theta\tphi\ts\tt" << endl;
 		for (auto& v : m_vertices) {
 			v.normal = glm::normalize(v.position);
 			//r == 1 in the unit sphere thta is why I dont divide it.
@@ -262,10 +262,10 @@ namespace mesh {
 			
 			v.textCoord.s = glm::clamp(1.0f - phi / math::TAU, 0.001f, 1.0f);
 			v.textCoord.t = glm::clamp(1.0f - theta / math::PI, 0.001f, 1.0f);
-			std::cout.unsetf(std::ios::floatfield);                // floatfield not set
-			std::cout.precision(3);
-			cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
-			cout << v.textCoord.s << "\t" << v.textCoord.t << endl;
+			//std::cout.unsetf(std::ios::floatfield);                // floatfield not set
+			//std::cout.precision(3);
+			//cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
+			//cout << v.textCoord.s << "\t" << v.textCoord.t << endl;
 		}
 
 		m_has_normals = true;

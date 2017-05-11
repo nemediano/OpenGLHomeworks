@@ -168,8 +168,8 @@ namespace mesh {
 		v.position = vec3(0.0f, -1.0f, 0.0f);
 		vertices.push_back(v);
 		
-		int indexNorth = vertices.size() - 2;
-		int indexSouth = vertices.size() - 1;
+		int indexNorth = static_cast<int>(vertices.size() - 2);
+		int indexSouth = static_cast<int>(vertices.size() - 1);
 		//Triangles for the "Triangle fan" in the north
 		for (int i = 0; i < slices; ++i) {
 			indices.push_back(indexNorth);

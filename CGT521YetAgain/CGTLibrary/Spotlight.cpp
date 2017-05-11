@@ -34,6 +34,21 @@ namespace lighting {
 		setRatio(ratio);
 	}
 
+	GLuint Spotlight::getStencil() const {
+		return m_useStencil ? m_stencil.get_id() : 0;
+	}
+
+	void Spotlight::setStencil(const image::Texture& stencil) {
+		m_stencil = stencil;
+		m_useStencil = true;
+	}
+
+	void Spotlight::createTexturesGPU() {
+		if (m_useStencil) {
+			m_stencil.send_to_gpu();
+		}
+	}
+
 	glm::vec3 Spotlight::getPosition() const {
 		return m_position;
 	}

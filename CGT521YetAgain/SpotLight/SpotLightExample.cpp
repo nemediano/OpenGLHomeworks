@@ -114,7 +114,6 @@ struct LightContainer {
 	float distance;
 	PhongLight properties;
 	Spotlight spot;
-	Texture* stencilPtr;
 };
 
 LightContainer light;
@@ -310,10 +309,9 @@ void exit_glut() {
 	delete cubePtr;
 	delete spherePtr;
 	delete phongPtr;
-	delete stencilPtr;
 	delete coneMeshPtr;
 	delete renderLightPrt;
-	delete light.stencilPtr;
+	delete stencilPtr;
 	delete phongShadowCustomPtr;
 	delete phongShadowCustom2Ptr;
 	/* Shut down the gui */
@@ -344,7 +342,8 @@ void init_program() {
 	coneMeshPtr = new Mesh(Geometries::pyramid());
 
 	/* Images */
-	light.stencilPtr = new Texture(defaultStencil());
+	light.spot.setStencil(defaultStencil());
+	light.spot.createTexturesGPU();
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -364,10 +363,6 @@ void init_program() {
 
 	if (coneMeshPtr) {
 		coneMeshPtr->sendToGPU();
-	}
-
-	if (light.stencilPtr) {
-		light.stencilPtr->send_to_gpu();
 	}
 
 	//Extract info form the mesh
@@ -909,7 +904,7 @@ void renderGeometryPass() {
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(stencilLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.stencilPtr->get_id()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (stencilLoc.u_Stencil != -1) {
 			glUniform1i(stencilLoc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
@@ -953,7 +948,7 @@ void renderGeometryPass() {
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongShadowLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.stencilPtr->get_id()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowLoc.u_Stencil != -1) {
 			glUniform1i(phongShadowLoc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
@@ -1005,7 +1000,7 @@ void renderGeometryPass() {
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongShadowCustomLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.stencilPtr->get_id()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowCustomLoc.u_Stencil != -1) {
 			glUniform1i(phongShadowCustomLoc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
@@ -1057,7 +1052,7 @@ void renderGeometryPass() {
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongShadowCustom2Loc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.stencilPtr->get_id()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowCustom2Loc.u_Stencil != -1) {
 			glUniform1i(phongShadowCustom2Loc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
