@@ -98,22 +98,12 @@ Locations phongShadowLoc;
 Locations phongShadowCustomLoc;
 Locations phongShadowCustom2Loc;
 
-struct FBO {
-	GLuint id = 0;
-	GLuint depth = 0;
-	//GLuint test = 0;
-	int width = 0;
-	int height = 0;
-};
-
-FBO shadowBuffer;
-
 //Global variables for the program logic
 struct LightContainer {
 	glm::vec3 eulerAngles;
 	float distance;
 	PhongLight properties;
-	Spotlight spot;
+	Spotlight geometry;
 };
 
 LightContainer light;
@@ -214,12 +204,12 @@ void drawGUI() {
 	ImGui::RadioButton("Soft Shadow (Poisson disk)", &currentShader, 4);
 
 	ImGui::Text("Light position");
-	float aperture = light.spot.getAperture();
+	float aperture = light.geometry.getAperture();
 	ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
 	ImGui::SliderAngle("Angle X", &light.eulerAngles.x, -180.0f, 180.0f);
 	ImGui::SliderAngle("Angle Y", &light.eulerAngles.y, -180.0f, 180.0f);
 	ImGui::SliderAngle("Aperture", &aperture, 0.0f, 90.0f);
-	light.spot.setAperture(aperture);
+	light.geometry.setAperture(aperture);
 
 	if (ImGui::CollapsingHeader("Light physical properties")) {
 		vec3 La = light.properties.getLa();
@@ -342,8 +332,8 @@ void init_program() {
 	coneMeshPtr = new Mesh(Geometries::pyramid());
 
 	/* Images */
-	light.spot.setStencil(defaultStencil());
-	light.spot.createTexturesGPU();
+	light.geometry.setStencil(defaultStencil());
+	light.geometry.createTexturesGPU();
 
 	if (meshPtr) {
 		meshPtr->sendToGPU();
@@ -370,43 +360,7 @@ void init_program() {
 	meshCenter = meshPtr->getBBCenter();
 
 	seconds_elapsed = 0.0f;
-
-	//Create FBO for storing the shadow map
-	shadowBuffer.width = shadowBuffer.height = 1024;
-	//Create the texture for depth first
-	glGenTextures(1, &shadowBuffer.depth);
-	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, shadowBuffer.width, shadowBuffer.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glm::vec4 borderColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, glm::value_ptr(borderColor));
-	//Create the texture for testing first
-	/*glGenTextures(1, &shadowBuffer.test);
-	glBindTexture(GL_TEXTURE_2D, shadowBuffer.test);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, shadowBuffer.width, shadowBuffer.height, 0, GL_RGB, GL_FLOAT, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);*/
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-	//Create framebuffer second and attach the texture to it
-	glGenFramebuffers(1, &shadowBuffer.id);
-	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowBuffer.test, 0);
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depth, 0);
-	
-	
-	ogl::framebufferStatus();
-
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+	light.geometry.createShadowBuffer();
 
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f));
@@ -423,7 +377,7 @@ void init_program() {
 	light.properties.setLa(vec3(1.0f));
 	light.properties.setLs(vec3(1.0f));
 	light.properties.setLd(vec3(1.0f));
-	light.spot.setAperture(PI / 6.0f);
+	light.geometry.setAperture(PI / 6.0f);
 	//Default material
 	mat.setKa(vec3(0.122f, 0.216f, 0.145f));
 	mat.setKd(vec3(0.4f, 0.742f, 0.7f));
@@ -843,8 +797,8 @@ void renderGeometryPass() {
 	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
 	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
-	light.spot.setPosition(light_position);
-	light.spot.setTarget(vec3(0.0f));
+	light.geometry.setPosition(light_position);
+	light.geometry.setTarget(vec3(0.0f));
 
 	//We are going to render to the default framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -862,8 +816,8 @@ void renderGeometryPass() {
 		glUniformMatrix4fv(phongLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(phongLoc.u_gamma, gamma);
 		glUniform3fv(phongLoc.u_LightPos, 1, glm::value_ptr(light_position));
-		glUniformMatrix4fv(phongLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
-		glUniformMatrix4fv(phongLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		glUniformMatrix4fv(phongLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.geometry.getPM()));
+		glUniformMatrix4fv(phongLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.geometry.getM()));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
@@ -898,13 +852,13 @@ void renderGeometryPass() {
 		glUniformMatrix4fv(stencilLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(stencilLoc.u_gamma, gamma);
 		glUniform3fv(stencilLoc.u_LightPos, 1, glm::value_ptr(light_position));
-		glUniformMatrix4fv(stencilLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
-		glUniformMatrix4fv(stencilLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		glUniformMatrix4fv(stencilLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.geometry.getPM()));
+		glUniformMatrix4fv(stencilLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.geometry.getM()));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(stencilLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (stencilLoc.u_Stencil != -1) {
 			glUniform1i(stencilLoc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
@@ -935,25 +889,25 @@ void renderGeometryPass() {
 		
 		mat4 biasMat = glm::translate(I, vec3(0.5f)); 
 		biasMat = glm::scale(biasMat, vec3(0.5f));
-		mat4 shadowMat = biasMat * light.spot.getPM() * M;
+		mat4 shadowMat = biasMat * light.geometry.getPM() * M;
 		glUniformMatrix4fv(phongShadowLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(phongShadowLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(phongShadowLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
 		glUniformMatrix4fv(phongShadowLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M))));
 		glUniform1f(phongShadowLoc.u_gamma, gamma);
 		glUniform3fv(phongShadowLoc.u_LightPos, 1, glm::value_ptr(light_position));
-		glUniformMatrix4fv(phongShadowLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
-		glUniformMatrix4fv(phongShadowLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		glUniformMatrix4fv(phongShadowLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.geometry.getPM()));
+		glUniformMatrix4fv(phongShadowLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.geometry.getM()));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongShadowLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowLoc.u_Stencil != -1) {
 			glUniform1i(phongShadowLoc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
 		glActiveTexture(GL_TEXTURE1); //Active texture unit 1
-		glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getShadowMap()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowLoc.u_ShadowMap != -1) {
 			glUniform1i(phongShadowLoc.u_ShadowMap, 1); // we bound our texture to texture unit 1
 		}
@@ -966,7 +920,7 @@ void renderGeometryPass() {
 			//Draw the exterior box
 			mat4 M_box = mat4(1.0f);
 			M_box = glm::scale(M_box, vec3(3.0f));
-			mat4 shadowMat = biasMat * light.spot.getPM() * M_box;
+			mat4 shadowMat = biasMat * light.geometry.getPM() * M_box;
 			glUniformMatrix4fv(phongShadowLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
 			glUniformMatrix4fv(phongShadowLoc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
 			glUniformMatrix4fv(phongShadowLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
@@ -986,7 +940,7 @@ void renderGeometryPass() {
 
 		mat4 biasMat = glm::translate(I, vec3(0.5f));
 		biasMat = glm::scale(biasMat, vec3(0.5f));
-		mat4 shadowMat = biasMat * light.spot.getPM() * M;
+		mat4 shadowMat = biasMat * light.geometry.getPM() * M;
 		glUniformMatrix4fv(phongShadowCustomLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(phongShadowCustomLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(phongShadowCustomLoc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
@@ -994,18 +948,18 @@ void renderGeometryPass() {
 		glUniform1f(phongShadowCustomLoc.u_gamma, gamma);
 		glUniform1f(phongShadowCustomLoc.u_spread, spread);
 		glUniform3fv(phongShadowCustomLoc.u_LightPos, 1, glm::value_ptr(light_position));
-		glUniformMatrix4fv(phongShadowCustomLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
-		glUniformMatrix4fv(phongShadowCustomLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		glUniformMatrix4fv(phongShadowCustomLoc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.geometry.getPM()));
+		glUniformMatrix4fv(phongShadowCustomLoc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.geometry.getM()));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongShadowCustomLoc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowCustomLoc.u_Stencil != -1) {
 			glUniform1i(phongShadowCustomLoc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
 		glActiveTexture(GL_TEXTURE1); //Active texture unit 1
-		glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getShadowMap()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowCustomLoc.u_ShadowMap != -1) {
 			glUniform1i(phongShadowCustomLoc.u_ShadowMap, 1); // we bound our texture to texture unit 0
 		}
@@ -1018,7 +972,7 @@ void renderGeometryPass() {
 			//Draw the exterior box
 			mat4 M_box = mat4(1.0f);
 			M_box = glm::scale(M_box, vec3(3.0f));
-			mat4 shadowMat = biasMat * light.spot.getPM() * M_box;
+			mat4 shadowMat = biasMat * light.geometry.getPM() * M_box;
 			glUniformMatrix4fv(phongShadowCustomLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
 			glUniformMatrix4fv(phongShadowCustomLoc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
 			glUniformMatrix4fv(phongShadowCustomLoc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
@@ -1038,7 +992,7 @@ void renderGeometryPass() {
 
 		mat4 biasMat = glm::translate(I, vec3(0.5f));
 		biasMat = glm::scale(biasMat, vec3(0.5f));
-		mat4 shadowMat = biasMat * light.spot.getPM() * M;
+		mat4 shadowMat = biasMat * light.geometry.getPM() * M;
 		glUniformMatrix4fv(phongShadowCustom2Loc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(phongShadowCustom2Loc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(phongShadowCustom2Loc.u_ShadowMat, 1, GL_FALSE, glm::value_ptr(shadowMat));
@@ -1046,18 +1000,18 @@ void renderGeometryPass() {
 		glUniform1f(phongShadowCustom2Loc.u_gamma, gamma);
 		glUniform1f(phongShadowCustom2Loc.u_spread, spread);
 		glUniform3fv(phongShadowCustom2Loc.u_LightPos, 1, glm::value_ptr(light_position));
-		glUniformMatrix4fv(phongShadowCustom2Loc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.spot.getPM()));
-		glUniformMatrix4fv(phongShadowCustom2Loc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.spot.getM()));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_LightPM, 1, GL_FALSE, glm::value_ptr(light.geometry.getPM()));
+		glUniformMatrix4fv(phongShadowCustom2Loc.u_LightM, 1, GL_FALSE, glm::value_ptr(light.geometry.getM()));
 		vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 		vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 		glUniform3fv(phongShadowCustom2Loc.u_CameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 		glActiveTexture(GL_TEXTURE0); //Active texture unit 0
-		glBindTexture(GL_TEXTURE_2D, light.spot.getStencil()); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getStencil()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowCustom2Loc.u_Stencil != -1) {
 			glUniform1i(phongShadowCustom2Loc.u_Stencil, 0); // we bound our texture to texture unit 0
 		}
 		glActiveTexture(GL_TEXTURE1); //Active texture unit 1
-		glBindTexture(GL_TEXTURE_2D, shadowBuffer.depth); //The next binded texture will be refered with the active texture unit
+		glBindTexture(GL_TEXTURE_2D, light.geometry.getShadowMap()); //The next binded texture will be refered with the active texture unit
 		if (phongShadowCustom2Loc.u_ShadowMap != -1) {
 			glUniform1i(phongShadowCustom2Loc.u_ShadowMap, 1); // we bound our texture to texture unit 0
 		}
@@ -1070,7 +1024,7 @@ void renderGeometryPass() {
 			//Draw the exterior box
 			mat4 M_box = mat4(1.0f);
 			M_box = glm::scale(M_box, vec3(3.0f));
-			mat4 shadowMat = biasMat * light.spot.getPM() * M_box;
+			mat4 shadowMat = biasMat * light.geometry.getPM() * M_box;
 			glUniformMatrix4fv(phongShadowCustom2Loc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M_box));
 			glUniformMatrix4fv(phongShadowCustom2Loc.u_M, 1, GL_FALSE, glm::value_ptr(M_box));
 			glUniformMatrix4fv(phongShadowCustom2Loc.u_NormMat, 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(M_box))));
@@ -1089,8 +1043,8 @@ void generateShadowmapPass() {
 	using glm::vec4;
 	using glm::mat4;
 	//We render to the shadowmap
-	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.id);
-	glViewport(0, 0, shadowBuffer.width, shadowBuffer.height);
+	glBindFramebuffer(GL_FRAMEBUFFER, light.geometry.getFBO());
+	glViewport(0, 0, light.geometry.getShadowResolution(), light.geometry.getShadowResolution());
 	//We only need the depth in the shadow map
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
@@ -1112,13 +1066,13 @@ void generateShadowmapPass() {
 	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
 	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
-	light.spot.setPosition(light_position);
-	light.spot.setTarget(vec3(0.0f));
+	light.geometry.setPosition(light_position);
+	light.geometry.setTarget(vec3(0.0f));
 	
 	//View Projection, sice we have updated the light position.
 	/*This is correct since for tthe light is his position or Model, 
 	but from the shader program is the cammera placement or his View.*/
-	mat4 PV = light.spot.getPM();
+	mat4 PV = light.geometry.getPM();
 
 	lighPtr->use();
 
@@ -1152,7 +1106,7 @@ void renderSpotLight() {
 	M = glm::translate(M, vec3(0.0f, 0.0f, light.distance));
 	M = glm::rotate(M, TAU / 4.0f, vec3(1.0f, 0.0f, 0.0f));
 	M = glm::translate(M, vec3(0.0f, -0.1f, 0.0));
-	M = glm::scale(M, vec3(0.25f * sin(light.spot.getAperture()) / sqrt(2.0f), 0.1f, 0.25f * sin(light.spot.getAperture()) / sqrt(2.0f)));
+	M = glm::scale(M, vec3(0.25f * sin(light.geometry.getAperture()) / sqrt(2.0f), 0.1f, 0.25f * sin(light.geometry.getAperture()) / sqrt(2.0f)));
 	//M = glm::rotate(M, TAU / 8.0f, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
