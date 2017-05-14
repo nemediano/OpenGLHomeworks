@@ -17,6 +17,7 @@ namespace mesh {
 		static Mesh sphere(int slices = 20, int stacks = 15);
 		static Mesh superShape(float a, float b, float m, glm::vec3 n, int discretization = 128);
 		static Mesh teapot(int subdivisions = 6);
+		static Mesh cylinderTexture(int slices = 20, int stacks = 1, bool caps = true);
 	private:
 		
 

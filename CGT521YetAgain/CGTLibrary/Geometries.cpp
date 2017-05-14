@@ -130,9 +130,11 @@ namespace mesh {
 
 		assert(stacks >= 2);
 		assert(slices >= 3);
-		
+		float s;
+		float deltaS = 1.0f / slices;
 		for (int i = 0; i < (stacks - 1); ++i) {
 			polar = 0.0f;
+			s = 0.0f;
 			for (int j = 0; j < slices; j++) {		
 				v.position.x = sin(azimuth) * cos(polar);
 				v.position.y = cos(azimuth);
@@ -140,17 +142,18 @@ namespace mesh {
 
 				v.normal = glm::normalize(v.position);
 
-				v.textCoord.s = 1.0f - polar / math::TAU;
-				v.textCoord.t = 1.0f - azimuth / math::PI;
+				v.textCoord.s = s;
+				v.textCoord.t = glm::clamp(1.0f - azimuth / math::PI, 0.0f, 1.0f);
 
 				vertices.push_back(v);
 				polar -= deltaPolar;
+				s += deltaS;
 			}
-			
+			//Dummy vertex for the texture coordinates being able to close
 			v.position = vertices[vertices.size() - slices].position;
 			v.normal = vertices[vertices.size() - slices].normal;
-			v.textCoord.s = 1.0f - polar / math::TAU;
-			v.textCoord.t = 1.0f - azimuth / math::PI;
+			v.textCoord.s = s;
+			v.textCoord.t = glm::clamp(1.0f - azimuth / math::PI, 0.0f, 1.0f);
 
 			vertices.push_back(v);
 			azimuth += deltaAzimuth;
@@ -173,61 +176,42 @@ namespace mesh {
 				indices.push_back(d);
 			}
 		}
-		
-		//North pole and south pole
+		//To store where the middle vertices start of the lasr row
+		int indexLast = static_cast<int>(vertices.size() - slices - 1);
+
+		//Create north triangle fan
 		v.position = vec3(0.0f, 1.0f, 0.0f);
 		v.normal = v.position;
-		v.textCoord = vec2(0.5f, 1.0f);
-		vertices.push_back(v);
+		v.textCoord.t = 1.0f;
+		//Triangles for the "Triangle fan" in the north
+		for (int i = 0; i < slices; ++i) {
+			int b = i;
+			int c = (i + 1) % (slices + 1);
+			//The new dummy vertex
+			v.textCoord.s = (vertices[b].textCoord.s + vertices[c].textCoord.s) / 2.0f;
+			vertices.push_back(v);
+			//Create triangle using the new dummy vertex
+			indices.push_back(static_cast<unsigned int>(vertices.size() - 1));
+			indices.push_back(b);
+			indices.push_back(c);
+		}
 
 		v.position = vec3(0.0f, -1.0f, 0.0f);
 		v.normal = v.position;
-		v.textCoord = vec2(0.5f, 0.0f);
-		vertices.push_back(v);
-		
-		int indexNorth = static_cast<int>(vertices.size() - 2);
-		int indexSouth = static_cast<int>(vertices.size() - 1);
-		//Triangles for the "Triangle fan" in the north
-		for (int i = 0; i < slices; ++i) {
-			indices.push_back(indexNorth);
-			int b = i;
-			int c = (i + 1) % (slices + 1);
-			indices.push_back(b);
-			indices.push_back(c);
-		}
+		v.textCoord.t = 0.0f;
 		//"Triangle fan" in the south
-		int indexLast = indexNorth - (slices + 1);
 		for (int i = 0; i < slices; ++i) {
-			indices.push_back(indexSouth);
 			int b = indexLast + (i + 1) % (slices + 1);
 			int c = indexLast + i;
+			//The new dummy vertex
+			v.textCoord.s = (vertices[b].textCoord.s + vertices[c].textCoord.s) / 2.0f;
+			vertices.push_back(v);
+			//Create triangle using the new dummy vertex
+			indices.push_back(static_cast<unsigned int>(vertices.size() - 1));
 			indices.push_back(b);
 			indices.push_back(c);
 		}
-		//Vertex have only positions so far
-		//We trasnverse them assigninig normals and texture coordinates
-		std::cout.unsetf(std::ios::floatfield);                // floatfield not set
-		std::cout.precision(3);
-		float deltaS = 1.0f / slices;
-		float s = 0.0f;
-		//cout << "i\ttheta\tphi\ts\tt" << endl;
-		for (int i = 0; i < vertices.size() - 2; ++i) {
-			float theta = glm::acos(vertices[i].position.y);
-			//Por como generamos la esfera nunca llegamos a phi 0 or 360
-			float phi = glm::atan(vertices[i].position.z, vertices[i].position.x) + math::PI;
-			//El problema es s
-			if (i % (slices + 1) == 0) {
-				s = 0.0f;
-			}
-			vertices[i].textCoord.s = s;
-			vertices[i].textCoord.t = glm::clamp(1.0f - theta / math::PI, 0.0f, 1.0f);
-			s += deltaS;
-			/*cout << i << "\t";
-			cout << math::toDegree(theta) << "\t" << math::toDegree(phi) << "\t";
-			cout << vertices[i].textCoord.s << "\t" << vertices[i].textCoord.t << endl;*/
-		}
-		vertices[indexNorth].textCoord.s = vertices[indexSouth].textCoord.s = 0.5;
-
+		
 		sphere.setVertices(vertices, true, true);
 		sphere.setIndex(indices);
 		return sphere;
@@ -341,6 +325,119 @@ namespace mesh {
 				indices.push_back(last_index + tmp);
 				tmp = i;
 				indices.push_back(last_index + tmp);
+			}
+		}
+
+		cylinder.setVertices(vertices, true, true);
+		cylinder.setIndex(indices);
+		return cylinder;
+	}
+
+	Mesh Geometries::cylinderTexture(int slices, int stacks, bool caps) {
+		Mesh cylinder;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+
+		assert(slices >= 3);
+		assert(stacks >= 1);
+
+		Vertex v;
+
+		float deltaHeight = 1.0f / stacks;
+		for (int i = 0; i <= stacks; ++i) {
+			float polarAngle = 0.0f;
+			float deltaPolar = TAU / slices;
+			for (int j = 0; j < slices; ++j) {
+				v.position.x = cos(polarAngle);
+				v.position.y = i * deltaHeight;
+				v.position.z = sin(polarAngle);
+				v.normal = glm::normalize(vec3(v.position.x, 0.0f, v.position.z));
+				v.textCoord.s = polarAngle / TAU;
+				v.textCoord.t = v.position.y;
+				vertices.push_back(v);
+				polarAngle += deltaPolar;
+			}
+			//Dummy vertex for the texture coordinates
+			v.position = vertices[vertices.size() - slices].position;
+			v.normal = vertices[vertices.size() - slices].normal;
+			v.textCoord.s = 1.0f;
+			v.textCoord.t = v.position.y;
+			vertices.push_back(v);
+		}
+
+		//To store where the middle vertices start of the last row
+		int indexLast = static_cast<int>(vertices.size() - slices - 1);
+
+		//Create triangles for the center part
+		for (int i = 0; i < stacks; ++i) {
+			for (int j = 0; j < slices; ++j) {
+				int a = i * (slices + 1) + j;
+				int b = i * (slices + 1) + (j + 1) % (slices + 1);
+				int c = a + (slices + 1);
+				int d = b + (slices + 1);
+
+				indices.push_back(a);
+				indices.push_back(c);
+				indices.push_back(b);
+
+				indices.push_back(b);
+				indices.push_back(c);
+				indices.push_back(d);
+			}
+		}
+
+		//Create caps if needed
+		if (caps) {
+			//Create down triangle fan
+			v.position = vec3(0.0f, 0.0f, 0.0f);
+			v.normal = vec3(0.0f, -1.0f, 0.0f);
+			v.textCoord = vec2(0.5f, 0.5f);
+			vertices.push_back(v);
+			int indexCenter = static_cast<int>(vertices.size() - 1);
+			//Create dummy vertices (share positions with other) in the circle
+			for (int i = 0; i < slices; ++i) {
+				int b = i;
+				int c = (i + 1) % (slices + 1);
+				
+				v.position = vertices[c].position;
+				v.textCoord.s = 0.5f * v.position.x + 0.5f;
+				v.textCoord.t = 0.5f * v.position.z + 0.5f;
+				vertices.push_back(v);
+				
+				v.position = vertices[b].position;
+				v.textCoord.s = 0.5f * v.position.x + 0.5f;
+				v.textCoord.t = 0.5f * v.position.z + 0.5f;
+				vertices.push_back(v);
+
+				indices.push_back(indexCenter);
+				indices.push_back(static_cast<int>(vertices.size() - 1));
+				indices.push_back(static_cast<int>(vertices.size() - 2));
+			}
+
+			//Create upper triangle fan
+			v.position = vec3(0.0f, 1.0f, 0.0f);
+			v.normal = v.position;
+			v.textCoord = vec2(0.5f, 0.5f);
+			vertices.push_back(v);
+			indexCenter = static_cast<int>(vertices.size() - 1);
+			//Create dummy vertices (share positions with other) in the circle
+			for (int i = 0; i < slices; ++i) {
+				int b = indexLast + (i + 1) % (slices + 1);
+				int c = indexLast + i;
+
+				v.position = vertices[c].position;
+				v.textCoord.s = 0.5f * v.position.x + 0.5f;
+				v.textCoord.t = 0.5f * v.position.z + 0.5f;
+				vertices.push_back(v);
+
+				v.position = vertices[b].position;
+				v.textCoord.s = 0.5f * v.position.x + 0.5f;
+				v.textCoord.t = 0.5f * v.position.z + 0.5f;
+				vertices.push_back(v);
+
+				indices.push_back(indexCenter);
+				indices.push_back(static_cast<int>(vertices.size() - 1));
+				indices.push_back(static_cast<int>(vertices.size() - 2));
 			}
 		}
 
