@@ -233,8 +233,8 @@ namespace mesh {
 				v.position.y = i * deltaHeight;
 				v.position.z = sin(angle);
 				v.normal = glm::normalize(vec3(v.position.x, 0.0f, v.position.z));
-				v.textCoord.s = angle / TAU;
-				v.textCoord.t = v.position.y;
+				//v.textCoord.s = angle / TAU;
+				//v.textCoord.t = v.position.y;
 				vertices.push_back(v);
 				angle += deltaAngle;
 				//Start to create the triangles from second iteration and so on
@@ -276,7 +276,7 @@ namespace mesh {
 			Vertex v;
 			v.position = vec3(0.0f);
 			v.normal = vec3(0.0f, -1.0f, 0.0f);
-			v.textCoord = vec2(0.5f, 0.5f);
+			//v.textCoord = vec2(0.5f, 0.5f);
 			vertices.push_back(v);
 			//Bottom cap
 			float angle = 0.0f;
@@ -287,8 +287,8 @@ namespace mesh {
 				u.position.y = 0;
 				u.position.z = sin(angle);
 				u.normal = vec3(0.0f, -1.0f, 0.0f);
-				u.textCoord.s = angle / TAU;
-				u.textCoord.t = u.position.y;
+				//u.textCoord.s = angle / TAU;
+				//u.textCoord.t = u.position.y;
 				vertices.push_back(u);
 				angle += deltaAngle;
 			}
@@ -304,7 +304,7 @@ namespace mesh {
 			last_index = static_cast<int>(vertices.size());
 			v.position = vec3(0.0f, 1.0f, 0.0);
 			v.normal = vec3(0.0f, 1.0f, 0.0f);
-			v.textCoord = vec2(0.5f, 0.5f);
+			//v.textCoord = vec2(0.5f, 0.5f);
 			vertices.push_back(v);
 			angle = 0.0f;
 			for (int i = 0; i < divisions; i++) {
@@ -313,8 +313,8 @@ namespace mesh {
 				u.position.y = 1.0f;
 				u.position.z = sin(angle);
 				u.normal = vec3(0.0f, 1.0f, 0.0f);
-				u.textCoord.s = angle / TAU;
-				u.textCoord.t = u.position.y;
+				//u.textCoord.s = angle / TAU;
+				//u.textCoord.t = u.position.y;
 				vertices.push_back(u);
 				angle += deltaAngle;
 			}
@@ -328,7 +328,7 @@ namespace mesh {
 			}
 		}
 
-		cylinder.setVertices(vertices, true, true);
+		cylinder.setVertices(vertices, true, false);
 		cylinder.setIndex(indices);
 		return cylinder;
 	}
