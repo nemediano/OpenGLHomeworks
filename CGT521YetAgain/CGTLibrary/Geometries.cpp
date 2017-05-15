@@ -217,17 +217,17 @@ namespace mesh {
 		return sphere;
 	}
 
-	Mesh Geometries::cylinder(int subAxis, int divisions, bool caps) {
+	Mesh Geometries::cylinder(int slices, int stacks, bool caps) {
 		
 		Mesh cylinder;
 		vector<unsigned int> indices;
 		vector<Vertex> vertices;
 
-		float deltaHeight = 1.0f / subAxis;
-		for (int i = 0; i <= subAxis; ++i) {
+		float deltaHeight = 1.0f / stacks;
+		for (int i = 0; i <= stacks; ++i) {
 			float angle = 0.0f;
-			float deltaAngle = TAU / divisions;
-			for (int j = 0; j < divisions; ++j) {
+			float deltaAngle = TAU / slices;
+			for (int j = 0; j < slices; ++j) {
 				Vertex v;
 				v.position.x = cos(angle);
 				v.position.y = i * deltaHeight;
@@ -240,10 +240,10 @@ namespace mesh {
 				//Start to create the triangles from second iteration and so on
 				if (j > 0 && i > 0) {
 					//Create two triangle
-					int a = (i - 1) * divisions + (j - 1);
-					int b = (i - 1) * divisions + j;
-					int c = i * divisions + (j - 1);
-					int d = i * divisions + j;
+					int a = (i - 1) * slices + (j - 1);
+					int b = (i - 1) * slices + j;
+					int c = i * slices + (j - 1);
+					int d = i * slices + j;
 					indices.push_back(c);
 					indices.push_back(b);
 					indices.push_back(a);
@@ -255,10 +255,10 @@ namespace mesh {
 			}
 			//Last two 
 			if (i > 0) {
-				int a = (i - 1) * divisions + (divisions - 1);
-				int b = (i - 1) * divisions + 0;
-				int c = i * divisions + (divisions - 1);
-				int d = i * divisions + 0;
+				int a = (i - 1) * slices + (slices - 1);
+				int b = (i - 1) * slices + 0;
+				int c = i * slices + (slices - 1);
+				int d = i * slices + 0;
 				indices.push_back(c);
 				indices.push_back(b);
 				indices.push_back(a);
@@ -280,8 +280,8 @@ namespace mesh {
 			vertices.push_back(v);
 			//Bottom cap
 			float angle = 0.0f;
-			float deltaAngle = TAU / divisions;
-			for (int i = 0; i < divisions; i++) {
+			float deltaAngle = TAU / slices;
+			for (int i = 0; i < slices; i++) {
 				Vertex u;
 				u.position.x = cos(angle);
 				u.position.y = 0;
@@ -293,11 +293,11 @@ namespace mesh {
 				angle += deltaAngle;
 			}
 			//Remember that index start at 0
-			for (int i = 1; i <= divisions; i++) {
+			for (int i = 1; i <= slices; i++) {
 				indices.push_back(last_index);
 				int tmp = i;
 				indices.push_back(last_index + tmp);
-				tmp = (i % divisions) + 1;
+				tmp = (i % slices) + 1;
 				indices.push_back(last_index + tmp);
 			}
 			//Top cap
@@ -307,7 +307,7 @@ namespace mesh {
 			//v.textCoord = vec2(0.5f, 0.5f);
 			vertices.push_back(v);
 			angle = 0.0f;
-			for (int i = 0; i < divisions; i++) {
+			for (int i = 0; i < slices; i++) {
 				Vertex u;
 				u.position.x = cos(angle);
 				u.position.y = 1.0f;
@@ -319,9 +319,9 @@ namespace mesh {
 				angle += deltaAngle;
 			}
 			//Remember that index start at 0
-			for (int i = 1; i <= divisions; i++) {
+			for (int i = 1; i <= slices; i++) {
 				indices.push_back(last_index);
-				int tmp = (i % divisions) + 1;
+				int tmp = (i % slices) + 1;
 				indices.push_back(last_index + tmp);
 				tmp = i;
 				indices.push_back(last_index + tmp);
@@ -696,23 +696,23 @@ namespace mesh {
 	}
 
 /*****************************************************************************************************************/
-	Mesh Geometries::torus(float externRadio, float internRadio, int rings, int sections) {
+	Mesh Geometries::torus(float outerRadius, float innerRadius, int rings, int sides) {
 		Mesh torus;
 		vector<unsigned int> indices;
 		vector<Vertex> vertices;
 
 		//Create a circular section
 		float angle = 0.0f;
-		float deltaAngle = TAU / sections;
+		float deltaAngle = TAU / sides;
 		vector<Vertex> circle;
-		for (int i = 0; i < sections; ++i) {
+		for (int i = 0; i < sides; ++i) {
 			Vertex v;
-			v.position.x = internRadio * cos(angle);
-			v.position.y = internRadio * sin(angle);
+			v.position.x = innerRadius * cos(angle);
+			v.position.y = innerRadius * sin(angle);
 			v.position.z = 0.0f;
 			v.normal = glm::normalize(v.position);
-			v.textCoord.s = 0.0f;
-			v.textCoord.t = static_cast<float>(i) / (sections - 1);
+			//v.textCoord.s = 0.0f;
+			//v.textCoord.t = static_cast<float>(i) / (sides - 1);
 			angle += deltaAngle;
 			circle.push_back(v);
 		}
@@ -723,12 +723,12 @@ namespace mesh {
 		for (int i = 0; i < rings; ++i) {
 			mat4 T(1.0f);
 			T = glm::rotate(T, angle, vec3(0.0f, 1.0f, 0.0));
-			T = glm::translate(T, vec3(externRadio, 0.0f, 0.0f));
+			T = glm::translate(T, vec3(outerRadius, 0.0f, 0.0f));
 			vector<Vertex> transformedCircle = circle;
 			for (auto j = 0; j < circle.size(); ++j) {
 				transformedCircle[j].position = vec3(T * vec4(circle[j].position, 1.0f));
 				transformedCircle[j].normal = vec3(glm::inverse(glm::transpose(T)) * vec4(circle[j].normal, 0.0f));
-				transformedCircle[j].textCoord.s = static_cast<float>(j) / (rings - 1);
+				//transformedCircle[j].textCoord.s = static_cast<float>(j) / (rings - 1);
 			}
 			vertices.insert(vertices.end(), transformedCircle.begin(), transformedCircle.end());
 			angle += deltaAngle;
@@ -740,11 +740,97 @@ namespace mesh {
 			  that I want to create using two triangles.
 			  I could not came uo with a better naming convention */
 			int a, b, c, d;
-			for (int j = 0; j < sections; ++j) {
-				a = i * sections + j;
-				b = i * sections + ((j + 1) % sections);
-				c = ((i + 1) % rings) * sections + j;
-				d = ((i + 1) % rings) * sections + ((j + 1) % sections);
+			for (int j = 0; j < sides; ++j) {
+				a = i * sides + j;
+				b = i * sides + ((j + 1) % sides);
+				c = ((i + 1) % rings) * sides + j;
+				d = ((i + 1) % rings) * sides + ((j + 1) % sides);
+				//Create the two triangles
+				indices.push_back(a);
+				indices.push_back(d);
+				indices.push_back(b);
+
+				indices.push_back(a);
+				indices.push_back(c);
+				indices.push_back(d);
+			}
+		}
+
+		torus.setVertices(vertices, true, false);
+		torus.setIndex(indices);
+		return torus;
+	}
+
+	Mesh Geometries::torusTexture(float outerRadius, float innerRadius, int rings, int sides) {
+		Mesh torus;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+
+		Vertex v;
+
+		//Create a circular section
+		float angle = 0.0f;
+		float deltaAngle = TAU / sides;
+		vector<Vertex> circle;
+		float t = 0.0f;
+		float deltaT = 1.0f / sides;
+		for (int i = 0; i < sides; ++i) {
+			v.position.x = innerRadius * cos(angle);
+			v.position.y = innerRadius * sin(angle);
+			v.position.z = 0.0f;
+			v.normal = glm::normalize(v.position);
+			v.textCoord.t = t;
+			v.textCoord.s = 0.0f;
+			angle += deltaAngle;
+			t += deltaT;
+			circle.push_back(v);
+		}
+		//One dumy vertex for the texture coordinates being able to close
+		v.position = circle[0].position;
+		v.normal = circle[0].normal;
+		v.textCoord.t = 1.0f;
+		v.textCoord.s = 0.0f;
+		circle.push_back(v);
+
+		//Transform the circle and insert it in vector
+		angle = 0.0;
+		deltaAngle = TAU / rings;
+		float s = 0.0f;
+		float deltaS = 1.0f / rings;
+		for (int i = 0; i < rings; ++i) {
+			mat4 T(1.0f);
+			T = glm::rotate(T, angle, vec3(0.0f, 1.0f, 0.0));
+			T = glm::translate(T, vec3(outerRadius, 0.0f, 0.0f));
+			vector<Vertex> transformedCircle = circle;
+			for (auto j = 0; j < circle.size(); ++j) {
+				transformedCircle[j].position = vec3(T * vec4(circle[j].position, 1.0f));
+				transformedCircle[j].normal = vec3(glm::inverse(glm::transpose(T)) * vec4(circle[j].normal, 0.0f));
+				transformedCircle[j].textCoord.s = s;
+			}
+			vertices.insert(vertices.end(), transformedCircle.begin(), transformedCircle.end());
+			s += deltaS;
+			angle += deltaAngle;
+		}
+		//An extra circle for texture coordinates
+		vector<Vertex> transformedCircle = circle;
+		for (auto j = 0; j < circle.size(); ++j) {
+			transformedCircle[j].position = vertices[j].position;
+			transformedCircle[j].normal = vertices[j].normal;
+			transformedCircle[j].textCoord.s = 1.0f;
+		}
+		vertices.insert(vertices.end(), transformedCircle.begin(), transformedCircle.end());
+
+		//Create the triangles
+		for (int i = 0; i < rings; ++i) {
+			/*These are the literal vertex of the quadrialteral
+			that I want to create using two triangles.
+			I could not came uo with a better naming convention */
+			int a, b, c, d;
+			for (int j = 0; j < sides; ++j) {
+				a = i * (sides + 1) + j;
+				b = i * (sides + 1) + ((j + 1) % (sides + 1));
+				c = ((i + 1) % (rings + 1)) * (sides + 1) + j;
+				d = ((i + 1) % (rings + 1)) * (sides + 1) + ((j + 1) % (sides + 1));
 				//Create the two triangles
 				indices.push_back(a);
 				indices.push_back(d);
@@ -993,36 +1079,36 @@ namespace mesh {
 		return pyramid;
 	}
 
-	Mesh Geometries::cone(int rings, int divisions, bool cap) {
+	Mesh Geometries::cone(int slices, int stacks, bool cap) {
 		Mesh cone;
 		vector<unsigned int> indices;
 		vector<Vertex> vertices;
 
-		float deltaHeight = 1.0f / rings;
-		for (int i = 0; i <= rings; ++i) {
+		float deltaHeight = 1.0f / stacks;
+		for (int i = 0; i <= stacks; ++i) {
 			float angle = 0.0f;
-			float deltaAngle = TAU / divisions;
-			for (int j = 0; j < divisions; ++j) {
+			float deltaAngle = TAU / slices;
+			for (int j = 0; j < slices; ++j) {
 				Vertex v;
 				v.position.x = (1.0f - i * deltaHeight) * cos(angle);
 				v.position.y = i * deltaHeight;
 				v.position.z = (1.0f - i * deltaHeight) * sin(angle);
 				v.normal = glm::normalize(vec3(v.position.x, cos(TAU / 8.0f), v.position.z));
-				v.textCoord.s = angle / TAU;
-				v.textCoord.t = v.position.y;
+				//v.textCoord.s = angle / TAU;
+				//v.textCoord.t = v.position.y;
 				vertices.push_back(v);
 				angle += deltaAngle;
 				//Start to create the triangles from second iteration and so on
 				if (j > 0 && i > 0) {
 					//Create two triangle
-					int a = (i - 1) * divisions + (j - 1);
-					int b = (i - 1) * divisions + j;
-					int c = i * divisions + (j - 1);
-					int d = i * divisions + j;
+					int a = (i - 1) * slices + (j - 1);
+					int b = (i - 1) * slices + j;
+					int c = i * slices + (j - 1);
+					int d = i * slices + j;
 					indices.push_back(c);
 					indices.push_back(b);
 					indices.push_back(a);
-					if (i < rings) {
+					if (i < stacks) {
 						indices.push_back(c);
 						indices.push_back(d);
 						indices.push_back(b);
@@ -1032,10 +1118,10 @@ namespace mesh {
 			}
 			//Last two 
 			if (i > 0) {
-				int a = (i - 1) * divisions + (divisions - 1);
-				int b = (i - 1) * divisions + 0;
-				int c = i * divisions + (divisions - 1);
-				int d = i * divisions + 0;
+				int a = (i - 1) * slices + (slices - 1);
+				int b = (i - 1) * slices + 0;
+				int c = i * slices + (slices - 1);
+				int d = i * slices + 0;
 				indices.push_back(c);
 				indices.push_back(b);
 				indices.push_back(a);
@@ -1053,29 +1139,131 @@ namespace mesh {
 			Vertex v;
 			v.position = vec3(0.0f);
 			v.normal = vec3(0.0f, -1.0f, 0.0f);
-			v.textCoord = vec2(0.5f, 0.5f);
+			//v.textCoord = vec2(0.5f, 0.5f);
 			vertices.push_back(v);
 			//cap
 			float angle = 0.0f;
-			float deltaAngle = TAU / divisions;
-			for (int i = 0; i < divisions; i++) {
+			float deltaAngle = TAU / slices;
+			for (int i = 0; i < slices; i++) {
 				Vertex u;
 				u.position.x = cos(angle);
 				u.position.y = 0;
 				u.position.z = sin(angle);
 				u.normal = vec3(0.0f, -1.0f, 0.0f);
-				u.textCoord.s = angle / TAU;
-				u.textCoord.t = u.position.y;
+				//u.textCoord.s = angle / TAU;
+				//u.textCoord.t = u.position.y;
 				vertices.push_back(u);
 				angle += deltaAngle;
 			}
 			//Remember that index start at 0
-			for (int i = 1; i <= divisions; i++) {
+			for (int i = 1; i <= slices; i++) {
 				indices.push_back(last_index);
 				int tmp = i;
 				indices.push_back(last_index + tmp);
-				tmp = (i % divisions) + 1;
+				tmp = (i % slices) + 1;
 				indices.push_back(last_index + tmp);
+			}
+		}
+
+		cone.setVertices(vertices, true, false);
+		cone.setIndex(indices);
+		return cone;
+	}
+
+	Mesh Geometries::coneTexture(int slices, int stacks, bool cap) {
+		Mesh cone;
+		vector<unsigned int> indices;
+		vector<Vertex> vertices;
+
+		assert(slices >= 3);
+		assert(stacks >= 1);
+
+		Vertex v;
+
+		float deltaHeight = 1.0f / stacks;
+		for (int i = 0; i < stacks; ++i) {
+			float polarAngle = 0.0f;
+			float deltaPolar = TAU / slices;
+			for (int j = 0; j < slices; ++j) {
+				v.position.x = (1.0f - i * deltaHeight) * cos(polarAngle);
+				v.position.y = i * deltaHeight;
+				v.position.z = (1.0f - i * deltaHeight) * sin(polarAngle);
+				v.normal = glm::normalize(vec3(v.position.x, cos(TAU / 8.0f), v.position.z));
+				v.textCoord.s = polarAngle / TAU;
+				v.textCoord.t = v.position.y;
+				vertices.push_back(v);
+				polarAngle += deltaPolar;
+			}
+			//Dummy vertex for the texture coordinates
+			v.position = vertices[vertices.size() - slices].position;
+			v.normal = vertices[vertices.size() - slices].normal;
+			v.textCoord.s = 1.0f;
+			v.textCoord.t = v.position.y;
+			vertices.push_back(v);
+		}
+		//To store where the middle vertices start of the last row
+		int indexLast = static_cast<int>(vertices.size() - slices - 1);
+
+		//Create triangles for the center part
+		for (int i = 0; i < (stacks - 1); ++i) {
+			for (int j = 0; j < slices; ++j) {
+				int a = i * (slices + 1) + j;
+				int b = i * (slices + 1) + (j + 1) % (slices + 1);
+				int c = a + (slices + 1);
+				int d = b + (slices + 1);
+
+				indices.push_back(a);
+				indices.push_back(c);
+				indices.push_back(b);
+
+				indices.push_back(b);
+				indices.push_back(c);
+				indices.push_back(d);
+			}
+		}
+
+		//Top of the cone
+		v.position = vec3(0.0f, 1.0f, 0.0f);
+		v.textCoord.t = 1.0f;
+		v.normal = vec3(0.0f, 1.0f, 0.0f);
+		//Triangles for the "Triangle fan" in the north
+		for (int i = 0; i < slices; ++i) {
+			int b = indexLast + i;
+			int c = indexLast + (i + 1) % (slices + 1);
+			//The new dummy vertex
+			v.textCoord.s = (vertices[b].textCoord.s + vertices[c].textCoord.s) / 2.0f;
+			vertices.push_back(v);
+			//Create triangle using the new dummy vertex
+			indices.push_back(static_cast<unsigned int>(vertices.size() - 1));
+			indices.push_back(c);
+			indices.push_back(b);
+		}
+
+		if (cap) {
+			//Create down triangle fan
+			v.position = vec3(0.0f, 0.0f, 0.0f);
+			v.normal = vec3(0.0f, -1.0f, 0.0f);
+			v.textCoord = vec2(0.5f, 0.5f);
+			vertices.push_back(v);
+			int indexCenter = static_cast<int>(vertices.size() - 1);
+			//Create dummy vertices (share positions with other) in the circle
+			for (int i = 0; i < slices; ++i) {
+				int b = i;
+				int c = (i + 1) % (slices + 1);
+
+				v.position = vertices[c].position;
+				v.textCoord.s = 0.5f * v.position.x + 0.5f;
+				v.textCoord.t = 0.5f * v.position.z + 0.5f;
+				vertices.push_back(v);
+
+				v.position = vertices[b].position;
+				v.textCoord.s = 0.5f * v.position.x + 0.5f;
+				v.textCoord.t = 0.5f * v.position.z + 0.5f;
+				vertices.push_back(v);
+
+				indices.push_back(indexCenter);
+				indices.push_back(static_cast<int>(vertices.size() - 1));
+				indices.push_back(static_cast<int>(vertices.size() - 2));
 			}
 		}
 
