@@ -26,8 +26,11 @@ using namespace lighting;
 Camera cam;
 Trackball ball;
 Mesh* meshPtr = nullptr;
-Texture* texturePtr = nullptr;
+Texture* normalsTexturePtr = nullptr;
+Texture* diffuseTexturePtr = nullptr;
+Texture* specularTexturePtr = nullptr;
 OGLProgram* lightProgPtr = nullptr;
+OGLProgram* lightTextProgPtr = nullptr;
 OGLProgram* bumpProgPtr = nullptr;
 OGLProgram* bumpTextProgPtr = nullptr;
 ScreenGrabber grabber;
@@ -53,6 +56,9 @@ struct Locations {
 	GLint u_texture = -1;
 	GLint u_gamma = -1;
 	GLint u_cameraPos = -1;
+	GLint u_normalsMap = -1;
+	GLint u_diffuseMap = -1;
+	GLint u_specularMap = -1;
 	//Vertex attributes
 	GLint a_position = -1;
 	GLint a_normal = -1;
@@ -70,6 +76,7 @@ struct Locations {
 };
 
 Locations lightLoc;
+Locations lightTextLoc;
 Locations bumpLoc;
 Locations bumpTextLoc;
 
@@ -77,8 +84,6 @@ Locations bumpTextLoc;
 float seconds_elapsed;
 float angle;
 
-float scaleFactor;
-glm::vec3 center;
 bool gammaCorrection;
 bool wireframe;
 bool cullFace;
@@ -95,6 +100,12 @@ void init_program();
 void init_OpenGL();
 void create_glut_callbacks();
 void exit_glut();
+
+//Display functions
+void simpleLighting();
+void lightingTextures();
+void bumpMapping();
+void bumpMappingTextures();
 
 //Glut callback functions
 void display();
@@ -141,8 +152,10 @@ void drawGUI() {
 
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
-	ImGui::RadioButton("Lighting", &mode, 0); ImGui::SameLine();
-	ImGui::RadioButton("Texture", &mode, 1);
+	ImGui::RadioButton("Simple lighting", &mode, 0);
+	ImGui::RadioButton("Lighting (textures)", &mode, 1);
+	ImGui::RadioButton("Bump mapping", &mode, 2);
+	ImGui::RadioButton("Bump map (textures)", &mode, 3);
 
 	if (ImGui::CollapsingHeader("Light position")) {
 		float aperture = light.g.getAperture();
@@ -211,7 +224,7 @@ void drawGUI() {
 }
 
 void exit_glut() {
-	delete texturePtr;
+	delete normalsTexturePtr;
 	delete meshPtr;
 	delete lightProgPtr;
 	delete bumpProgPtr;
@@ -236,18 +249,27 @@ void init_program() {
 
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
-	texturePtr = new Texture("../models/rham_diff.png");
-
+	normalsTexturePtr = new Texture("../models/rhambakes2_normals.png");
+	diffuseTexturePtr = new Texture("../models/rham_diff.png");
+	specularTexturePtr = new Texture("../models/rham_spec.png");
 	if (meshPtr) {
 		//Scale mesh to a unit cube, before sending it to GPU
 		meshPtr->toUnitCube();
 		meshPtr->sendToGPU();
 	}
 
-	if (texturePtr) {
-		texturePtr->send_to_gpu();
+	if (normalsTexturePtr) {
+		normalsTexturePtr->send_to_gpu();
 	}
 	
+	if (specularTexturePtr) {
+		specularTexturePtr->send_to_gpu();
+	}
+
+	if (diffuseTexturePtr) {
+		diffuseTexturePtr->send_to_gpu();
+	}
+
 	gammaCorrection = false;
 	wireframe = false;
 	cullFace = true;
@@ -273,6 +295,12 @@ void init_program() {
 	light.p.setColor(vec3(1.0f));
 	light.p.setIntensity(1.0f);
 	light.g.setAperture(PI / 6.0f);
+
+	//Default material
+	mat.setBaseColor(vec3(0.41f, 0.84f, 0.37f));
+	mat.setF0(vec3(0.62f, 0.68f, 0.16f));
+	mat.setMetalicity(0.2f);
+	mat.setRoughness(0.15f);
 }
 
 void reload_shaders() {
@@ -283,13 +311,34 @@ void reload_shaders() {
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
 	lightProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
+	bumpProgPtr = new OGLProgram("shaders/bumpWorld.vert", "shaders/bumpWorld.frag");
+	lightTextProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyTextWorld.frag");
+	bumpTextProgPtr = new OGLProgram("shaders/bumpWorld.vert", "shaders/bumpTextWorld.frag");
+
 	if (!lightProgPtr || !lightProgPtr->isOK()) {
-		cerr << "Something wrong in shader" << endl;
+		cerr << "Something wrong in lighting shader" << endl;
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	}
-	else {
+
+	if (!lightTextProgPtr || !lightTextProgPtr->isOK()) {
+		cerr << "Something wrong in lighting with textures shader" << endl;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+	if (!bumpProgPtr || !bumpProgPtr->isOK()) {
+		cerr << "Something wrong in simple bump mapping shader" << endl;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+	if (!bumpTextProgPtr || !bumpTextProgPtr->isOK()) {
+		cerr << "Something wrong in bump mapping shader with textures" << endl;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+
+	if (lightProgPtr->isOK() && bumpProgPtr->isOK() && lightTextProgPtr->isOK() && bumpTextProgPtr->isOK()) {
 		cout << "Shader compiled" << endl;
-		glClearColor(0.85f, 0.85f, 0.85f, 1.0f);
+		glClearColor(0.7f, 0.7f, 1.0f, 1.0f);
 	}
 
 	/************************************************************************/
@@ -315,6 +364,76 @@ void reload_shaders() {
 	lightLoc.u_lightColor = lightProgPtr->uniformLoc("light.color");
 	lightLoc.u_lightIntensity = lightProgPtr->uniformLoc("light.intensity");
 	lightLoc.u_lightRatio = lightProgPtr->uniformLoc("light.ratio");
+
+
+	bumpLoc.a_position = bumpProgPtr->attribLoc("Position");
+	bumpLoc.a_normal = bumpProgPtr->attribLoc("Normal");
+	bumpLoc.a_texture = bumpProgPtr->attribLoc("TextCoord");
+
+	bumpLoc.u_PVM = bumpProgPtr->uniformLoc("PVM");
+	bumpLoc.u_M = bumpProgPtr->uniformLoc("M");
+	bumpLoc.u_NormalMat = bumpProgPtr->uniformLoc("NormalMat");
+	bumpLoc.u_normalsMap = bumpProgPtr->uniformLoc("normalsMap");
+
+	bumpLoc.u_gamma = bumpProgPtr->uniformLoc("gamma");
+	bumpLoc.u_cameraPos = bumpProgPtr->uniformLoc("cameraPosition");
+
+	bumpLoc.u_metalicity = bumpProgPtr->uniformLoc("mat.metalicity");
+	bumpLoc.u_roughness = bumpProgPtr->uniformLoc("mat.roughness");
+	bumpLoc.u_base_color = bumpProgPtr->uniformLoc("mat.baseColor");
+	bumpLoc.u_F0 = bumpProgPtr->uniformLoc("mat.F0");
+
+	bumpLoc.u_lightPosition = bumpProgPtr->uniformLoc("light.position");
+	bumpLoc.u_lightColor = bumpProgPtr->uniformLoc("light.color");
+	bumpLoc.u_lightIntensity = bumpProgPtr->uniformLoc("light.intensity");
+	bumpLoc.u_lightRatio = bumpProgPtr->uniformLoc("light.ratio");
+
+
+	lightTextLoc.a_position = lightTextProgPtr->attribLoc("Position");
+	lightTextLoc.a_normal = lightTextProgPtr->attribLoc("Normal");
+	lightTextLoc.a_texture = lightTextProgPtr->attribLoc("TextCoord");
+
+	lightTextLoc.u_PVM = lightTextProgPtr->uniformLoc("PVM");
+	lightTextLoc.u_M = lightTextProgPtr->uniformLoc("M");
+	lightTextLoc.u_NormalMat = lightTextProgPtr->uniformLoc("NormalMat");
+	lightTextLoc.u_diffuseMap = lightTextProgPtr->uniformLoc("diffuseMap");
+	lightTextLoc.u_specularMap = lightTextProgPtr->uniformLoc("specularMap");
+
+	lightTextLoc.u_gamma = lightTextProgPtr->uniformLoc("gamma");
+	lightTextLoc.u_cameraPos = lightTextProgPtr->uniformLoc("cameraPosition");
+
+	lightTextLoc.u_metalicity = lightTextProgPtr->uniformLoc("mat.metalicity");
+	lightTextLoc.u_roughness = lightTextProgPtr->uniformLoc("mat.roughness");
+	lightTextLoc.u_base_color = lightTextProgPtr->uniformLoc("mat.baseColor");
+	lightTextLoc.u_F0 = lightTextProgPtr->uniformLoc("mat.F0");
+
+	lightTextLoc.u_lightPosition = lightTextProgPtr->uniformLoc("light.position");
+	lightTextLoc.u_lightColor = lightTextProgPtr->uniformLoc("light.color");
+	lightTextLoc.u_lightIntensity = lightTextProgPtr->uniformLoc("light.intensity");
+	lightTextLoc.u_lightRatio = lightTextProgPtr->uniformLoc("light.ratio");
+
+	bumpTextLoc.a_position = bumpTextProgPtr->attribLoc("Position");
+	bumpTextLoc.a_normal = bumpTextProgPtr->attribLoc("Normal");
+	bumpTextLoc.a_texture = bumpTextProgPtr->attribLoc("TextCoord");
+
+	bumpTextLoc.u_PVM = bumpTextProgPtr->uniformLoc("PVM");
+	bumpTextLoc.u_M = bumpTextProgPtr->uniformLoc("M");
+	bumpTextLoc.u_NormalMat = bumpTextProgPtr->uniformLoc("NormalMat");
+	bumpTextLoc.u_diffuseMap = bumpTextProgPtr->uniformLoc("diffuseMap");
+	bumpTextLoc.u_specularMap = bumpTextProgPtr->uniformLoc("specularMap");
+
+	bumpTextLoc.u_gamma = bumpTextProgPtr->uniformLoc("gamma");
+	bumpTextLoc.u_cameraPos = bumpTextProgPtr->uniformLoc("cameraPosition");
+
+	bumpTextLoc.u_metalicity = bumpTextProgPtr->uniformLoc("mat.metalicity");
+	bumpTextLoc.u_roughness = bumpTextProgPtr->uniformLoc("mat.roughness");
+	bumpTextLoc.u_base_color = bumpTextProgPtr->uniformLoc("mat.baseColor");
+	bumpTextLoc.u_F0 = bumpTextProgPtr->uniformLoc("mat.F0");
+
+	bumpTextLoc.u_lightPosition = bumpTextProgPtr->uniformLoc("light.position");
+	bumpTextLoc.u_lightColor = bumpTextProgPtr->uniformLoc("light.color");
+	bumpTextLoc.u_lightIntensity = bumpTextProgPtr->uniformLoc("light.intensity");
+	bumpTextLoc.u_lightRatio = bumpTextProgPtr->uniformLoc("light.ratio");
 }
 
 void init_OpenGL() {
@@ -341,16 +460,58 @@ void init_OpenGL() {
 }
 
 void passLightingState() {
-	//Light
-	glUniform3fv(lightLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
-	glUniform3fv(lightLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
-	glUniform1f(lightLoc.u_lightIntensity, light.p.getIntensity());
-	glUniform1f(lightLoc.u_lightRatio, 0.5f);
-	//Material
-	glUniform1f(lightLoc.u_metalicity, mat.getMetalicity());
-	glUniform1f(lightLoc.u_roughness, mat.getRoughness());
-	glUniform3fv(lightLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
-	glUniform3fv(lightLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
+	switch (mode) {
+		case 0:
+			//Light
+			glUniform3fv(lightLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+			glUniform3fv(lightLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+			glUniform1f(lightLoc.u_lightIntensity, light.p.getIntensity());
+			glUniform1f(lightLoc.u_lightRatio, 0.5f);
+			//Material
+			glUniform1f(lightLoc.u_metalicity, mat.getMetalicity());
+			glUniform1f(lightLoc.u_roughness, mat.getRoughness());
+			glUniform3fv(lightLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
+			glUniform3fv(lightLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
+		break;
+
+		case 1:
+			//Light
+			glUniform3fv(lightTextLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+			glUniform3fv(lightTextLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+			glUniform1f(lightTextLoc.u_lightIntensity, light.p.getIntensity());
+			glUniform1f(lightTextLoc.u_lightRatio, 0.5f);
+			//Material
+			glUniform1f(lightTextLoc.u_metalicity, mat.getMetalicity());
+			glUniform1f(lightTextLoc.u_roughness, mat.getRoughness());
+			break;
+
+		case 2:
+			//Light
+			glUniform3fv(bumpLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+			glUniform3fv(bumpLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+			glUniform1f(bumpLoc.u_lightIntensity, light.p.getIntensity());
+			glUniform1f(bumpLoc.u_lightRatio, 0.5f);
+			//Material
+			glUniform1f(bumpLoc.u_metalicity, mat.getMetalicity());
+			glUniform1f(bumpLoc.u_roughness, mat.getRoughness());
+			glUniform3fv(bumpLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
+			glUniform3fv(bumpLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
+		break;
+
+		case 3:
+			//Light
+			glUniform3fv(bumpTextLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+			glUniform3fv(bumpTextLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+			glUniform1f(bumpTextLoc.u_lightIntensity, light.p.getIntensity());
+			glUniform1f(bumpTextLoc.u_lightRatio, 0.5f);
+			//Material
+			glUniform1f(bumpTextLoc.u_metalicity, mat.getMetalicity());
+			glUniform1f(bumpTextLoc.u_roughness, mat.getRoughness());
+			glUniform3fv(bumpTextLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
+			glUniform3fv(bumpTextLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
+		break;
+	}
+	
 }
 
 
@@ -374,9 +535,7 @@ void reshape(int new_window_width, int new_window_height) {
 }
 
 void display() {
-	using glm::vec3;
-	using glm::vec4;
-	using glm::mat4;
+	
 	if (wireframe) {
 		glPolygonMode(GL_FRONT, GL_LINE);
 		glPolygonMode(GL_BACK, GL_LINE);
@@ -393,6 +552,44 @@ void display() {
 		glDisable(GL_CULL_FACE);
 	}
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	switch (mode) {
+		case 0:
+			simpleLighting();
+		break;
+
+		case 1:
+			lightingTextures();
+		break;
+
+		case 2:
+			bumpMapping();
+		break;
+
+		case 3:
+			bumpMappingTextures();
+		break;
+	}
+
+	//Unbind an clean
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glUseProgram(0);
+
+	/* You need to call this to draw the GUI, After unbinding your program*/
+	glPolygonMode(GL_FRONT, GL_FILL);
+	glPolygonMode(GL_BACK, GL_FILL);
+	drawGUI();
+	/* But, before flushing the drawinng commands*/
+
+	glutSwapBuffers();
+}
+
+void simpleLighting() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
 	lightProgPtr->use();
 
 	mat4 I(1.0f);
@@ -429,18 +626,165 @@ void display() {
 
 	/* Draw */
 	meshPtr->drawTriangles(lightLoc.a_position, lightLoc.a_normal, lightLoc.a_texture);
+}
 
-	//Unbind an clean
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glUseProgram(0);
+void lightingTextures() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
 
-	/* You need to call this to draw the GUI, After unbinding your program*/
-	glPolygonMode(GL_FRONT, GL_FILL);
-	glPolygonMode(GL_BACK, GL_FILL);
-	drawGUI();
-	/* But, before flushing the drawinng commands*/
+	lightTextProgPtr->use();
 
-	glutSwapBuffers();
+	mat4 I(1.0f);
+	//Model
+	mat4 M = glm::scale(I, vec3(1.5f));
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	//Calculate Light position
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
+	light.g.setPosition(light_position);
+	light.g.setTarget(vec3(0.0f));
+
+
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+
+	glUniformMatrix4fv(lightTextLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(lightTextLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+	glUniformMatrix4fv(lightTextLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+	glUniform1f(lightTextLoc.u_gamma, gamma);
+
+	glUniform3fv(lightTextLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+	glUniform3fv(lightTextLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+	//Send light and material
+	passLightingState();
+
+	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+	glBindTexture(GL_TEXTURE_2D, diffuseTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (lightTextLoc.u_diffuseMap != -1) {
+		glUniform1i(lightTextLoc.u_diffuseMap, 0); // we bound our texture to texture unit 0
+	}
+
+	glActiveTexture(GL_TEXTURE1); //Active texture unit 1
+	glBindTexture(GL_TEXTURE_2D, specularTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (lightTextLoc.u_specularMap != -1) {
+		glUniform1i(lightTextLoc.u_specularMap, 1); // we bound our texture to texture unit 1
+	}
+	
+	/* Draw */
+	meshPtr->drawTriangles(lightTextLoc.a_position, lightTextLoc.a_normal, lightTextLoc.a_texture);
+}
+
+void bumpMapping() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
+	bumpProgPtr->use();
+
+	mat4 I(1.0f);
+	//Model
+	mat4 M = glm::scale(I, vec3(1.5f));
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	//Calculate Light position
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
+	light.g.setPosition(light_position);
+	light.g.setTarget(vec3(0.0f));
+
+
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+
+	glUniformMatrix4fv(bumpLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(bumpLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+	glUniformMatrix4fv(bumpLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+	glUniform1f(bumpLoc.u_gamma, gamma);
+
+	glUniform3fv(bumpLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+	glUniform3fv(bumpLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+	//Send light and material
+	passLightingState();
+	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+	glBindTexture(GL_TEXTURE_2D, normalsTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (bumpLoc.u_normalsMap != -1) {
+		glUniform1i(bumpLoc.u_normalsMap, 0); // we bound our texture to texture unit 0
+	}
+	/* Draw */
+	meshPtr->drawTriangles(bumpLoc.a_position, bumpLoc.a_normal, bumpLoc.a_texture);
+}
+
+void bumpMappingTextures() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
+	bumpTextProgPtr->use();
+
+	mat4 I(1.0f);
+	//Model
+	mat4 M = glm::scale(I, vec3(1.5f));
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	//Calculate Light position
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
+	light.g.setPosition(light_position);
+	light.g.setTarget(vec3(0.0f));
+
+
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+
+	glUniformMatrix4fv(bumpTextLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(bumpTextLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+	glUniformMatrix4fv(bumpTextLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+	glUniform1f(bumpTextLoc.u_gamma, gamma);
+
+	glUniform3fv(bumpTextLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+	glUniform3fv(bumpTextLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+	//Send light and material
+	passLightingState();
+	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+	glBindTexture(GL_TEXTURE_2D, normalsTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (bumpTextLoc.u_normalsMap != -1) {
+		glUniform1i(bumpTextLoc.u_normalsMap, 0); // we bound our texture to texture unit 0
+	}
+	glActiveTexture(GL_TEXTURE1); //Active texture unit 1
+	glBindTexture(GL_TEXTURE_2D, diffuseTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (bumpTextLoc.u_diffuseMap != -1) {
+		glUniform1i(bumpTextLoc.u_diffuseMap, 1); // we bound our texture to texture unit 1
+	}
+	glActiveTexture(GL_TEXTURE2); //Active texture unit 2
+	glBindTexture(GL_TEXTURE_2D, specularTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (bumpTextLoc.u_specularMap != -1) {
+		glUniform1i(bumpTextLoc.u_specularMap, 2); // we bound our texture to texture unit 2
+	}
+	/* Draw */
+	meshPtr->drawTriangles(bumpTextLoc.a_position, bumpTextLoc.a_normal, bumpTextLoc.a_texture);
 }
 
 void idle() {
@@ -527,6 +871,24 @@ void special(int key, int mouse_x, int mouse_y) {
 	/* See if ImGui handles it*/
 	ImGuiIO& io = ImGui::GetIO();
 	io.AddInputCharacter(key);
+
+	switch (key) {
+		case GLUT_KEY_F1:
+			mode = 0;
+		break;
+
+		case GLUT_KEY_F2:
+			mode = 1;
+		break;
+
+		case GLUT_KEY_F3:
+			mode = 2;
+		break;
+
+		case GLUT_KEY_F4:
+			mode = 3;
+		break;
+	}
 
 	/* Now, the app*/
 	glutPostRedisplay();
