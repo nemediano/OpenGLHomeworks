@@ -27,47 +27,55 @@ Camera cam;
 Trackball ball;
 Mesh* meshPtr = nullptr;
 Texture* texturePtr = nullptr;
-OGLProgram* programPtr = nullptr;
+OGLProgram* lightProgPtr = nullptr;
+OGLProgram* bumpProgPtr = nullptr;
+OGLProgram* bumpTextProgPtr = nullptr;
 ScreenGrabber grabber;
 Material mat;
 
-struct Light {
-	Texture* sPtr;
+struct LightContainer {
+	glm::vec3 eulerAngles;
+	float distance;
 	Spotlight g;
 	DisneyLight p;
 };
 
+LightContainer light;
 
 GLint window = 0;
 
 struct Locations {
-	// Location for shader variables
+	//Vertex unifroms
 	GLint u_PVM = -1;
-	GLint u_VM = -1;
+	GLint u_M = -1;
 	GLint u_NormalMat = -1;
+	//Fragment uniforms
 	GLint u_texture = -1;
 	GLint u_gamma = -1;
-	GLint u_mixValue = -1;
+	GLint u_cameraPos = -1;
+	//Vertex attributes
 	GLint a_position = -1;
 	GLint a_normal = -1;
 	GLint a_texture = -1;
 	//Lighting related variables
-	GLint u_Light_La = -1;
-	GLint u_Light_Ls = -1;
-	GLint u_Light_Ld = -1;
+	GLint u_lightPosition = -1;
+	GLint u_lightIntensity = -1;
+	GLint u_lightColor = -1;
+	GLint u_lightRatio = -1;
 	//Material related variable
-	GLint u_Material_Ka = -1;
-	GLint u_Material_Ks = -1;
-	GLint u_Material_Kd = -1;
-	GLint u_Material_alpha = -1;
+	GLint u_metalicity = -1;
+	GLint u_roughness = -1;
+	GLint u_F0 = -1;
+	GLint u_base_color = -1;
 };
 
-Locations phongLoc;
+Locations lightLoc;
+Locations bumpLoc;
+Locations bumpTextLoc;
 
 //Global variables for the program logic
 float seconds_elapsed;
 float angle;
-
 
 float scaleFactor;
 glm::vec3 center;
@@ -79,8 +87,6 @@ bool textureMap;
 float gamma;
 float mixValue;
 int mode;
-
-std::vector<MatPhong> materials;
 
 void passLightingState();
 void reload_shaders();
@@ -135,57 +141,45 @@ void drawGUI() {
 
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
+	ImGui::RadioButton("Lighting", &mode, 0); ImGui::SameLine();
+	ImGui::RadioButton("Texture", &mode, 1);
 
-	if (ImGui::CollapsingHeader("Material editor")) {
-		//Edit Material
-		vec3 Ka = mat.getKa();
-		vec3 Kd = mat.getKd();
-		vec3 Ks = mat.getKs();
-		float alpha = mat.getAlpha();
-		ImGui::ColorEdit3("Ambient", glm::value_ptr(Ka));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ka.r, Ka.g, Ka.b);
-		ImGui::ColorEdit3("Difusse", glm::value_ptr(Kd));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", Kd.r, Kd.g, Kd.b);
-		ImGui::ColorEdit3("Specular", glm::value_ptr(Ks));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ks.r, Ks.g, Ks.b);
-		ImGui::SliderFloat("Alpha", &alpha, 0.0f, 128.0f, "%.2f", 3.0f);
-		mat.setKa(Ka);
-		mat.setKd(Kd);
-		mat.setKs(Ks);
-		mat.setAlpha(alpha);
-
-		const char* items[] = {
-			"Emerald", "Jade", "Obsidian", "Pearl", "Ruby", "Turquoise",
-			"Brass", "Bronze", "Chrome", "Copper", "Gold", "Silver",
-			"Black plastic", "Cyan plastic", "Green plastic", "Red plastic", "White plastic", "Yellow plastic",
-			"Black rubber", "Cyan rubber", "Green rubber", "Red rubber", "White rubber", "Yellow rubber",
-		};
-		static int selectedMaterial = -1;
-		ImGui::Combo("Predefined", &selectedMaterial, items, static_cast<int>(materials.size()));
-		if (ImGui::Button("Load") && selectedMaterial != -1) {
-			mat = materials[selectedMaterial];
-			selectedMaterial = -1;
-		}
+	if (ImGui::CollapsingHeader("Light position")) {
+		float aperture = light.g.getAperture();
+		ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
+		ImGui::SliderAngle("Angle X", &light.eulerAngles.x, -180.0f, 180.0f);
+		ImGui::SliderAngle("Angle Y", &light.eulerAngles.y, -180.0f, 180.0f);
+		ImGui::SliderAngle("Aperture", &aperture, 0.0f, 90.0f);
+		light.g.setAperture(aperture);
 	}
 
 	if (ImGui::CollapsingHeader("Light physical properties")) {
-		vec3 La = light.getLa();
-		vec3 Ld = light.getLd();
-		vec3 Ls = light.getLs();
-		ImGui::ColorEdit3("Ambient", glm::value_ptr(La));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", La.r, La.g, La.b);
-		ImGui::ColorEdit3("Difusse", glm::value_ptr(Ld));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ld.r, Ld.g, Ld.b);
-		ImGui::ColorEdit3("Specular", glm::value_ptr(Ls));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", Ls.r, Ls.g, Ls.b);
-		light.setLa(La);
-		light.setLd(Ld);
-		light.setLs(Ls);
+		vec3 color = light.p.getColor();
+		float intensity = light.p.getIntensity();
+		ImGui::ColorEdit3("Color", glm::value_ptr(color));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", color.r, color.g, color.b);
+		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
+		light.p.setColor(color);
+		light.p.setIntensity(intensity);
 	}
 
-	ImGui::RadioButton("Full model", &mode, 0); ImGui::SameLine();
-	ImGui::RadioButton("Difusse", &mode, 1);
-
+	if (ImGui::CollapsingHeader("Material editor")) {
+		//Edit Material
+		vec3 baseColor = mat.getBaseColor();
+		vec3 F0 = mat.getF0();
+		float metalicity = mat.getMetalicity();
+		float roughness = mat.getRoughness();
+		ImGui::ColorEdit3("Base color", glm::value_ptr(baseColor));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", baseColor.r, baseColor.g, baseColor.b);
+		ImGui::ColorEdit3("Specular Color", glm::value_ptr(F0));
+		ImGui::Text("R: %.2f G: %.2f B: %.2f", F0.r, F0.g, F0.b);
+		ImGui::SliderFloat("Metalicity", &metalicity, 0.0f, 1.0f, "%.3f");
+		ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f, "%.3f");
+		mat.setBaseColor(baseColor);
+		mat.setF0(F0);
+		mat.setRoughness(roughness);
+		mat.setMetalicity(metalicity);
+	}
 
 	ImGui::Checkbox("Gamma correction", &gammaCorrection);
 	ImGui::Checkbox("Wirefreme", &wireframe);
@@ -219,7 +213,9 @@ void drawGUI() {
 void exit_glut() {
 	delete texturePtr;
 	delete meshPtr;
-	delete programPtr;
+	delete lightProgPtr;
+	delete bumpProgPtr;
+	delete bumpTextProgPtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
@@ -232,29 +228,26 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(1200, 800);
-	window = glutCreateWindow("Navigate Mesh");
+	window = glutCreateWindow("Bump mapping example");
 }
 
 void init_program() {
 	using glm::vec3;
 
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::cylinder());
-	//meshPtr = new Mesh(Geometries::sphere(4, 4));
-	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
-	//texturePtr = new Texture(chessBoard());
-	texturePtr = new Texture("../models/world32k.jpg");
+	meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
+	texturePtr = new Texture("../models/rham_diff.png");
 
 	if (meshPtr) {
+		//Scale mesh to a unit cube, before sending it to GPU
+		meshPtr->toUnitCube();
 		meshPtr->sendToGPU();
 	}
+
 	if (texturePtr) {
 		texturePtr->send_to_gpu();
 	}
-	//Extract info form the mesh
-	scaleFactor = meshPtr->scaleFactor();
-	center = meshPtr->getBBCenter();
-
+	
 	gammaCorrection = false;
 	wireframe = false;
 	cullFace = true;
@@ -274,38 +267,12 @@ void init_program() {
 	//Also setup the image grabber
 	grabber.resize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 
-	mat.setAlpha(128);
-	mat.setKa(0.25f * vec3(1.0f, 1.0f, 0.0f));
-	mat.setKd(0.75f * vec3(1.0f, 1.0f, 0.0f));
-	mat.setKs(vec3(0.5f));
-
-	materials.push_back(EMERALD);
-	materials.push_back(JADE);
-	materials.push_back(OBSIDIAN);
-	materials.push_back(PEARL);
-	materials.push_back(RUBY);
-	materials.push_back(TURQUOISE);
-
-	materials.push_back(BRASS);
-	materials.push_back(BRONZE);
-	materials.push_back(CHROME);
-	materials.push_back(COPPER);
-	materials.push_back(GOLD);
-	materials.push_back(SILVER);
-
-	materials.push_back(BLACK_PLASTIC);
-	materials.push_back(CYAN_PLASTIC);
-	materials.push_back(GREEN_PLASTIC);
-	materials.push_back(RED_PLASTIC);
-	materials.push_back(WHITE_PLASTIC);
-	materials.push_back(YELLOW_PLASTIC);
-
-	materials.push_back(BLACK_RUBBER);
-	materials.push_back(CYAN_RUBBER);
-	materials.push_back(GREEN_RUBBER);
-	materials.push_back(RED_RUBBER);
-	materials.push_back(WHITE_RUBBER);
-	materials.push_back(YELLOW_RUBBER);
+	//Default position of the spotlight
+	light.eulerAngles = glm::vec3(-TAU / 8.0f, TAU / 8.0f, 0.0f);
+	light.distance = glm::sqrt(3.0f);
+	light.p.setColor(vec3(1.0f));
+	light.p.setIntensity(1.0f);
+	light.g.setAperture(PI / 6.0f);
 }
 
 void reload_shaders() {
@@ -315,8 +282,8 @@ void reload_shaders() {
 	/************************************************************************/
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
-	programPtr = new OGLProgram("shaders/phongView.vert", "shaders/phongView.frag");
-	if (!programPtr || !programPtr->isOK()) {
+	lightProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
+	if (!lightProgPtr || !lightProgPtr->isOK()) {
 		cerr << "Something wrong in shader" << endl;
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	}
@@ -328,25 +295,26 @@ void reload_shaders() {
 	/************************************************************************/
 	/* Allocating variables for shaders                                     */
 	/************************************************************************/
-	phongLoc.u_PVM = programPtr->uniformLoc("PVM");
-	phongLoc.u_VM = programPtr->uniformLoc("VM");;
-	phongLoc.u_NormalMat = programPtr->uniformLoc("NormalMat");
-	phongLoc.u_gamma = programPtr->uniformLoc("gamma");
-	phongLoc.u_mixValue = programPtr->uniformLoc("mixValue");
-	phongLoc.u_texture = programPtr->uniformLoc("difusseMap");
-	//Light
-	phongLoc.u_Light_La = programPtr->uniformLoc("light.La");
-	phongLoc.u_Light_Ls = programPtr->uniformLoc("light.Ls");
-	phongLoc.u_Light_Ld = programPtr->uniformLoc("light.Ld");
-	//Material
-	phongLoc.u_Material_Ka = programPtr->uniformLoc("mat.Ka");
-	phongLoc.u_Material_Ks = programPtr->uniformLoc("mat.Ks");
-	phongLoc.u_Material_Kd = programPtr->uniformLoc("mat.Kd");
-	phongLoc.u_Material_alpha = programPtr->uniformLoc("mat.alpha");
-	//Vertex attributes location
-	phongLoc.a_position = programPtr->attribLoc("Position");
-	phongLoc.a_normal = programPtr->attribLoc("Normal");
-	phongLoc.a_texture = programPtr->attribLoc("TextCoord");
+	lightLoc.a_position = lightProgPtr->attribLoc("Position");
+	lightLoc.a_normal = lightProgPtr->attribLoc("Normal");
+	lightLoc.a_texture = lightProgPtr->attribLoc("TextCoord");
+	
+	lightLoc.u_PVM = lightProgPtr->uniformLoc("PVM");
+	lightLoc.u_M = lightProgPtr->uniformLoc("M");
+	lightLoc.u_NormalMat = lightProgPtr->uniformLoc("NormalMat");
+	
+	lightLoc.u_gamma = lightProgPtr->uniformLoc("gamma");
+	lightLoc.u_cameraPos = lightProgPtr->uniformLoc("cameraPosition");
+
+	lightLoc.u_metalicity = lightProgPtr->uniformLoc("mat.metalicity");
+	lightLoc.u_roughness = lightProgPtr->uniformLoc("mat.roughness");
+	lightLoc.u_base_color = lightProgPtr->uniformLoc("mat.baseColor");
+	lightLoc.u_F0 = lightProgPtr->uniformLoc("mat.F0");
+
+	lightLoc.u_lightPosition = lightProgPtr->uniformLoc("light.position");
+	lightLoc.u_lightColor = lightProgPtr->uniformLoc("light.color");
+	lightLoc.u_lightIntensity = lightProgPtr->uniformLoc("light.intensity");
+	lightLoc.u_lightRatio = lightProgPtr->uniformLoc("light.ratio");
 }
 
 void init_OpenGL() {
@@ -374,21 +342,15 @@ void init_OpenGL() {
 
 void passLightingState() {
 	//Light
-	glUniform3fv(phongLoc.u_Light_La, 1, glm::value_ptr(light.getLa()));
-	glUniform3fv(phongLoc.u_Light_Ls, 1, glm::value_ptr(light.getLs()));
-	glUniform3fv(phongLoc.u_Light_Ld, 1, glm::value_ptr(light.getLd()));
+	glUniform3fv(lightLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	glUniform3fv(lightLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+	glUniform1f(lightLoc.u_lightIntensity, light.p.getIntensity());
+	glUniform1f(lightLoc.u_lightRatio, 0.5f);
 	//Material
-	if (mode == 0) {
-		glUniform3fv(phongLoc.u_Material_Ka, 1, glm::value_ptr(mat.getKa()));
-		glUniform3fv(phongLoc.u_Material_Ks, 1, glm::value_ptr(mat.getKs()));
-		glUniform3fv(phongLoc.u_Material_Kd, 1, glm::value_ptr(mat.getKd()));
-	}
-	else if (mode == 1) {
-		glUniform3fv(phongLoc.u_Material_Ka, 1, glm::value_ptr(glm::vec3(0.0f)));
-		glUniform3fv(phongLoc.u_Material_Ks, 1, glm::value_ptr(glm::vec3(0.0f)));
-		glUniform3fv(phongLoc.u_Material_Kd, 1, glm::value_ptr(mat.getKd()));
-	}
-	glUniform1f(phongLoc.u_Material_alpha, mat.getAlpha());
+	glUniform1f(lightLoc.u_metalicity, mat.getMetalicity());
+	glUniform1f(lightLoc.u_roughness, mat.getRoughness());
+	glUniform3fv(lightLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
+	glUniform3fv(lightLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
 }
 
 
@@ -413,6 +375,7 @@ void reshape(int new_window_width, int new_window_height) {
 
 void display() {
 	using glm::vec3;
+	using glm::vec4;
 	using glm::mat4;
 	if (wireframe) {
 		glPolygonMode(GL_FRONT, GL_LINE);
@@ -430,45 +393,42 @@ void display() {
 		glDisable(GL_CULL_FACE);
 	}
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	programPtr->use();
+	lightProgPtr->use();
 
 	mat4 I(1.0f);
 	//Model
-	mat4 M = I;
-	//M = glm::scale(M, vec3(0.5f, 1.0f, 0.5f));
-	M = glm::scale(M, vec3(scaleFactor));
-	M = glm::translate(M, -center);
-
+	mat4 M = glm::scale(I, vec3(1.5f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
 	mat4 P = cam.getProjectionMatrix();
 
+	//Calculate Light position
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
+	light.g.setPosition(light_position);
+	light.g.setTarget(vec3(0.0f));
+
+
 	/************************************************************************/
 	/* Send uniform values to shader                                        */
 	/************************************************************************/
 
-	glUniformMatrix4fv(phongLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
-	glUniformMatrix4fv(phongLoc.u_VM, 1, GL_FALSE, glm::value_ptr(V * M));
-	glUniformMatrix4fv(phongLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(V * M))));
-	glUniform1f(phongLoc.u_gamma, gamma);
-	if (textureMap) {
-		glUniform1f(phongLoc.u_mixValue, mixValue);
-	}
-	else {
-		glUniform1f(phongLoc.u_mixValue, 0.0f);
-	}
-	glActiveTexture(GL_TEXTURE0);
-	texturePtr->bind(); //The next binded texture will be refered with the active texture unit
-	if (phongLoc.u_texture != -1) {
-		glUniform1i(phongLoc.u_texture, 0); // we bound our texture to texture unit 0
-	}
+	glUniformMatrix4fv(lightLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(lightLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+	glUniformMatrix4fv(lightLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+	glUniform1f(lightLoc.u_gamma, gamma);
 
+	glUniform3fv(lightLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+	glUniform3fv(lightLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 	//Send light and material
 	passLightingState();
 
 	/* Draw */
-	meshPtr->drawTriangles(phongLoc.a_position, phongLoc.a_normal, phongLoc.a_texture);
+	meshPtr->drawTriangles(lightLoc.a_position, lightLoc.a_normal, lightLoc.a_texture);
 
 	//Unbind an clean
 	glBindTexture(GL_TEXTURE_2D, 0);

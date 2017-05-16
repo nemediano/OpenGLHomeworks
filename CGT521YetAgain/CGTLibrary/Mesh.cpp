@@ -205,7 +205,7 @@ namespace mesh {
 
 		glm::mat4 T(1.0f);
 		T = glm::scale(T, glm::vec3(s));
-		T = glm::translate(T, c);
+		T = glm::translate(T, -c);
 		
 		this->transform(T);
 	}
