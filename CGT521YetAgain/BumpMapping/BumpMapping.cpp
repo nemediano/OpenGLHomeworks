@@ -83,6 +83,7 @@ Locations bumpTextLoc;
 //Global variables for the program logic
 float seconds_elapsed;
 float angle;
+float ratio;
 
 bool gammaCorrection;
 bool wireframe;
@@ -174,6 +175,7 @@ void drawGUI() {
 		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
 		light.p.setColor(color);
 		light.p.setIntensity(intensity);
+		ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f);
 	}
 
 	if (ImGui::CollapsingHeader("Material editor")) {
@@ -249,6 +251,7 @@ void init_program() {
 
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
+	//meshPtr = new Mesh(Geometries::icosphere());
 	normalsTexturePtr = new Texture("../models/rhambakes2_normals.png");
 	diffuseTexturePtr = new Texture("../models/rham_diff.png");
 	specularTexturePtr = new Texture("../models/rham_spec.png");
@@ -290,11 +293,12 @@ void init_program() {
 	grabber.resize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 
 	//Default position of the spotlight
-	light.eulerAngles = glm::vec3(-TAU / 8.0f, TAU / 8.0f, 0.0f);
+	light.eulerAngles = glm::vec3(-TAU / 4.0f, 0, 0.0f);
 	light.distance = glm::sqrt(3.0f);
 	light.p.setColor(vec3(1.0f));
 	light.p.setIntensity(1.0f);
 	light.g.setAperture(PI / 6.0f);
+	ratio = 0.25;
 
 	//Default material
 	mat.setBaseColor(vec3(0.41f, 0.84f, 0.37f));
@@ -346,7 +350,6 @@ void reload_shaders() {
 	/************************************************************************/
 	lightLoc.a_position = lightProgPtr->attribLoc("Position");
 	lightLoc.a_normal = lightProgPtr->attribLoc("Normal");
-	lightLoc.a_texture = lightProgPtr->attribLoc("TextCoord");
 	
 	lightLoc.u_PVM = lightProgPtr->uniformLoc("PVM");
 	lightLoc.u_M = lightProgPtr->uniformLoc("M");
@@ -367,7 +370,6 @@ void reload_shaders() {
 
 
 	bumpLoc.a_position = bumpProgPtr->attribLoc("Position");
-	bumpLoc.a_normal = bumpProgPtr->attribLoc("Normal");
 	bumpLoc.a_texture = bumpProgPtr->attribLoc("TextCoord");
 
 	bumpLoc.u_PVM = bumpProgPtr->uniformLoc("PVM");
@@ -404,8 +406,6 @@ void reload_shaders() {
 
 	lightTextLoc.u_metalicity = lightTextProgPtr->uniformLoc("mat.metalicity");
 	lightTextLoc.u_roughness = lightTextProgPtr->uniformLoc("mat.roughness");
-	lightTextLoc.u_base_color = lightTextProgPtr->uniformLoc("mat.baseColor");
-	lightTextLoc.u_F0 = lightTextProgPtr->uniformLoc("mat.F0");
 
 	lightTextLoc.u_lightPosition = lightTextProgPtr->uniformLoc("light.position");
 	lightTextLoc.u_lightColor = lightTextProgPtr->uniformLoc("light.color");
@@ -413,12 +413,12 @@ void reload_shaders() {
 	lightTextLoc.u_lightRatio = lightTextProgPtr->uniformLoc("light.ratio");
 
 	bumpTextLoc.a_position = bumpTextProgPtr->attribLoc("Position");
-	bumpTextLoc.a_normal = bumpTextProgPtr->attribLoc("Normal");
 	bumpTextLoc.a_texture = bumpTextProgPtr->attribLoc("TextCoord");
 
 	bumpTextLoc.u_PVM = bumpTextProgPtr->uniformLoc("PVM");
 	bumpTextLoc.u_M = bumpTextProgPtr->uniformLoc("M");
 	bumpTextLoc.u_NormalMat = bumpTextProgPtr->uniformLoc("NormalMat");
+	bumpTextLoc.u_normalsMap = bumpTextProgPtr->uniformLoc("normalsMap");
 	bumpTextLoc.u_diffuseMap = bumpTextProgPtr->uniformLoc("diffuseMap");
 	bumpTextLoc.u_specularMap = bumpTextProgPtr->uniformLoc("specularMap");
 
@@ -427,8 +427,7 @@ void reload_shaders() {
 
 	bumpTextLoc.u_metalicity = bumpTextProgPtr->uniformLoc("mat.metalicity");
 	bumpTextLoc.u_roughness = bumpTextProgPtr->uniformLoc("mat.roughness");
-	bumpTextLoc.u_base_color = bumpTextProgPtr->uniformLoc("mat.baseColor");
-	bumpTextLoc.u_F0 = bumpTextProgPtr->uniformLoc("mat.F0");
+	
 
 	bumpTextLoc.u_lightPosition = bumpTextProgPtr->uniformLoc("light.position");
 	bumpTextLoc.u_lightColor = bumpTextProgPtr->uniformLoc("light.color");
@@ -466,7 +465,7 @@ void passLightingState() {
 			glUniform3fv(lightLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
 			glUniform3fv(lightLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
 			glUniform1f(lightLoc.u_lightIntensity, light.p.getIntensity());
-			glUniform1f(lightLoc.u_lightRatio, 0.5f);
+			glUniform1f(lightLoc.u_lightRatio, ratio);
 			//Material
 			glUniform1f(lightLoc.u_metalicity, mat.getMetalicity());
 			glUniform1f(lightLoc.u_roughness, mat.getRoughness());
@@ -479,7 +478,7 @@ void passLightingState() {
 			glUniform3fv(lightTextLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
 			glUniform3fv(lightTextLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
 			glUniform1f(lightTextLoc.u_lightIntensity, light.p.getIntensity());
-			glUniform1f(lightTextLoc.u_lightRatio, 0.5f);
+			glUniform1f(lightTextLoc.u_lightRatio, ratio);
 			//Material
 			glUniform1f(lightTextLoc.u_metalicity, mat.getMetalicity());
 			glUniform1f(lightTextLoc.u_roughness, mat.getRoughness());
@@ -490,7 +489,7 @@ void passLightingState() {
 			glUniform3fv(bumpLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
 			glUniform3fv(bumpLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
 			glUniform1f(bumpLoc.u_lightIntensity, light.p.getIntensity());
-			glUniform1f(bumpLoc.u_lightRatio, 0.5f);
+			glUniform1f(bumpLoc.u_lightRatio, ratio);
 			//Material
 			glUniform1f(bumpLoc.u_metalicity, mat.getMetalicity());
 			glUniform1f(bumpLoc.u_roughness, mat.getRoughness());
@@ -503,12 +502,10 @@ void passLightingState() {
 			glUniform3fv(bumpTextLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
 			glUniform3fv(bumpTextLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
 			glUniform1f(bumpTextLoc.u_lightIntensity, light.p.getIntensity());
-			glUniform1f(bumpTextLoc.u_lightRatio, 0.5f);
+			glUniform1f(bumpTextLoc.u_lightRatio, ratio);
 			//Material
 			glUniform1f(bumpTextLoc.u_metalicity, mat.getMetalicity());
 			glUniform1f(bumpTextLoc.u_roughness, mat.getRoughness());
-			glUniform3fv(bumpTextLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
-			glUniform3fv(bumpTextLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
 		break;
 	}
 	
