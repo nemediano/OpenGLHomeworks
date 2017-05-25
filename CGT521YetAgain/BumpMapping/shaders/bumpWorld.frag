@@ -28,6 +28,8 @@ out vec4 fragcolor;
 float geometric_term(float roughness, vec3 L_or_V, vec3 n);
 float distribution_term(float NdH, float alpha2);
 vec3 fresnel_term(float VdH, vec3 F0);
+vec3 gammaCorrection(vec3 color);
+vec3 toneMapping(vec3 color);
 
 const float EPSILON = 1e-7;
 const float PI = 3.14159;
@@ -35,6 +37,7 @@ const float PI = 3.14159;
 void main(void) {
 	vec3 color = vec3(0.0);
 	vec3 l = normalize(light.position - fPosition);
+	//vec3 n = normalize((NormalMat * vec4(2.0 * texture(normalsMap, fTextCoord).xyz - vec3(1.0), 0.0)).xyz);
 	vec3 n = normalize((NormalMat * vec4(texture(normalsMap, fTextCoord).xyz, 0.0)).xyz);
 	vec3 v = normalize(cameraPosition - fPosition);
 	vec3 h = normalize(l + v);
@@ -71,7 +74,7 @@ void main(void) {
 	
 	color = ambient_color + (lightColor * intensity) * (n_dot_l * (diffuse_color + speculr_color));
 	
-	fragcolor = vec4(pow(color, vec3(1.0 / gamma)), 1.0);
+	fragcolor = vec4(gammaCorrection(color), 1.0);
 }
 
 float geometric_term(float roughness, vec3 L_or_V, vec3 n) {
@@ -93,4 +96,12 @@ float distribution_term(float NdH, float alpha2) {
 // Schlick approximation
 vec3 fresnel_term(float VdH, vec3 F0) {	
 	return F0 + (vec3(1.0) - F0) * pow(2.0, (-5.55473 * VdH - 6.98316) * VdH);
+}
+
+vec3 gammaCorrection(vec3 color) {
+	return pow(color, vec3(1.0 / gamma));
+}
+
+vec3 toneMapping(vec3 color) {
+	return color / (color + vec3(1.0));
 }

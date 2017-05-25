@@ -4,11 +4,13 @@
 
 namespace math {
 	float toRadians(const float& degree) {
-		return degree * TO_RADIANS;
+		//return degree * TO_RADIANS;
+		return glm::radians(degree);
 	}
 
 	float toDegree(const float& radians) {
-		return radians * TO_DEGREE;
+		//return radians * TO_DEGREE;
+		return glm::degrees(radians);
 	}
 
 	float toFCol(const unsigned char& c) {
