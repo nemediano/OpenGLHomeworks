@@ -64,7 +64,7 @@ void main(void) {
 	float Gv = geometric_term(roughness, v, n);
 	
 	// Ambient lighting, to fake an image based map
-	vec3 ambient_color = 0.1 * baseColor;
+	vec3 ambient_color = 0.25 * baseColor;
 	// metals don't have a diffuse contribution, so turn off the diffuse color
 	// when the material is metallic
 	vec3 diffuse_color = ((1.0 - metalicity) / PI) * baseColor;

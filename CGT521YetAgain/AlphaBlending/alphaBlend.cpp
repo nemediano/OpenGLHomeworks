@@ -26,12 +26,16 @@ using namespace lighting;
 Camera cam;
 Trackball ball;
 Mesh* meshPtr = nullptr;
+Mesh* planePtr = nullptr;
 Texture* meshTexturePtr = nullptr;
 Texture* backgroundTexturePtr = nullptr;
 OGLProgram* backgroundProgPtr = nullptr;
 OGLProgram* meshRenderProgPtr = nullptr;
+OGLProgram* planeRenderProgPtr = nullptr;
 ScreenGrabber grabber;
-Material mat;
+Material materialMesh;
+Material materialFrontPlane;
+Material materialBackPlane;
 
 struct LightContainer {
 	glm::vec3 eulerAngles;
@@ -71,6 +75,7 @@ struct Locations {
 };
 
 Locations meshRenderLoc;
+Locations planeRenderLoc;
 
 
 //Global variables for the program logic
@@ -80,10 +85,12 @@ float ratio;
 
 bool gammaCorrection;
 bool background;
+bool frontPlane;
+bool backPlane;
+bool rotatePlanes;
 
 float gamma;
 
-void passLightingState();
 void reload_shaders();
 void create_glut_window();
 void init_program();
@@ -93,6 +100,7 @@ void exit_glut();
 
 //Render functions
 void renderMesh();
+void renderPlanes();
 
 //Glut callback functions
 void display();
@@ -139,6 +147,39 @@ void drawGUI() {
 
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
+	ImGui::Checkbox("Render front plane", &frontPlane);
+	ImGui::Checkbox("Render back plane", &backPlane);
+
+	if (ImGui::CollapsingHeader("Front plane properties")) {
+		vec3 baseColor = materialFrontPlane.getBaseColor();
+		vec3 F0 = materialFrontPlane.getF0();
+		float metalicity = materialFrontPlane.getMetalicity();
+		float roughness = materialFrontPlane.getRoughness();
+		ImGui::ColorEdit3("Base color FP", glm::value_ptr(baseColor));
+		ImGui::ColorEdit3("Specular Color FP", glm::value_ptr(F0));
+		ImGui::SliderFloat("Metalicity FP", &metalicity, 0.0f, 1.0f, "%.3f");
+		ImGui::SliderFloat("Roughness FP", &roughness, 0.0f, 1.0f, "%.3f");
+		materialFrontPlane.setBaseColor(baseColor);
+		materialFrontPlane.setF0(F0);
+		materialFrontPlane.setRoughness(roughness);
+		materialFrontPlane.setMetalicity(metalicity);
+	}
+
+	if (ImGui::CollapsingHeader("Back plane properties")) {
+		vec3 baseColor = materialBackPlane.getBaseColor();
+		vec3 F0 = materialBackPlane.getF0();
+		float metalicity = materialBackPlane.getMetalicity();
+		float roughness = materialBackPlane.getRoughness();
+		ImGui::ColorEdit3("Base color BP", glm::value_ptr(baseColor));
+		ImGui::ColorEdit3("Specular Color BP", glm::value_ptr(F0));
+		ImGui::SliderFloat("Metalicity BP", &metalicity, 0.0f, 1.0f, "%.3f");
+		ImGui::SliderFloat("Roughness BP", &roughness, 0.0f, 1.0f, "%.3f");
+		materialBackPlane.setBaseColor(baseColor);
+		materialBackPlane.setF0(F0);
+		materialBackPlane.setRoughness(roughness);
+		materialBackPlane.setMetalicity(metalicity);
+	}
+
 	if (ImGui::CollapsingHeader("Light position")) {
 		float aperture = light.g.getAperture();
 		ImGui::SliderFloat("Distance", &light.distance, 0.0f, 5.0f);
@@ -152,7 +193,6 @@ void drawGUI() {
 		vec3 color = light.p.getColor();
 		float intensity = light.p.getIntensity();
 		ImGui::ColorEdit3("Color", glm::value_ptr(color));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", color.r, color.g, color.b);
 		ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f);
 		light.p.setColor(color);
 		light.p.setIntensity(intensity);
@@ -161,23 +201,22 @@ void drawGUI() {
 
 	if (ImGui::CollapsingHeader("Material editor")) {
 		//Edit Material
-		vec3 baseColor = mat.getBaseColor();
-		vec3 F0 = mat.getF0();
-		float metalicity = mat.getMetalicity();
-		float roughness = mat.getRoughness();
-		ImGui::ColorEdit3("Base color", glm::value_ptr(baseColor));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", baseColor.r, baseColor.g, baseColor.b);
-		ImGui::ColorEdit3("Specular Color", glm::value_ptr(F0));
-		ImGui::Text("R: %.2f G: %.2f B: %.2f", F0.r, F0.g, F0.b);
-		ImGui::SliderFloat("Metalicity", &metalicity, 0.0f, 1.0f, "%.3f");
-		ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f, "%.3f");
-		mat.setBaseColor(baseColor);
-		mat.setF0(F0);
-		mat.setRoughness(roughness);
-		mat.setMetalicity(metalicity);
+		vec3 baseColor = materialMesh.getBaseColor();
+		vec3 F0 = materialMesh.getF0();
+		float metalicity = materialMesh.getMetalicity();
+		float roughness = materialMesh.getRoughness();
+		ImGui::ColorEdit3("Base color M", glm::value_ptr(baseColor));
+		ImGui::ColorEdit3("Specular Color M", glm::value_ptr(F0));
+		ImGui::SliderFloat("Metalicity M", &metalicity, 0.0f, 1.0f, "%.3f");
+		ImGui::SliderFloat("Roughness M", &roughness, 0.0f, 1.0f, "%.3f");
+		materialMesh.setBaseColor(baseColor);
+		materialMesh.setF0(F0);
+		materialMesh.setRoughness(roughness);
+		materialMesh.setMetalicity(metalicity);
 	}
 
-	ImGui::Checkbox("Texture map", &background);
+	ImGui::Checkbox("Background", &background);
+	ImGui::Checkbox("Rotate planes", &rotatePlanes);
 	ImGui::Checkbox("Gamma correction", &gammaCorrection);	
 	if (gammaCorrection) {
 		ImGui::SliderFloat("Gamma", &gamma, 1.0f, 2.5f);
@@ -203,10 +242,12 @@ void drawGUI() {
 
 void exit_glut() {
 	delete meshPtr;
+	delete planePtr;
 	delete meshTexturePtr;
 	delete backgroundTexturePtr;
 	delete backgroundProgPtr;
 	delete meshRenderProgPtr;
+	delete planeRenderProgPtr;
 	/* Shut down the gui */
 	ImGui_ImplGLUT_Shutdown();
 	/* Delete window (freeglut) */
@@ -227,6 +268,7 @@ void init_program() {
 
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh("../models/Amago.obj");
+	planePtr = new Mesh(Geometries::plane());
 	meshTexturePtr = new Texture("../models/AmagoTexture.png");
 	backgroundTexturePtr = new Texture("../models/world32k.jpg");
 	
@@ -234,6 +276,11 @@ void init_program() {
 		//Scale mesh to a unit cube, before sending it to GPU
 		meshPtr->toUnitCube();
 		meshPtr->sendToGPU();
+	}
+
+	if (planePtr) {
+		//Scale mesh to a unit cube, before sending it to GPU
+		planePtr->sendToGPU();
 	}
 
 	if (meshTexturePtr) {
@@ -247,12 +294,15 @@ void init_program() {
 
 	gammaCorrection = false;
 	background = false;
+	frontPlane = true;
+	backPlane = true;
+	rotatePlanes = false;
 	gamma = 1.0f;
 	seconds_elapsed = 0.0f;
 	
 
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 2.5f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.5f);
 	cam.setDepthView(0.1f, 5.0f);
@@ -270,10 +320,20 @@ void init_program() {
 	ratio = 0.25;
 
 	//Default material
-	mat.setBaseColor(vec3(0.41f, 0.84f, 0.37f));
-	mat.setF0(vec3(0.75f));
-	mat.setMetalicity(0.2f);
-	mat.setRoughness(0.15f);
+	materialMesh.setBaseColor(vec3(0.41f, 0.84f, 0.37f));
+	materialMesh.setF0(vec3(0.75f));
+	materialMesh.setMetalicity(0.2f);
+	materialMesh.setRoughness(0.15f);
+
+	materialFrontPlane.setBaseColor(vec3(0.75f, 0.85f, 0.10f));
+	materialFrontPlane.setF0(vec3(0.75f));
+	materialFrontPlane.setMetalicity(0.5f);
+	materialFrontPlane.setRoughness(0.2f);
+
+	materialBackPlane.setBaseColor(vec3(0.5f, 0.5f, 1.0f));
+	materialBackPlane.setF0(vec3(0.25f));
+	materialBackPlane.setMetalicity(0.2f);
+	materialBackPlane.setRoughness(0.0f);
 }
 
 void reload_shaders() {
@@ -283,8 +343,9 @@ void reload_shaders() {
 	/************************************************************************/
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
-	meshRenderProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
+	meshRenderProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorldTexture.frag");
 	backgroundProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
+	planeRenderProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
 
 	if (!meshRenderProgPtr || !meshRenderProgPtr->isOK()) {
 		cerr << "Something wrong in mesh render shader" << endl;
@@ -296,7 +357,12 @@ void reload_shaders() {
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	}
 
-	if (meshRenderProgPtr->isOK() && backgroundProgPtr->isOK()) {
+	if (!planeRenderProgPtr || !planeRenderProgPtr->isOK()) {
+		cerr << "Something wrong in planes render shader" << endl;
+		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+	if (meshRenderProgPtr->isOK() && backgroundProgPtr->isOK() && planeRenderProgPtr->isOK()) {
 		cout << "Shaders compiled succesufully" << endl;
 		glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	}
@@ -326,6 +392,28 @@ void reload_shaders() {
 	meshRenderLoc.u_lightColor = meshRenderProgPtr->uniformLoc("light.color");
 	meshRenderLoc.u_lightIntensity = meshRenderProgPtr->uniformLoc("light.intensity");
 	meshRenderLoc.u_lightRatio = meshRenderProgPtr->uniformLoc("light.ratio");
+	/* For rendering the planes */
+	planeRenderLoc.a_position = planeRenderProgPtr->attribLoc("Position");
+	planeRenderLoc.a_normal = planeRenderProgPtr->attribLoc("Normal");
+	planeRenderLoc.a_texture = planeRenderProgPtr->attribLoc("TextCoord");
+
+	planeRenderLoc.u_PVM = planeRenderProgPtr->uniformLoc("PVM");
+	planeRenderLoc.u_M = planeRenderProgPtr->uniformLoc("M");
+	planeRenderLoc.u_NormalMat = planeRenderProgPtr->uniformLoc("NormalMat");
+
+	planeRenderLoc.u_gamma = planeRenderProgPtr->uniformLoc("gamma");
+	planeRenderLoc.u_cameraPos = planeRenderProgPtr->uniformLoc("cameraPosition");
+	planeRenderLoc.u_textureMap = planeRenderProgPtr->uniformLoc("diffuseMap");
+
+	planeRenderLoc.u_metalicity = planeRenderProgPtr->uniformLoc("mat.metalicity");
+	planeRenderLoc.u_roughness = planeRenderProgPtr->uniformLoc("mat.roughness");
+	planeRenderLoc.u_base_color = planeRenderProgPtr->uniformLoc("mat.baseColor");
+	planeRenderLoc.u_F0 = planeRenderProgPtr->uniformLoc("mat.F0");
+
+	planeRenderLoc.u_lightPosition = planeRenderProgPtr->uniformLoc("light.position");
+	planeRenderLoc.u_lightColor = planeRenderProgPtr->uniformLoc("light.color");
+	planeRenderLoc.u_lightIntensity = planeRenderProgPtr->uniformLoc("light.intensity");
+	planeRenderLoc.u_lightRatio = planeRenderProgPtr->uniformLoc("light.ratio");
 
 }
 
@@ -350,21 +438,6 @@ void init_OpenGL() {
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
 
-}
-
-void passLightingState() {
-	
-	//Light
-	glUniform3fv(meshRenderLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
-	glUniform3fv(meshRenderLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
-	glUniform1f(meshRenderLoc.u_lightIntensity, light.p.getIntensity());
-	glUniform1f(meshRenderLoc.u_lightRatio, ratio);
-	//Material
-	glUniform1f(meshRenderLoc.u_metalicity, mat.getMetalicity());
-	glUniform1f(meshRenderLoc.u_roughness, mat.getRoughness());
-	glUniform3fv(meshRenderLoc.u_base_color, 1, glm::value_ptr(mat.getBaseColor()));
-	glUniform3fv(meshRenderLoc.u_F0, 1, glm::value_ptr(mat.getF0()));
-	
 }
 
 
@@ -392,6 +465,7 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	renderMesh();
+	renderPlanes();
 
 
 	//Unbind an clean
@@ -417,7 +491,7 @@ void renderMesh() {
 
 	mat4 I(1.0f);
 	//Model
-	mat4 M = glm::scale(I, vec3(1.5f));
+	mat4 M = I;
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
@@ -450,12 +524,103 @@ void renderMesh() {
 		glUniform1i(meshRenderLoc.u_textureMap, 0); // we bound our texture to texture unit 0
 	}
 
+	//Material
+	glUniform1f(meshRenderLoc.u_metalicity, materialMesh.getMetalicity());
+	glUniform1f(meshRenderLoc.u_roughness, materialMesh.getRoughness());
+	glUniform3fv(meshRenderLoc.u_base_color, 1, glm::value_ptr(materialMesh.getBaseColor()));
+	glUniform3fv(meshRenderLoc.u_F0, 1, glm::value_ptr(materialMesh.getF0()));
 
-	//Send light and material
-	passLightingState();
+	//Light
+	glUniform3fv(meshRenderLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	glUniform3fv(meshRenderLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+	glUniform1f(meshRenderLoc.u_lightIntensity, light.p.getIntensity());
+	glUniform1f(meshRenderLoc.u_lightRatio, ratio);
 
 	/* Draw */
 	meshPtr->drawTriangles(meshRenderLoc.a_position, meshRenderLoc.a_normal, meshRenderLoc.a_texture);
+}
+
+void renderPlanes() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
+	planeRenderProgPtr->use();
+
+	mat4 I(1.0f);
+	//Model
+	mat4 M = I;
+	
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	//Calculate Light position
+	vec4 light_initial_pos = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mat4 T = glm::translate(I, vec3(0.0f, 0.0f, light.distance));
+	vec3 light_position = vec3(glm::eulerAngleXYZ(light.eulerAngles.x, light.eulerAngles.y, light.eulerAngles.z) * T * light_initial_pos);
+	light.g.setPosition(light_position);
+	light.g.setTarget(vec3(0.0f));
+
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+	glUniform1f(planeRenderLoc.u_gamma, gammaCorrection ? gamma : 1.0f);
+	glUniform3fv(planeRenderLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
+	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
+	glUniform3fv(planeRenderLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+	//Light
+	glUniform3fv(planeRenderLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
+	glUniform3fv(planeRenderLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
+	glUniform1f(planeRenderLoc.u_lightIntensity, light.p.getIntensity());
+	glUniform1f(planeRenderLoc.u_lightRatio, ratio);
+
+	float rotateAngle = 0.0f;
+	if (rotatePlanes) {
+		rotateAngle = (TAU / 4.0f) * seconds_elapsed;
+	}
+	
+	if (frontPlane) {
+		M = I;
+		if (rotatePlanes) {
+			M = glm::rotate(M, rotateAngle, vec3(0.0f, 1.0f, 0.0f));
+		}
+		M = glm::translate(M, vec3(0.0f, 0.0f, 0.6f));
+		M = glm::scale(M, vec3(1.2f));
+		glUniformMatrix4fv(planeRenderLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(planeRenderLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+		glUniformMatrix4fv(planeRenderLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+		//Material
+		glUniform1f(planeRenderLoc.u_metalicity, materialFrontPlane.getMetalicity());
+		glUniform1f(planeRenderLoc.u_roughness, materialFrontPlane.getRoughness());
+		glUniform3fv(planeRenderLoc.u_base_color, 1, glm::value_ptr(materialFrontPlane.getBaseColor()));
+		glUniform3fv(planeRenderLoc.u_F0, 1, glm::value_ptr(materialFrontPlane.getF0()));
+		/* Draw */
+		planePtr->drawTriangles(planeRenderLoc.a_position, planeRenderLoc.a_normal, planeRenderLoc.a_texture);
+	}
+
+	if (backPlane) {
+		M = I;
+		if (rotatePlanes) {
+			M = glm::rotate(M, rotateAngle, vec3(0.0f, 1.0f, 0.0f));
+		}
+		M = glm::translate(M, vec3(0.0f, 0.0f, -0.6f));
+		M = glm::rotate(M, TAU / 2.0f, vec3(0.0f, 1.0f, 0.0f));
+		M = glm::scale(M, vec3(1.2f));
+		glUniformMatrix4fv(planeRenderLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+		glUniformMatrix4fv(planeRenderLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+		glUniformMatrix4fv(planeRenderLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+		//Material
+		glUniform1f(planeRenderLoc.u_metalicity, materialBackPlane.getMetalicity());
+		glUniform1f(planeRenderLoc.u_roughness, materialBackPlane.getRoughness());
+		glUniform3fv(planeRenderLoc.u_base_color, 1, glm::value_ptr(materialBackPlane.getBaseColor()));
+		glUniform3fv(planeRenderLoc.u_F0, 1, glm::value_ptr(materialBackPlane.getF0()));
+		/* Draw */
+		planePtr->drawTriangles(planeRenderLoc.a_position, planeRenderLoc.a_normal, planeRenderLoc.a_texture);
+	}
+	
 }
 
 void idle() {
@@ -542,7 +707,11 @@ void special(int key, int mouse_x, int mouse_y) {
 	switch (key) {
 	case GLUT_KEY_F1:
 		background = !background;
-		break;
+	break;
+
+	case GLUT_KEY_F2:
+		rotatePlanes = !rotatePlanes;
+	break;
 	}
 
 	/* Now, the app*/

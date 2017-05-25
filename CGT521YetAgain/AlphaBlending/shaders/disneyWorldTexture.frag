@@ -41,7 +41,7 @@ void main(void) {
 	vec3 v = normalize(cameraPosition - fPosition);
 	vec3 h = normalize(l + v);
 	
-	vec3 baseColor = mat.baseColor;
+	vec3 baseColor = texture(diffuseMap, fTextCoord).rgb;
 	vec3 F0 = mat.F0;
 	float roughness = mat.roughness;
 	float metalicity = mat.metalicity;
