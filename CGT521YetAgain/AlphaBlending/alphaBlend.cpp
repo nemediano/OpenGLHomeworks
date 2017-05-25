@@ -58,6 +58,7 @@ struct Locations {
 	GLint u_gamma = -1;
 	GLint u_cameraPos = -1;
 	GLint u_textureMap = -1;
+	GLint u_alpha = -1;
 	//Vertex attributes
 	GLint a_position = -1;
 	GLint a_normal = -1;
@@ -82,6 +83,8 @@ Locations planeRenderLoc;
 float seconds_elapsed;
 float angle;
 float ratio;
+float alphaFront;
+float alphaBack;
 
 bool gammaCorrection;
 bool background;
@@ -151,6 +154,7 @@ void drawGUI() {
 	ImGui::Checkbox("Render back plane", &backPlane);
 
 	if (ImGui::CollapsingHeader("Front plane properties")) {
+		ImGui::SliderFloat("Alpha FP", &alphaFront, 0.0f, 1.0f, "%.3f");
 		vec3 baseColor = materialFrontPlane.getBaseColor();
 		vec3 F0 = materialFrontPlane.getF0();
 		float metalicity = materialFrontPlane.getMetalicity();
@@ -166,6 +170,7 @@ void drawGUI() {
 	}
 
 	if (ImGui::CollapsingHeader("Back plane properties")) {
+		ImGui::SliderFloat("Alpha BP", &alphaBack, 0.0f, 1.0f, "%.3f");
 		vec3 baseColor = materialBackPlane.getBaseColor();
 		vec3 F0 = materialBackPlane.getF0();
 		float metalicity = materialBackPlane.getMetalicity();
@@ -201,15 +206,14 @@ void drawGUI() {
 
 	if (ImGui::CollapsingHeader("Material editor")) {
 		//Edit Material
-		vec3 baseColor = materialMesh.getBaseColor();
 		vec3 F0 = materialMesh.getF0();
 		float metalicity = materialMesh.getMetalicity();
 		float roughness = materialMesh.getRoughness();
-		ImGui::ColorEdit3("Base color M", glm::value_ptr(baseColor));
+		
 		ImGui::ColorEdit3("Specular Color M", glm::value_ptr(F0));
 		ImGui::SliderFloat("Metalicity M", &metalicity, 0.0f, 1.0f, "%.3f");
 		ImGui::SliderFloat("Roughness M", &roughness, 0.0f, 1.0f, "%.3f");
-		materialMesh.setBaseColor(baseColor);
+		
 		materialMesh.setF0(F0);
 		materialMesh.setRoughness(roughness);
 		materialMesh.setMetalicity(metalicity);
@@ -299,7 +303,8 @@ void init_program() {
 	rotatePlanes = false;
 	gamma = 1.0f;
 	seconds_elapsed = 0.0f;
-	
+	alphaBack = 1.0f;
+	alphaFront = 1.0f;
 
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
@@ -320,8 +325,8 @@ void init_program() {
 	ratio = 0.25;
 
 	//Default material
-	materialMesh.setBaseColor(vec3(0.41f, 0.84f, 0.37f));
-	materialMesh.setF0(vec3(0.75f));
+	materialMesh.setBaseColor(vec3(0.0f, 0.0f, 0.0f));//We will use texture for this
+	materialMesh.setF0(vec3(0.66f, 0.67f, 0.52f));
 	materialMesh.setMetalicity(0.2f);
 	materialMesh.setRoughness(0.15f);
 
@@ -402,8 +407,8 @@ void reload_shaders() {
 	planeRenderLoc.u_NormalMat = planeRenderProgPtr->uniformLoc("NormalMat");
 
 	planeRenderLoc.u_gamma = planeRenderProgPtr->uniformLoc("gamma");
+	planeRenderLoc.u_alpha = planeRenderProgPtr->uniformLoc("alpha");
 	planeRenderLoc.u_cameraPos = planeRenderProgPtr->uniformLoc("cameraPosition");
-	planeRenderLoc.u_textureMap = planeRenderProgPtr->uniformLoc("diffuseMap");
 
 	planeRenderLoc.u_metalicity = planeRenderProgPtr->uniformLoc("mat.metalicity");
 	planeRenderLoc.u_roughness = planeRenderProgPtr->uniformLoc("mat.roughness");
@@ -438,6 +443,7 @@ void init_OpenGL() {
 	//Initialize some basic rendering state
 	glEnable(GL_DEPTH_TEST);
 
+	glEnable(GL_BLEND);
 }
 
 
@@ -461,12 +467,24 @@ void reshape(int new_window_width, int new_window_height) {
 }
 
 void display() {
-
+	/* Clear both buffers */
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	/* 1) Render opaque objects with dept testing enable and normal */
 	renderMesh();
+	
+	/* 2) Disable depth writting (left depth test eanbled).*/
+	glDepthMask(GL_FALSE);
+	/* 3) Enable alpha bending (use conmutative equation) */
+	glEnable(GL_BLEND);
+	/*3a) This is multiplicative blending */
+	//glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+	/*3b) This other is additive blending */
+	glBlendFunc(GL_ONE, GL_ONE);
+	/* 4) Render translucent geometry. */
 	renderPlanes();
-
+	/* 5) For the next frame we return to normal operations*/
+	glDepthMask(GL_TRUE);
+	glDisable(GL_BLEND);
 
 	//Unbind an clean
 	glActiveTexture(GL_TEXTURE0);
@@ -592,6 +610,8 @@ void renderPlanes() {
 		glUniformMatrix4fv(planeRenderLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(planeRenderLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(planeRenderLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+		//Alpha value
+		glUniform1f(planeRenderLoc.u_alpha, alphaFront);
 		//Material
 		glUniform1f(planeRenderLoc.u_metalicity, materialFrontPlane.getMetalicity());
 		glUniform1f(planeRenderLoc.u_roughness, materialFrontPlane.getRoughness());
@@ -612,6 +632,8 @@ void renderPlanes() {
 		glUniformMatrix4fv(planeRenderLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
 		glUniformMatrix4fv(planeRenderLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 		glUniformMatrix4fv(planeRenderLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
+		//Alpha value
+		glUniform1f(planeRenderLoc.u_alpha, alphaBack);
 		//Material
 		glUniform1f(planeRenderLoc.u_metalicity, materialBackPlane.getMetalicity());
 		glUniform1f(planeRenderLoc.u_roughness, materialBackPlane.getRoughness());
@@ -711,6 +733,14 @@ void special(int key, int mouse_x, int mouse_y) {
 
 	case GLUT_KEY_F2:
 		rotatePlanes = !rotatePlanes;
+	break;
+
+	case GLUT_KEY_F3:
+		frontPlane = !frontPlane;
+	break;
+
+	case GLUT_KEY_F4:
+		backPlane = !backPlane;
 	break;
 	}
 

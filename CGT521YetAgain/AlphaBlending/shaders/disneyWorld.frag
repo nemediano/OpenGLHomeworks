@@ -22,6 +22,7 @@ uniform Material mat;
 uniform float gamma = 1.0;
 uniform vec3 cameraPosition;
 uniform sampler2D diffuseMap;
+uniform float alpha = 1.0;
 
 out vec4 fragcolor;
 
