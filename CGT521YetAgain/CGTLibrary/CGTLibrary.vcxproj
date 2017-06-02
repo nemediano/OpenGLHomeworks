@@ -77,6 +77,7 @@
   <ItemGroup>
     <ClInclude Include="..\include\tiny_obj_loader.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Cubemap.h" />
     <ClInclude Include="Directional.h" />
     <ClInclude Include="FrameBufferCapture.h" />
     <ClInclude Include="Geometries.h" />
@@ -102,6 +103,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Cubemap.cpp" />
     <ClCompile Include="Directional.cpp" />
     <ClCompile Include="FrameBufferCapture.cpp" />
     <ClCompile Include="Geometries.cpp" />

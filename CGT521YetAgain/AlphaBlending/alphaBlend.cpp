@@ -468,6 +468,8 @@ void reshape(int new_window_width, int new_window_height) {
 
 void display() {
 	/* Clear both buffers */
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	/* 1) Render opaque objects with dept testing enable and normal */
 	renderMesh();
@@ -478,8 +480,10 @@ void display() {
 	glEnable(GL_BLEND);
 	/*3a) This is multiplicative blending */
 	//glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+	glBlendFunc(GL_ONE, GL_SRC_ALPHA);
 	/*3b) This other is additive blending */
-	glBlendFunc(GL_ONE, GL_ONE);
+	//glBlendFunc(GL_ONE, GL_ONE);
+	
 	/* 4) Render translucent geometry. */
 	renderPlanes();
 	/* 5) For the next frame we return to normal operations*/

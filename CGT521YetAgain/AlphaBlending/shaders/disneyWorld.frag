@@ -74,7 +74,7 @@ void main(void) {
 	
 	color = ambient_color + (lightColor * intensity) * (n_dot_l * (diffuse_color + speculr_color));
 	
-	fragcolor = vec4(gammaCorrection(color), 1.0);
+	fragcolor = vec4(gammaCorrection(color), alpha);
 }
 
 float geometric_term(float roughness, vec3 L_or_V, vec3 n) {
