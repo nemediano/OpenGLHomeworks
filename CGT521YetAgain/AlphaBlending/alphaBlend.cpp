@@ -14,6 +14,7 @@
 #include "ScreenGrabber.h"
 #include "ProceduralTextures.h"
 #include "Spotlight.h"
+#include "Cubemap.h"
 
 using namespace ogl;
 using namespace math;
@@ -27,8 +28,9 @@ Camera cam;
 Trackball ball;
 Mesh* meshPtr = nullptr;
 Mesh* planePtr = nullptr;
+Mesh* cubePtr = nullptr;
 Texture* meshTexturePtr = nullptr;
-Texture* backgroundTexturePtr = nullptr;
+CubeMap* skyBoxTexturePtr = nullptr;
 OGLProgram* backgroundProgPtr = nullptr;
 OGLProgram* meshRenderProgPtr = nullptr;
 OGLProgram* planeRenderProgPtr = nullptr;
@@ -58,6 +60,7 @@ struct Locations {
 	GLint u_gamma = -1;
 	GLint u_cameraPos = -1;
 	GLint u_textureMap = -1;
+	GLint u_cubeMap = -1;
 	GLint u_alpha = -1;
 	//Vertex attributes
 	GLint a_position = -1;
@@ -77,6 +80,7 @@ struct Locations {
 
 Locations meshRenderLoc;
 Locations planeRenderLoc;
+Locations skyBoxRenderLoc;
 
 
 //Global variables for the program logic
@@ -85,6 +89,9 @@ float angle;
 float ratio;
 float alphaFront;
 float alphaBack;
+int dstFactor;
+int srcFactor;
+std::vector<GLenum> blendFactors;
 
 bool gammaCorrection;
 bool background;
@@ -104,6 +111,7 @@ void exit_glut();
 //Render functions
 void renderMesh();
 void renderPlanes();
+void renderSkyBox();
 
 //Glut callback functions
 void display();
@@ -150,6 +158,16 @@ void drawGUI() {
 
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
+	const char* items[] = {
+		"GL_ZERO", "GL_ONE", "GL_SRC_COLOR", "GL_ONE_MINUS_SRC_COLOR", "GL_DST_COLOR", "GL_ONE_MINUS_DST_COLOR",
+		"GL_SRC_ALPHA", "GL_ONE_MINUS_SRC_ALPHA", "GL_DST_ALPHA", "GL_ONE_MINUS_DST_ALPHA", "GL_CONSTANT_COLOR", 
+		"GL_ONE_MINUS_CONSTANT_COLOR", "GL_CONSTANT_ALPHA", "GL_ONE_MINUS_CONSTANT_ALPHA", "GL_SRC_ALPHA_SATURATE", 
+		"GL_SRC1_COLOR", "GL_ONE_MINUS_SRC1_COLOR", "GL_SRC1_ALPHA", "GL_ONE_MINUS_SRC1_ALPHA",
+	};
+	
+	ImGui::Combo("Destination factor", &dstFactor, items, static_cast<int>(blendFactors.size()));
+	ImGui::Combo("Source factor", &srcFactor, items, static_cast<int>(blendFactors.size()));
+
 	ImGui::Checkbox("Render front plane", &frontPlane);
 	ImGui::Checkbox("Render back plane", &backPlane);
 
@@ -247,8 +265,9 @@ void drawGUI() {
 void exit_glut() {
 	delete meshPtr;
 	delete planePtr;
+	delete cubePtr;
 	delete meshTexturePtr;
-	delete backgroundTexturePtr;
+	delete skyBoxTexturePtr;
 	delete backgroundProgPtr;
 	delete meshRenderProgPtr;
 	delete planeRenderProgPtr;
@@ -273,8 +292,16 @@ void init_program() {
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh("../models/Amago.obj");
 	planePtr = new Mesh(Geometries::plane());
+	cubePtr = new Mesh(Geometries::insideOutCube());
 	meshTexturePtr = new Texture("../models/AmagoTexture.png");
-	backgroundTexturePtr = new Texture("../models/world32k.jpg");
+	std::vector<std::string> faces;
+	faces.push_back("../img/skybox/right.jpg");
+	faces.push_back("../img/skybox/left.jpg");
+	faces.push_back("../img/skybox/bottom.jpg");
+	faces.push_back("../img/skybox/top.jpg");
+	faces.push_back("../img/skybox/back.jpg");
+	faces.push_back("../img/skybox/front.jpg");
+	skyBoxTexturePtr = new CubeMap(faces);
 	
 	if (meshPtr) {
 		//Scale mesh to a unit cube, before sending it to GPU
@@ -287,14 +314,14 @@ void init_program() {
 		planePtr->sendToGPU();
 	}
 
+	if (cubePtr) {
+		cubePtr->transform(glm::scale(glm::mat4(1.0f), glm::vec3(2.0f)));
+		cubePtr->sendToGPU();
+	}
+
 	if (meshTexturePtr) {
 		meshTexturePtr->send_to_gpu();
 	}
-
-	if (backgroundTexturePtr) {
-		backgroundTexturePtr->send_to_gpu();
-	}
-
 
 	gammaCorrection = false;
 	background = false;
@@ -306,11 +333,34 @@ void init_program() {
 	alphaBack = 1.0f;
 	alphaFront = 1.0f;
 
+	blendFactors.push_back(GL_ZERO);
+	blendFactors.push_back(GL_ONE);
+	blendFactors.push_back(GL_SRC_COLOR);
+	blendFactors.push_back(GL_ONE_MINUS_SRC_COLOR);
+	blendFactors.push_back(GL_DST_COLOR);
+	blendFactors.push_back(GL_ONE_MINUS_DST_COLOR);
+	blendFactors.push_back(GL_SRC_ALPHA);
+	blendFactors.push_back(GL_ONE_MINUS_SRC_ALPHA);
+	blendFactors.push_back(GL_DST_ALPHA);
+	blendFactors.push_back(GL_ONE_MINUS_DST_ALPHA);
+	blendFactors.push_back(GL_CONSTANT_COLOR);
+	blendFactors.push_back(GL_ONE_MINUS_CONSTANT_COLOR);
+	blendFactors.push_back(GL_CONSTANT_ALPHA);
+	blendFactors.push_back(GL_ONE_MINUS_CONSTANT_ALPHA);
+	blendFactors.push_back(GL_SRC_ALPHA_SATURATE);
+	blendFactors.push_back(GL_SRC1_COLOR);
+	blendFactors.push_back(GL_ONE_MINUS_SRC1_COLOR);
+	blendFactors.push_back(GL_SRC1_ALPHA);
+	blendFactors.push_back(GL_ONE_MINUS_SRC1_ALPHA);
+
+	srcFactor = 1;
+	dstFactor = 6;
+
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.5f);
-	cam.setDepthView(0.1f, 5.0f);
+	cam.setDepthView(0.1f, 9.0f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Also setup the image grabber
@@ -349,7 +399,7 @@ void reload_shaders() {
 	/*                   OpenGL program creation                            */
 	/************************************************************************/
 	meshRenderProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorldTexture.frag");
-	backgroundProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
+	backgroundProgPtr = new OGLProgram("shaders/skyBox.vert", "shaders/skyBox.frag");
 	planeRenderProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorld.frag");
 
 	if (!meshRenderProgPtr || !meshRenderProgPtr->isOK()) {
@@ -419,6 +469,11 @@ void reload_shaders() {
 	planeRenderLoc.u_lightColor = planeRenderProgPtr->uniformLoc("light.color");
 	planeRenderLoc.u_lightIntensity = planeRenderProgPtr->uniformLoc("light.intensity");
 	planeRenderLoc.u_lightRatio = planeRenderProgPtr->uniformLoc("light.ratio");
+	/* For rendering the planes */
+	skyBoxRenderLoc.a_position = backgroundProgPtr->attribLoc("Position");
+	skyBoxRenderLoc.u_PVM = backgroundProgPtr->uniformLoc("PVM");
+	skyBoxRenderLoc.u_M = backgroundProgPtr->uniformLoc("M");
+	skyBoxRenderLoc.u_cubeMap = backgroundProgPtr->uniformLoc("skybox");
 
 }
 
@@ -473,17 +528,19 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	/* 1) Render opaque objects with dept testing enable and normal */
 	renderMesh();
-	
+	if (background) {
+		renderSkyBox();
+	}
 	/* 2) Disable depth writting (left depth test eanbled).*/
 	glDepthMask(GL_FALSE);
 	/* 3) Enable alpha bending (use conmutative equation) */
 	glEnable(GL_BLEND);
 	/*3a) This is multiplicative blending */
 	//glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-	glBlendFunc(GL_ONE, GL_SRC_ALPHA);
 	/*3b) This other is additive blending */
 	//glBlendFunc(GL_ONE, GL_ONE);
-	
+	glBlendFunc(blendFactors[srcFactor], blendFactors[dstFactor]);
+
 	/* 4) Render translucent geometry. */
 	renderPlanes();
 	/* 5) For the next frame we return to normal operations*/
@@ -649,6 +706,39 @@ void renderPlanes() {
 	
 }
 
+void renderSkyBox() {
+	using glm::vec3;
+	using glm::vec4;
+	using glm::mat4;
+
+	backgroundProgPtr->use();
+
+	mat4 I(1.0f);
+	//Model
+	mat4 M = glm::scale(I, glm::vec3(3.5f));
+
+	//View
+	mat4 V = cam.getViewMatrix() * ball.getRotation();
+	//Projection
+	mat4 P = cam.getProjectionMatrix();
+
+	/************************************************************************/
+	/* Send uniform values to shader                                        */
+	/************************************************************************/
+
+	glUniformMatrix4fv(skyBoxRenderLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(skyBoxRenderLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
+
+	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (skyBoxRenderLoc.u_cubeMap != -1) {
+		glUniform1i(skyBoxRenderLoc.u_cubeMap, 0); // we bound our texture to texture unit 0
+	}
+
+	/* Draw */
+	cubePtr->drawTriangles(skyBoxRenderLoc.a_position, skyBoxRenderLoc.a_normal, skyBoxRenderLoc.a_texture);
+}
+
 void idle() {
 	static int last_time = 0;
 
@@ -731,21 +821,21 @@ void special(int key, int mouse_x, int mouse_y) {
 	io.AddInputCharacter(key);
 
 	switch (key) {
-	case GLUT_KEY_F1:
-		background = !background;
-	break;
+		case GLUT_KEY_F1:
+			background = !background;
+		break;
 
-	case GLUT_KEY_F2:
-		rotatePlanes = !rotatePlanes;
-	break;
+		case GLUT_KEY_F2:
+			rotatePlanes = !rotatePlanes;
+		break;
 
-	case GLUT_KEY_F3:
-		frontPlane = !frontPlane;
-	break;
+		case GLUT_KEY_F3:
+			frontPlane = !frontPlane;
+		break;
 
-	case GLUT_KEY_F4:
-		backPlane = !backPlane;
-	break;
+		case GLUT_KEY_F4:
+			backPlane = !backPlane;
+		break;
 	}
 
 	/* Now, the app*/
