@@ -262,10 +262,10 @@ void init_program() {
 	seconds_elapsed = 0.0f;
 
 	//Set the default position of the camera
-	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
+	cam.setLookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0.0f));
 	cam.setAspectRatio(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	cam.setFovY(PI / 4.5f);
-	cam.setDepthView(0.1f, 9.0f);
+	cam.setDepthView(0.1f, 8.5f);
 	//Create trackball camera
 	ball.setWindowSize(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 	//Also setup the image grabber

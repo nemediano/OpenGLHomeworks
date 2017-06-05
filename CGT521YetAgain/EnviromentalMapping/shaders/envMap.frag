@@ -22,7 +22,8 @@ uniform Material mat;
 uniform float gamma = 1.0;
 uniform vec3 cameraPosition;
 uniform sampler2D diffuseMap;
-uniform float alpha = 1.0;
+uniform sampler2D reflectionMap;
+uniform samplerCube skybox;
 
 out vec4 fragcolor;
 
@@ -31,18 +32,31 @@ float distribution_term(float NdH, float alpha2);
 vec3 fresnel_term(float VdH, vec3 F0);
 vec3 gammaCorrection(vec3 color);
 vec3 toneMapping(vec3 color);
+vec3 disneyShading();
 
 const float EPSILON = 1e-7;
 const float PI = 3.14159;
 
 void main(void) {
-	vec3 color = vec3(0.0);
+	vec3 ray = normalize(fPosition - cameraPosition);
+	vec3 reflectRay = reflect(ray, normalize(fNormal));
+	//Weird sampling
+	reflectRay.xy = -reflectRay.xy;
+	vec3 reflection = texture(skybox, reflectRay).rgb;
+	vec3 mixFactors = texture(reflectionMap, fTextCoord).rgb; 
+	vec3 color = mix(disneyShading(), reflection, mixFactors);
+	
+	fragcolor = vec4(gammaCorrection(color), 1.0);
+}
+
+vec3 disneyShading() {
 	vec3 l = normalize(light.position - fPosition);
 	vec3 n = normalize(fNormal);
 	vec3 v = normalize(cameraPosition - fPosition);
 	vec3 h = normalize(l + v);
 	
-	vec3 baseColor = mat.baseColor;
+	//vec3 baseColor = mat.baseColor;
+	vec3 baseColor = texture(diffuseMap, fTextCoord).rgb;
 	vec3 F0 = mat.F0;
 	float roughness = mat.roughness;
 	float metalicity = mat.metalicity;
@@ -72,9 +86,7 @@ void main(void) {
 	//diffuse_color *= vec3(1.0) - F0;
 	vec3 speculr_color = ((Gl * Gv * D) / (max(EPSILON, 4.0 * n_dot_l * n_dot_v))) * F;
 	
-	color = ambient_color + (lightColor * intensity) * (n_dot_l * (diffuse_color + speculr_color));
-	
-	fragcolor = vec4(gammaCorrection(color), alpha);
+	return ambient_color + (lightColor * intensity) * (n_dot_l * (diffuse_color + speculr_color));
 }
 
 float geometric_term(float roughness, vec3 L_or_V, vec3 n) {

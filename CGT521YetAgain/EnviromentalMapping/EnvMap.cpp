@@ -13,6 +13,7 @@
 #include "ScreenGrabber.h"
 #include "Spotlight.h"
 #include "Cubemap.h"
+#include "ProceduralTextures.h"
 
 using namespace ogl;
 using namespace math;
@@ -27,6 +28,7 @@ Trackball ball;
 Mesh* meshPtr = nullptr;
 Mesh* cubePtr = nullptr;
 Texture* meshTexturePtr = nullptr;
+Texture* refTextPtr = nullptr;
 CubeMap* skyBoxTexturePtr = nullptr;
 OGLProgram* skyBoxProgPtr = nullptr;
 OGLProgram* reflectionProgPtr = nullptr;
@@ -54,12 +56,11 @@ struct Locations {
 	GLint u_M = -1;
 	GLint u_NormalMat = -1;
 	//Fragment uniforms
-	GLint u_texture = -1;
-	GLint u_gamma = -1;
 	GLint u_cameraPos = -1;
 	GLint u_textureMap = -1;
-	GLint u_alpha = -1;
+	GLint u_gamma = -1;
 	GLint u_cubeMap = -1;
+	GLint u_reflectionMap = -1;
 	GLint u_mixFactor = -1;
 	GLint u_refractRatio = -1;
 	//Vertex attributes
@@ -86,7 +87,6 @@ Locations skyBoxRenderLoc;
 
 //Global variables for the program logic
 float seconds_elapsed;
-float angle;
 float ratio;
 
 bool gammaCorrection;
@@ -158,8 +158,10 @@ void drawGUI() {
 	ImGui::RadioButton("Reflection", &mode, 0);
 	ImGui::RadioButton("Refraction", &mode, 1);
 	ImGui::RadioButton("Enviromental mapping", &mode, 2);
+	if (mode != 2) {
+		ImGui::SliderFloat("Mix Factor", &mixFactor, 0.0f, 1.0f);
+	}
 
-	ImGui::SliderFloat("Mix Factor", &mixFactor, 0.0f, 1.0f);
 	if (mode == 1) {
 		ImGui::SliderFloat("Refraction Ratio", &refractRatio, 0.0f, 1.0f);
 	}
@@ -225,6 +227,7 @@ void exit_glut() {
 	delete refractionProgPtr;
 	delete envMapProgPtr;
 	delete meshTexturePtr;
+	delete refTextPtr;
 	delete skyBoxProgPtr;
 	delete skyBoxTexturePtr;
 	/* Shut down the gui */
@@ -247,9 +250,12 @@ void init_program() {
 
 	/* Then, create primitives (load them from mesh) */
 	meshPtr = new Mesh("../models/Amago.obj");
-	//meshPtr = new Mesh(Geometries::icosphere());
+	//meshPtr = new Mesh(Geometries::cube());
 	cubePtr = new Mesh(Geometries::insideOutCube());
 	meshTexturePtr = new Texture("../models/AmagoTexture.png");
+	//refTextPtr = new Texture("../models/ReflectionTexture.png");
+	refTextPtr = new Texture(chessBoard());
+
 	std::vector<std::string> faces;
 	faces.push_back("../img/skybox/right.jpg");
 	faces.push_back("../img/skybox/left.jpg");
@@ -277,12 +283,16 @@ void init_program() {
 		meshTexturePtr->send_to_gpu();
 	}
 
+	if (refTextPtr) {
+		refTextPtr->send_to_gpu();
+	}
+
 	gammaCorrection = false;
 	mode = 0;
 	gamma = 1.0f;
 	seconds_elapsed = 0.0f;
-	mixFactor = 0.5f;
-	refractRatio = 1.0f;
+	mixFactor = 0.75f;
+	refractRatio = 0.75f;
 
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 3.0f), vec3(0.0f));
@@ -299,7 +309,7 @@ void init_program() {
 	light.distance = 4.0f;
 	light.p.setColor(vec3(1.0f));
 	light.p.setIntensity(1.0f);
-	ratio = 0.25;
+	ratio = 0.25f;
 
 	//Default material
 	materialMesh.setBaseColor(vec3(0.0f, 0.0f, 0.0f));//We will use texture for this
@@ -317,8 +327,7 @@ void reload_shaders() {
 	/************************************************************************/
 	reflectionProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/reflection.frag");
 	refractionProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/refraction.frag");
-	//envMapProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/envMap.frag");
-	envMapProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/disneyWorldTexture.frag");
+	envMapProgPtr = new OGLProgram("shaders/disneyWorld.vert", "shaders/envMap.frag");
 	skyBoxProgPtr = new OGLProgram("shaders/skyBox.vert", "shaders/skyBox.frag");
 
 	if (!reflectionProgPtr || !reflectionProgPtr->isOK()) {
@@ -414,10 +423,11 @@ void reload_shaders() {
 	envMapLoc.u_gamma = envMapProgPtr->uniformLoc("gamma");
 	envMapLoc.u_cameraPos = envMapProgPtr->uniformLoc("cameraPosition");
 	envMapLoc.u_textureMap = envMapProgPtr->uniformLoc("diffuseMap");
+	envMapLoc.u_cubeMap = envMapProgPtr->uniformLoc("skybox");
+	envMapLoc.u_reflectionMap = envMapProgPtr->uniformLoc("reflectionMap");
 
 	envMapLoc.u_metalicity = envMapProgPtr->uniformLoc("mat.metalicity");
 	envMapLoc.u_roughness = envMapProgPtr->uniformLoc("mat.roughness");
-	envMapLoc.u_base_color = envMapProgPtr->uniformLoc("mat.baseColor");
 	envMapLoc.u_F0 = envMapProgPtr->uniformLoc("mat.F0");
 
 	envMapLoc.u_lightPosition = envMapProgPtr->uniformLoc("light.position");
@@ -680,10 +690,23 @@ void enviromentalMapping() {
 	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 	glUniform3fv(envMapLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
+	
 	glActiveTexture(GL_TEXTURE0); //Active texture unit 0
 	glBindTexture(GL_TEXTURE_2D, meshTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
 	if (envMapLoc.u_textureMap != -1) {
 		glUniform1i(envMapLoc.u_textureMap, 0); // we bound our texture to texture unit 0
+	}
+
+	glActiveTexture(GL_TEXTURE1); //Active texture unit 1
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTexturePtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (envMapLoc.u_cubeMap != -1) {
+		glUniform1i(envMapLoc.u_cubeMap, 1); // we bound our texture to texture unit 1
+	}
+
+	glActiveTexture(GL_TEXTURE2); //Active texture unit 2
+	glBindTexture(GL_TEXTURE_2D, refTextPtr->get_id()); //The next binded texture will be refered with the active texture unit
+	if (envMapLoc.u_reflectionMap != -1) {
+		glUniform1i(envMapLoc.u_reflectionMap, 2); // we bound our texture to texture unit 2
 	}
 
 	//Material
