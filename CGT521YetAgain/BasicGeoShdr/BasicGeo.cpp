@@ -143,7 +143,7 @@ void init_program() {
 	world_size = 3.0f;
 
 	/*Create vertices*/
-	int numParticles = 10;
+	int numParticles = 1e3;
 
 	unsigned int seed = static_cast<unsigned int>(time(nullptr));
 	std::cout << "Random number seed: " << seed << std::endl;
@@ -151,7 +151,7 @@ void init_program() {
 
 	Particle p;
 	for (int i = 0; i < numParticles; ++i) {
-		p.position = vec3(glm::linearRand(glm::vec2(-world_size), glm::vec2(world_size)), 0.0f);
+		p.position = vec3(glm::linearRand(glm::vec2(-4.0, -3.0), glm::vec2(4.0, 3.0)), 0.0f);
 		p.velocity = glm::linearRand(vec3(0.2f), vec3(1.0f));
 		p.mass = glm::linearRand(0.05f, 0.1f);
 		particles.push_back(p);
