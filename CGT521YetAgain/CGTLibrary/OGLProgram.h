@@ -6,6 +6,9 @@ namespace ogl {
 	public:
 
 		OGLProgram(std::string vertex_shader_file_name, std::string fragment_shader_file_name);
+		OGLProgram(std::string vertex_shader_file_name, 
+			std::string fragment_shader_file_name, 
+			std::string geometry_shader_file_name);
 		~OGLProgram();
 
 		void use();
@@ -21,13 +24,16 @@ namespace ogl {
 	private:
 		std::string m_vertex_shader_source;
 		std::string m_fragment_shader_source;
+		std::string m_geometry_shader_source;
 
 		bool m_program_ok;
+		bool m_has_geometry;
 
 		OGLProgram();
 
 		GLuint m_vertex_shader;
 		GLuint m_fragment_shader;
+		GLuint m_geometry_shader;
 		GLuint m_program;
 
 		bool validate_shader_type(const GLenum& shadertype);
