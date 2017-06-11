@@ -143,7 +143,7 @@ void init_program() {
 	world_size = 3.0f;
 
 	/*Create vertices*/
-	int numParticles = 1e3;
+	int numParticles = 1e3f;
 
 	unsigned int seed = static_cast<unsigned int>(time(nullptr));
 	std::cout << "Random number seed: " << seed << std::endl;

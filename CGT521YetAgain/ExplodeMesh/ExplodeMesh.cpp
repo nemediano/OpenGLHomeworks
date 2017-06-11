@@ -56,8 +56,10 @@ struct Locations {
 	GLint u_diffuseMap = -1;
 	GLint u_specularMap = -1;
 	//Geometry shader uniforms
+	GLint u_PV = -1;
 	GLint u_frequency = -1;
 	GLint u_amplitude = -1;
+	GLint u_time = -1;
 	//Vertex attributes
 	GLint a_position = -1;
 	GLint a_normal = -1;
@@ -234,7 +236,7 @@ void create_glut_window() {
 	//Set number of samples per pixel
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
-	glutInitWindowSize(1200, 800);
+	glutInitWindowSize(800, 600);
 	window = glutCreateWindow("Explode using geometry shader");
 }
 
@@ -262,8 +264,8 @@ void init_program() {
 	gamma = 1.0f;
 	seconds_elapsed = 0.0f;
 	mode = 0;
-	frequency = 1.0f;
-	amplitude = 1.0f;
+	frequency = 3.0f;
+	amplitude = 0.2f;
 
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0.0f));
@@ -348,12 +350,14 @@ void reload_shaders() {
 
 	explodeLoc.u_PVM = explodeProgPtr->uniformLoc("PVM");
 	explodeLoc.u_M = explodeProgPtr->uniformLoc("M");
+	explodeLoc.u_PV = explodeProgPtr->uniformLoc("PV");
 	explodeLoc.u_NormalMat = explodeProgPtr->uniformLoc("NormalMat");
 	explodeLoc.u_diffuseMap = explodeProgPtr->uniformLoc("diffuseMap");
 	explodeLoc.u_specularMap = explodeProgPtr->uniformLoc("specularMap");
 
 	explodeLoc.u_frequency = explodeProgPtr->uniformLoc("frequency");
 	explodeLoc.u_amplitude = explodeProgPtr->uniformLoc("amplitude");
+	explodeLoc.u_time = explodeProgPtr->uniformLoc("time");
 
 	explodeLoc.u_gamma = explodeProgPtr->uniformLoc("gamma");
 	explodeLoc.u_cameraPos = explodeProgPtr->uniformLoc("cameraPosition");
@@ -560,6 +564,7 @@ void explodeGeometry() {
 	/************************************************************************/
 
 	glUniformMatrix4fv(explodeLoc.u_PVM, 1, GL_FALSE, glm::value_ptr(P * V * M));
+	glUniformMatrix4fv(explodeLoc.u_PV, 1, GL_FALSE, glm::value_ptr(P * V));
 	glUniformMatrix4fv(explodeLoc.u_M, 1, GL_FALSE, glm::value_ptr(M));
 	glUniformMatrix4fv(explodeLoc.u_NormalMat, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(M))));
 	glUniform1f(explodeLoc.u_gamma, gamma);
@@ -570,6 +575,7 @@ void explodeGeometry() {
 	glUniform3fv(explodeLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
 	glUniform1f(explodeLoc.u_frequency, frequency);
 	glUniform1f(explodeLoc.u_amplitude, amplitude);
+	glUniform1f(explodeLoc.u_time, seconds_elapsed);
 	//Send light and material
 	passLightingState();
 
