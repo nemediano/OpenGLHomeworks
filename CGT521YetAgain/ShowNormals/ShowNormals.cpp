@@ -160,7 +160,7 @@ void drawGUI() {
 	ImGui::RadioButton("Show normals", &mode, 1);
 
 	if (mode == 1) {
-		ImGui::SliderFloat("Line lenght", &lineLenght, 0.0f, 2.0f, "%.3f", 2.0);
+		ImGui::SliderFloat("Line lenght", &lineLenght, 0.0f, 1.0f, "%.3f", 2.0);
 		ImGui::ColorEdit3("Color", glm::value_ptr(lineColor));
 		ImGui::Text("R: %.2f G: %.2f B: %.2f", lineColor.r, lineColor.g, lineColor.b);
 	}
@@ -244,15 +244,17 @@ void create_glut_window() {
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glutInitWindowSize(1200, 900);
-	window = glutCreateWindow("Explode using geometry shader");
+	window = glutCreateWindow("Draw normals using geometry shader");
 }
 
 void init_program() {
 	using glm::vec3;
 
 	/* Then, create primitives (load them from mesh) */
-	meshPtr = new Mesh(Geometries::sphere());
-	diffuseTexturePtr = new Texture("../models/world32k.jpg");
+	//meshPtr = new Mesh(Geometries::sphere());
+	meshPtr = new Mesh("../models/Tiger.obj");
+	//diffuseTexturePtr = new Texture("../models/world32k.jpg");
+	diffuseTexturePtr = new Texture("../models/bengal_tiger.jpg");
 
 	if (meshPtr) {
 		//Scale mesh to a unit cube, before sending it to GPU
@@ -271,7 +273,7 @@ void init_program() {
 	seconds_elapsed = 0.0f;
 	mode = 0;
 	lineColor = vec3(1.0f, 1.0f, 0.0f);
-	lineLenght = 0.2f;
+	lineLenght = 0.01f;
 
 	//Set the default position of the camera
 	cam.setLookAt(vec3(0.0f, 0.0f, 2.0f), vec3(0.0f));
@@ -496,7 +498,7 @@ void lightingTextures() {
 
 	mat4 I(1.0f);
 	//Model
-	mat4 M = glm::rotate(PI, vec3(0.0f, 1.0f, 0.0f));
+	mat4 M = glm::rotate(I, TAU / 4.0f, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
@@ -545,7 +547,7 @@ void renderNormals() {
 
 	mat4 I(1.0f);
 	//Model
-	mat4 M = glm::rotate(PI, vec3(0.0f, 1.0f, 0.0f));
+	mat4 M = glm::rotate(I, TAU / 4.0f, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
