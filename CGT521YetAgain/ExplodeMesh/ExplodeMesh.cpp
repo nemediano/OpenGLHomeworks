@@ -92,6 +92,7 @@ float gamma;
 int mode;
 float frequency;
 float amplitude;
+float displacement;
 
 void passLightingState();
 void reload_shaders();
@@ -151,10 +152,16 @@ void drawGUI() {
 	/*Create a new menu for my app*/
 	ImGui::Begin("Options");
 	ImGui::RadioButton("Simple lighting", &mode, 0);
-	ImGui::RadioButton("Exploding", &mode, 1);
+	ImGui::RadioButton("Exploding oscilate", &mode, 1);
+	ImGui::RadioButton("Exploding control", &mode, 2);
 
 	if (mode == 1) {
 		ImGui::SliderFloat("Frequency", &frequency, 0.0f, 5.0f, "%.3f", 2.0);
+		ImGui::SliderFloat("Amplitude", &amplitude, 0.0f, 5.0f, "%.3f", 2.0);
+	}
+
+	if (mode == 2) {
+		ImGui::SliderFloat("Displacement", &displacement, 0.0f, 1.0f, "%.3f");
 		ImGui::SliderFloat("Amplitude", &amplitude, 0.0f, 5.0f, "%.3f", 2.0);
 	}
 		
@@ -236,7 +243,7 @@ void create_glut_window() {
 	//Set number of samples per pixel
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
-	glutInitWindowSize(800, 600);
+	glutInitWindowSize(1200, 900);
 	window = glutCreateWindow("Explode using geometry shader");
 }
 
@@ -244,10 +251,9 @@ void init_program() {
 	using glm::vec3;
 
 	/* Then, create primitives (load them from mesh) */
-	//meshPtr = new Mesh("../models/Rham-Phorynchus.obj");
-	meshPtr = new Mesh(Geometries::cube());
-	//diffuseTexturePtr = new Texture("../models/rham_diff.png");
-	diffuseTexturePtr = new Texture(chessBoard());
+	meshPtr = new Mesh(Geometries::sphere());
+	diffuseTexturePtr = new Texture("../models/world32k.jpg");
+
 	if (meshPtr) {
 		//Scale mesh to a unit cube, before sending it to GPU
 		meshPtr->toUnitCube();
@@ -260,7 +266,7 @@ void init_program() {
 
 	gammaCorrection = false;
 	wireframe = false;
-	cullFace = true;
+	cullFace = false;
 	gamma = 1.0f;
 	seconds_elapsed = 0.0f;
 	mode = 0;
@@ -279,7 +285,7 @@ void init_program() {
 
 	//Default position of the spotlight
 	light.eulerAngles = glm::vec3(0.0f, 0.0f, 0.0f);
-	light.distance = glm::sqrt(3.0f);
+	light.distance = 3.0f;
 	light.p.setColor(vec3(1.0f));
 	light.p.setIntensity(1.0f);
 	light.g.setAperture(PI / 6.0f);
@@ -410,6 +416,7 @@ void passLightingState() {
 		break;
 
 		case 1:
+		case 2:
 			//Light
 			glUniform3fv(explodeLoc.u_lightPosition, 1, glm::value_ptr(light.g.getPosition()));
 			glUniform3fv(explodeLoc.u_lightColor, 1, glm::value_ptr(light.p.getColor()));
@@ -469,6 +476,7 @@ void display() {
 		break;
 
 		case 1:
+		case 2:
 			explodeGeometry();
 		break;
 	}
@@ -496,7 +504,7 @@ void lightingTextures() {
 
 	mat4 I(1.0f);
 	//Model
-	mat4 M = glm::scale(I, vec3(1.0f));
+	mat4 M = glm::rotate(PI, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
@@ -545,7 +553,7 @@ void explodeGeometry() {
 
 	mat4 I(1.0f);
 	//Model
-	mat4 M = glm::scale(I, vec3(1.0f));
+	mat4 M = glm::rotate(PI, vec3(0.0f, 1.0f, 0.0f));
 	//View
 	mat4 V = cam.getViewMatrix() * ball.getRotation();
 	//Projection
@@ -573,9 +581,15 @@ void explodeGeometry() {
 	vec4 camera_pos = vec4(cam.getPosition(), 1.0f);
 	vec3 camPosInWorld = vec3(glm::inverse(V) * camera_pos);
 	glUniform3fv(explodeLoc.u_cameraPos, 1, glm::value_ptr(vec3(camPosInWorld)));
-	glUniform1f(explodeLoc.u_frequency, frequency);
 	glUniform1f(explodeLoc.u_amplitude, amplitude);
-	glUniform1f(explodeLoc.u_time, seconds_elapsed);
+	if (mode == 1) {
+		glUniform1f(explodeLoc.u_frequency, frequency);
+		glUniform1f(explodeLoc.u_time, seconds_elapsed);
+	} else {
+		glUniform1f(explodeLoc.u_frequency, 1.0f);
+		glUniform1f(explodeLoc.u_time, PI * (displacement + 1.5f));
+	}
+	
 	//Send light and material
 	passLightingState();
 
@@ -681,6 +695,10 @@ void special(int key, int mouse_x, int mouse_y) {
 
 		case GLUT_KEY_F2:
 			mode = 1;
+		break;
+
+		case GLUT_KEY_F3:
+			mode = 2;
 		break;
 	}
 
